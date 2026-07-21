@@ -1,0 +1,38 @@
+// src/modules/crypto/permissions.ts
+import { PermissionKeys } from '@/modules/rbac/permissions';
+
+export const CryptoPermissions = {
+  // Crypto currencies
+  CURRENCIES_READ: PermissionKeys.CRYPTO_CURRENCIES_READ,
+  CURRENCIES_CREATE: PermissionKeys.CRYPTO_CURRENCIES_CREATE,
+  CURRENCIES_UPDATE: PermissionKeys.CRYPTO_CURRENCIES_UPDATE,
+  CURRENCIES_DELETE: PermissionKeys.CRYPTO_CURRENCIES_DELETE,
+
+  // Wallet
+  WALLET_READ: PermissionKeys.CRYPTO_WALLET_READ,
+  WALLET_CREATE: PermissionKeys.CRYPTO_WALLET_CREATE,
+  WALLET_UPDATE: PermissionKeys.CRYPTO_WALLET_UPDATE,
+
+  // Deposits
+  DEPOSITS_READ: PermissionKeys.CRYPTO_DEPOSITS_READ,
+  DEPOSITS_CREATE: PermissionKeys.CRYPTO_DEPOSITS_CREATE,
+  DEPOSITS_UPDATE: PermissionKeys.CRYPTO_DEPOSITS_UPDATE,
+  DEPOSITS_APPROVE: PermissionKeys.CRYPTO_DEPOSITS_APPROVE,
+  DEPOSITS_REJECT: PermissionKeys.CRYPTO_DEPOSITS_REJECT,
+  DEPOSITS_PROCESS: PermissionKeys.CRYPTO_DEPOSITS_PROCESS,
+
+  // Withdrawals
+  WITHDRAWALS_READ: PermissionKeys.CRYPTO_WITHDRAWALS_READ,
+  WITHDRAWALS_CREATE: PermissionKeys.CRYPTO_WITHDRAWALS_CREATE,
+  WITHDRAWALS_UPDATE: PermissionKeys.CRYPTO_WITHDRAWALS_UPDATE,
+  WITHDRAWALS_APPROVE: PermissionKeys.CRYPTO_WITHDRAWALS_APPROVE,
+  WITHDRAWALS_REJECT: PermissionKeys.CRYPTO_WITHDRAWALS_REJECT,
+  WITHDRAWALS_PROCESS: PermissionKeys.CRYPTO_WITHDRAWALS_PROCESS,
+
+  // Rates
+  RATES_READ: PermissionKeys.CRYPTO_RATES_READ,
+  RATES_UPDATE: PermissionKeys.CRYPTO_RATES_UPDATE,
+} as const;
+
+export type CryptoPermission =
+  (typeof CryptoPermissions)[keyof typeof CryptoPermissions];

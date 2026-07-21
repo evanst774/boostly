@@ -1,0 +1,421 @@
+/* src/components/landing/hero.css */
+/* Hero Section Theme Variables */
+.hero-section {
+    --hero-bg-light: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 40%, #f8f9ff 100%);
+    --hero-bg-dark: #060d28;
+    --card-bg-light: rgba(255, 255, 255, 0.95);
+    --card-bg-dark: rgba(9, 18, 60, 0.85);
+    --card-border-light: rgba(27, 59, 139, 0.12);
+    --card-border-dark: rgba(65, 105, 225, 0.25);
+
+    /* Text colors - Light mode */
+    --text-primary-light: #1a2a4f;
+    --text-secondary-light: #4a5568;
+    --text-muted-light: #718096;
+
+    /* Text colors - Dark mode */
+    --text-primary-dark: #ffffff;
+    --text-secondary-dark: #cbd5e1;
+    --text-muted-dark: #94a3b8;
+
+    /* Badge colors */
+    --badge-bg-light: rgba(27, 59, 139, 0.12);
+    --badge-text-light: #1B3B8B;
+    --badge-bg-dark: rgba(65, 105, 225, 0.2);
+    --badge-text-dark: #93b4f8;
+
+    /* Event hover */
+    --event-hover-light: rgba(27, 59, 139, 0.06);
+    --event-hover-dark: rgba(65, 105, 225, 0.12);
+
+    /* Welcome badge */
+    --welcome-bg-light: rgba(27, 59, 139, 0.08);
+    --welcome-bg-dark: rgba(65, 105, 225, 0.15);
+    --welcome-border-light: rgba(27, 59, 139, 0.2);
+    --welcome-border-dark: rgba(65, 105, 225, 0.3);
+}
+
+/* Base section styles - NO overlays that block text */
+.hero-section {
+    background: var(--hero-bg-light);
+    transition: background 0.5s ease;
+}
+
+html.dark .hero-section {
+    background: var(--hero-bg-dark);
+}
+
+/* Hero heading styles - CLEAR and VISIBLE */
+.hero-heading {
+    color: var(--text-primary-light);
+}
+
+html.dark .hero-heading {
+    color: var(--text-primary-dark);
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Gradient text - properly visible */
+.gradient-text {
+    background: linear-gradient(135deg, #1B3B8B, #4169E1, #6389F5);
+    background-size: 200% 200%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: gradientShift 6s ease infinite;
+}
+
+html.dark .gradient-text {
+    background: linear-gradient(135deg, #93b4f8 0%, #c5d5f0 50%, #93b4f8 100%);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: gradientShift 6s ease infinite;
+    /* Force GPU compositing to prevent bounding-box bleed */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    isolation: isolate;
+}
+
+@keyframes gradientShift {
+
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+/* Description text */
+.hero-description {
+    color: var(--text-secondary-light);
+    line-height: 1.75;
+}
+
+html.dark .hero-description {
+    color: var(--text-secondary-dark);
+}
+
+/* Welcome badge */
+.welcome-badge {
+    background: var(--welcome-bg-light);
+    border: 1px solid var(--welcome-border-light);
+    backdrop-filter: blur(4px);
+}
+
+html.dark .welcome-badge {
+    background: var(--welcome-bg-dark);
+    border-color: var(--welcome-border-dark);
+}
+
+.welcome-dot {
+    background: #1B3B8B;
+    box-shadow: 0 0 8px rgba(27, 59, 139, 0.6);
+}
+
+html.dark .welcome-dot {
+    background: #6389F5;
+    box-shadow: 0 0 8px rgba(99, 137, 245, 0.6);
+}
+
+.welcome-text {
+    color: #1B3B8B;
+    font-weight: 600;
+}
+
+html.dark .welcome-text {
+    color: #93b4f8;
+}
+
+/* Card styles */
+.hero-card {
+    background: var(--card-bg-light);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--card-border-light);
+    transition: all 0.3s ease;
+}
+
+html.dark .hero-card {
+    background: var(--card-bg-dark);
+    border-color: var(--card-border-dark);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.hero-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Text colors */
+.hero-text-primary {
+    color: var(--text-primary-light);
+}
+
+html.dark .hero-text-primary {
+    color: var(--text-primary-dark);
+}
+
+.hero-text-secondary {
+    color: var(--text-secondary-light);
+}
+
+html.dark .hero-text-secondary {
+    color: var(--text-secondary-dark);
+}
+
+.hero-text-muted {
+    color: var(--text-muted-light);
+}
+
+html.dark .hero-text-muted {
+    color: var(--text-muted-dark);
+}
+
+/* Badge styles */
+.hero-badge {
+    background: var(--badge-bg-light);
+    color: var(--badge-text-light);
+}
+
+html.dark .hero-badge {
+    background: var(--badge-bg-dark);
+    color: var(--badge-text-dark);
+}
+
+/* Event item */
+.event-item {
+    transition: all 0.3s ease;
+    border-radius: 12px;
+}
+
+.event-item:hover {
+    background: var(--event-hover-light);
+    transform: translateX(4px);
+}
+
+html.dark .event-item:hover {
+    background: var(--event-hover-dark);
+}
+
+/* Shimmer animation */
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.shimmer-effect {
+    position: relative;
+    overflow: hidden;
+}
+
+.shimmer-effect::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+    animation: shimmer 0s;
+}
+
+.shimmer-effect:hover::after {
+    animation: shimmer 0.8s ease-in-out;
+}
+
+/* Scroll indicator */
+.scroll-indicator {
+    border-color: #1B3B8B;
+}
+
+html.dark .scroll-indicator {
+    border-color: #6389F5;
+}
+
+.scroll-indicator-dot {
+    background: #1B3B8B;
+}
+
+html.dark .scroll-indicator-dot {
+    background: #6389F5;
+}
+
+/* Gradient button */
+.gradient-btn {
+    background: linear-gradient(135deg, #1B3B8B, #4169E1);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.gradient-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s ease;
+}
+
+.gradient-btn:hover::before {
+    left: 100%;
+}
+
+.gradient-btn:hover {
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(27, 59, 139, 0.4);
+}
+
+.outline-btn {
+    border: 2px solid #1B3B8B;
+    color: #1B3B8B;
+    transition: all 0.3s ease;
+}
+
+.outline-btn:hover {
+    transform: scale(1.05) translateY(-2px);
+    background: rgba(27, 59, 139, 0.08);
+}
+
+html.dark .outline-btn {
+    border-color: #6389F5;
+    color: #6389F5;
+}
+
+html.dark .outline-btn:hover {
+    background: rgba(65, 105, 225, 0.15);
+}
+
+/* Stats card */
+.stat-card-item {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(27, 59, 139, 0.08);
+    border-radius: 16px;
+    transition: all 0.3s ease;
+}
+
+.stat-card-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px -5px rgba(27, 59, 139, 0.15);
+}
+
+html.dark .stat-card-item {
+    background: rgba(13, 31, 92, 0.7);
+    border-color: rgba(65, 105, 225, 0.15);
+    backdrop-filter: blur(4px);
+}
+
+.stat-value {
+    color: #1B3B8B;
+    font-weight: 800;
+}
+
+html.dark .stat-value {
+    color: #93b4f8;
+}
+
+.stat-label {
+    color: var(--text-muted-light);
+}
+
+html.dark .stat-label {
+    color: var(--text-muted-dark);
+}
+
+
+/* hero.css - complete StatCard rules */
+
+.stat-card-item {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(27, 59, 139, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px -5px rgba(27, 59, 139, 0.15);
+}
+
+html.dark .stat-card-item {
+  background: rgba(13, 31, 92, 0.8);
+  border-color: rgba(65, 105, 225, 0.3);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(4px);
+}
+
+html.dark .stat-card-item:hover {
+  box-shadow: 0 12px 28px -8px rgba(65, 105, 225, 0.25);
+  border-color: rgba(65, 105, 225, 0.5);
+}
+
+/* Icon wrapper */
+.stat-icon-wrapper {
+  background: rgba(27, 59, 139, 0.1);
+  color: #1B3B8B;
+  transition: all 0.3s ease;
+}
+
+.stat-card-item:hover .stat-icon-wrapper {
+  transform: scale(1.1);
+}
+
+html.dark .stat-icon-wrapper {
+  background: rgba(65, 105, 225, 0.2);
+  color: #93b4f8;
+  box-shadow: 0 0 15px rgba(65, 105, 225, 0.15);
+}
+
+/* Value */
+.stat-value {
+  color: #1B3B8B;
+  transition: all 0.3s ease;
+}
+
+html.dark .stat-value {
+  color: #93b4f8;
+  text-shadow: 0 0 10px rgba(147, 180, 248, 0.2);
+}
+
+/* Label */
+.stat-label {
+  color: #6b7280;
+  transition: all 0.3s ease;
+  letter-spacing: 0.3px;
+}
+
+html.dark .stat-label {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Shimmer on hover */
+.stat-card-item::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  pointer-events: none;
+  transition: left 0s;
+}
+
+.stat-card-item:hover::after {
+  left: 150%;
+  transition: left 0.6s ease;
+}
+

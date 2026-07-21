@@ -1,0 +1,27 @@
+{
+  "name": "MotoTrack ERP",
+  "short_name": "MotoTrack",
+  "description": "Complete ERP solution for businesses - Manage inventory, sales, customers, contracts, and financial tracking",
+  "icons": [
+    {
+      "src": "/img/favicons/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/img/favicons/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "theme_color": "#3366FF",
+  "background_color": "#050B1A",
+  "display": "standalone",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "orientation": "any",
+  "categories": ["business", "productivity"],
+  "lang": "en"
+}

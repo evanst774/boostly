@@ -1,0 +1,509 @@
+/* src/app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   GOOGLE FONTS
+   ============================================ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* ============================================
+   CUSTOM FONT DECLARATIONS - ES Rebond Grotesque
+   ============================================ */
+@font-face {
+  font-family: 'ES Rebond Grotesque';
+  src: url('/fonts/rebond-grotesque/ESRebondGrotesqueTRIAL-Thin-BF6618904123ce3.otf') format('opentype');
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ES Rebond Grotesque';
+  src: url('/fonts/rebond-grotesque/ESRebondGrotesqueTRIAL-Light-BF66189040e6001.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ES Rebond Grotesque';
+  src: url('/fonts/rebond-grotesque/ESRebondGrotesqueTRIAL-Regular-BF66189040b697b.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ES Rebond Grotesque';
+  src: url('/fonts/rebond-grotesque/ESRebondGrotesqueTRIAL-Medium-BF6618904088566.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ES Rebond Grotesque';
+  src: url('/fonts/rebond-grotesque/ESRebondGrotesqueTRIAL-Semibold-BF66189040640ea.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ES Rebond Grotesque';
+  src: url('/fonts/rebond-grotesque/ESRebondGrotesqueTRIAL-Bold-BF66189040400df.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ES Rebond Grotesque';
+  src: url('/fonts/rebond-grotesque/ESRebondGrotesqueTRIAL-Extrabold-BF661890400e032.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Outfit Medium */
+@font-face {
+  font-family: 'OutfitMedium';
+  src: url('/fonts/Outfit/static/Outfit-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Cascadia Code */
+@font-face {
+  font-family: 'CascadiaCodeRegular';
+  src: url('/fonts/cascadia-code/CascadiaCode-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(37, 99, 235, 0.3) transparent;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body {
+    @apply antialiased;
+    font-family: 'Inter', 'Space Grotesk', 'Outfit', sans-serif;
+    background: #F8FAFC;
+    color: #111827;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+
+  /* Custom scrollbar - Blue Theme */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(37, 99, 235, 0.3);
+    border-radius: 10px;
+    transition: background-color 0.2s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(37, 99, 235, 0.5);
+  }
+
+  /* Selection color */
+  ::selection {
+    background: rgba(37, 99, 235, 0.3);
+    color: #ffffff;
+  }
+
+  ::-moz-selection {
+    background: rgba(37, 99, 235, 0.3);
+    color: #ffffff;
+  }
+
+  /* Focus styles for keyboard navigation */
+  button:focus-visible,
+  a:focus-visible {
+    outline: 2px solid #2563EB;
+    outline-offset: 2px;
+  }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+
+  /* Better tap highlights on mobile */
+  @media (hover: none) and (pointer: coarse) {
+
+    button,
+    a {
+      cursor: pointer;
+      -webkit-tap-highlight-color: rgba(37, 99, 235, 0.2);
+    }
+  }
+}
+
+/* ============================================
+   BADGE STYLES
+   ============================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-success {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.badge-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-info {
+  background: rgba(37, 99, 235, 0.15);
+  color: #2563eb;
+  border: 1px solid rgba(37, 99, 235, 0.3);
+}
+
+.badge-gray {
+  background: rgba(107, 114, 128, 0.15);
+  color: #6b7280;
+  border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+/* ============================================
+   RESPONSIVE SYSTEM
+   ============================================ */
+
+/* 2XL Screens (1536px+) */
+@media (min-width: 1536px) {
+  .container {
+    max-width: 1400px;
+  }
+}
+
+/* XL Screens (1280px - 1535px) */
+@media (min-width: 1280px) and (max-width: 1535px) {
+  .container {
+    max-width: 1200px;
+  }
+}
+
+/* LG Screens (1024px - 1279px) */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .container {
+    max-width: 960px;
+  }
+}
+
+/* MD Screens (768px - 1023px) - Tablet */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .container {
+    max-width: 720px;
+  }
+
+  h1 {
+    font-size: 1.75rem !important;
+  }
+
+  h2 {
+    font-size: 1.5rem !important;
+  }
+}
+
+/* SM Screens (640px - 767px) - Large Phone */
+@media (min-width: 640px) and (max-width: 767px) {
+  .container {
+    max-width: 100%;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  h1 {
+    font-size: 1.5rem !important;
+  }
+
+  h2 {
+    font-size: 1.25rem !important;
+  }
+
+  .grid {
+    gap: 1rem !important;
+  }
+}
+
+/* XS Screens (480px - 639px) - Small Phone */
+@media (min-width: 480px) and (max-width: 639px) {
+  .container {
+    width: 100%;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  h1 {
+    font-size: 1.35rem !important;
+  }
+
+  h2 {
+    font-size: 1.125rem !important;
+  }
+
+  .grid {
+    gap: 0.875rem !important;
+  }
+
+  button,
+  .btn,
+  .button {
+    padding: 0.5rem 1rem !important;
+    font-size: 0.875rem !important;
+  }
+
+  .card {
+    padding: 1rem !important;
+  }
+}
+
+/* XXS Screens (320px - 479px) - Very Small Phone */
+@media (max-width: 479px) {
+  .container {
+    width: 100%;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  h1 {
+    font-size: 1.25rem !important;
+    line-height: 1.3 !important;
+  }
+
+  h2 {
+    font-size: 1rem !important;
+    line-height: 1.3 !important;
+  }
+
+  p,
+  span,
+  li {
+    font-size: 0.875rem !important;
+  }
+
+  .grid {
+    gap: 0.75rem !important;
+  }
+
+  button,
+  .btn,
+  .button {
+    padding: 0.5rem 0.875rem !important;
+    font-size: 0.8125rem !important;
+  }
+
+  .card,
+  .rounded-xl,
+  .rounded-2xl {
+    padding: 0.875rem !important;
+    border-radius: 1rem !important;
+  }
+
+  section {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+  }
+
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .mobile-full-width {
+    width: 100% !important;
+  }
+}
+
+/* Touch-friendly tap targets (mobile) */
+@media (max-width: 768px) {
+
+  button,
+  .nav-link,
+  .mobile-nav-item,
+  .menu-card,
+  a[href],
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  button:active,
+  .nav-link:active,
+  .menu-card:active {
+    transform: scale(0.98);
+    transition: transform 0.05s ease;
+  }
+
+  .gap-2 {
+    gap: 0.625rem !important;
+  }
+
+  .gap-4 {
+    gap: 0.875rem !important;
+  }
+
+  .p-4 {
+    padding: 0.875rem !important;
+  }
+
+  .space-y-4>*+* {
+    margin-top: 0.875rem !important;
+  }
+}
+
+/* Landscape mode fixes for mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+  .hero-section {
+    min-height: auto !important;
+    padding-top: 2rem !important;
+    padding-bottom: 1rem !important;
+  }
+
+  .mobile-menu {
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+}
+
+/* Prevent zoom on input focus on mobile (iOS) */
+@media (max-width: 768px) {
+
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Mobile menu scroll */
+@media (max-width: 768px) {
+  .mobile-menu-scroll {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+}
+
+/* ============================================
+   SAFE AREA SUPPORT (Notched Phones)
+   ============================================ */
+@supports (padding: max(0px)) {
+  .safe-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .safe-left {
+    padding-left: max(1rem, env(safe-area-inset-left));
+  }
+
+  .safe-right {
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+/* ============================================
+   REDUCED MOTION PREFERENCE
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  .glass,
+  .glass-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    box-shadow: none;
+  }
+}
+
+/* ============================================
+   SMOOTH SCROLL (Lenis)
+   ============================================ */
+html.lenis {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}

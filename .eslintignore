@@ -1,0 +1,8 @@
+# Ignore seed files
+src/lib/db/seeds/seed.ts
+src/lib/db/seeds/*.ts
+
+# Or ignore all seed files
+**/seeds/**/*.ts
+# **/*.ts
+# **/*.tsx

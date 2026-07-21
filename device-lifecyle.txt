@@ -1,0 +1,34 @@
+┌─────────────────────────────────────────────────────────────────┐
+│                    DEVICE LIFECYCLE                            │
+│                                                                 │
+│  1. FACTORY RESET                                               │
+│     └── Device powers on with default TCP settings             │
+│                                                                 │
+│  2. TCP CONNECTION (Initial)                                   │
+│     └── Device connects to TCP gateway (port 5555)            │
+│                                                                 │
+│  3. REGISTRATION (via TCP)                                     │
+│     └── Device sends IMEI → Server checks database            │
+│         └── If registered: Send MQTT credentials              │
+│         └── If not: Send registration URL                     │
+│                                                                 │
+│  4. MQTT CONNECTION (Post-registration)                        │
+│     └── Device connects to MQTT broker using credentials      │
+│         └── Starts sending GPS data via MQTT                  │
+│                                                                 │
+│  5. LIVE OPERATIONS (MQTT)                                     │
+│     └── GPS updates (every 5-30 seconds)                      │
+│     └── Heartbeats (every 60 seconds)                         │
+│     └── Command responses (real-time)                         │
+│                                                                 │
+│  6. COMMANDS (Hybrid)                                          │
+│     └── Server sends commands via MQTT (preferred)            │
+│         └── If offline: Queue via TCP when device reconnects  │
+│                                                                 │
+│  7. FIRMWARE UPDATES (TCP)                                     │
+│     └── Large payloads → TCP (more reliable for binaries)     │
+│                                                                 │
+│  8. RECONNECTION                                               │
+│     └── MQTT auto-reconnect (preferred)                       │
+│         └── If MQTT fails: Fallback to TCP                    │
+└─────────────────────────────────────────────────────────────────┘

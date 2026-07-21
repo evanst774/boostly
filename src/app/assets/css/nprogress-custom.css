@@ -1,0 +1,52 @@
+/* src/app/nprogress-custom.css - Mubuga TSS Theme */
+#nprogress {
+  pointer-events: none;
+}
+
+#nprogress .bar {
+  background: linear-gradient(90deg, #1B3B8B, #4169E1, #0D1F5C) !important;
+  height: 3px;
+  box-shadow: 0 0 12px #1B3B8B, 0 0 6px #4169E1;
+}
+
+#nprogress .peg {
+  display: block;
+  position: absolute;
+  right: 0px;
+  width: 100px;
+  height: 100%;
+  box-shadow: 0 0 10px #1B3B8B, 0 0 5px #4169E1;
+  opacity: 1;
+  transform: rotate(3deg) translate(0px, -4px);
+}
+
+#nprogress .spinner {
+  display: block !important;
+  position: fixed;
+  z-index: 1600;
+  top: 20px;
+  right: 20px;
+}
+
+#nprogress .spinner-icon {
+  width: 28px;
+  height: 28px;
+  border: solid 3px transparent;
+  border-top-color: #1B3B8B;
+  border-left-color: #4169E1;
+  border-radius: 50%;
+  animation: nprogress-spinner 0.8s linear infinite;
+  box-shadow: 0 0 15px rgba(27, 59, 139, 0.3);
+}
+
+@keyframes nprogress-spinner {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Optional: Hide spinner on mobile for cleaner look */
+@media (max-width: 768px) {
+  #nprogress .spinner {
+    display: none !important;
+  }
+}
