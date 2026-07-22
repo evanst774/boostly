@@ -1,6 +1,6 @@
 // src/lib/db/schema/company.ts
 import { sql } from 'drizzle-orm';
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import {
   type FiatCurrencyType,
   FIAT_CURRENCY_LIST,
@@ -193,6 +193,40 @@ export const companySettings = sqliteTable('company_settings', {
     }),
 
   // ============================================
+  // REWARDS ENGINE SETTINGS
+  // ============================================
+  /**
+   * Base daily bonus amount (in base currency) awarded for claiming the
+   * daily streak bonus, before streak-milestone bonuses are added.
+   */
+  dailyBonusBaseAmount: integer('dailyBonusBaseAmount').default(100),
+
+  /**
+   * Extra bonus amount awarded when a user's streak reaches specific
+   * milestones. Keys are streak-day counts, values are bonus amounts.
+   */
+  dailyBonusStreakMilestones: text('dailyBonusStreakMilestones', {
+    mode: 'json',
+  })
+    .$type<Record<string, number>>()
+    .default({ '7': 500, '14': 1000, '30': 3000 }),
+
+  /**
+   * Referral commission rate (0-1) paid to the referrer when their
+   * referred friend purchases a badge or subscription.
+   */
+  referralCommissionRate: real('referralCommissionRate').default(0.18),
+
+  /**
+   * Whether referral commission also applies to subscription renewals,
+   * not just the first purchase. Disabled by default to avoid a
+   * deposit-then-withdraw farming exploit.
+   */
+  referralCommissionOnRenewals: integer('referralCommissionOnRenewals', {
+    mode: 'boolean',
+  }).default(false),
+
+  // ============================================
   // FEATURE FLAGS
   // ============================================
   features: text('features', { mode: 'json' })
@@ -288,6 +322,10 @@ export function getDefaultCompanySettings(): NewCompanySettings {
     sessionTimeoutMinutes: 30,
     failedLoginAttemptsLimit: 5,
     ipWhitelistingEnabled: false,
+    dailyBonusBaseAmount: 100,
+    dailyBonusStreakMilestones: { '7': 500, '14': 1000, '30': 3000 },
+    referralCommissionRate: 0.18,
+    referralCommissionOnRenewals: false,
     notifications: {
       email: true,
       inApp: true,
