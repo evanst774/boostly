@@ -9,7 +9,6 @@ import {
   Sparkles,
   Crown,
   Star,
-  Loader2,
   TrendingUp,
   Users,
   Rocket,
@@ -132,10 +131,248 @@ interface SubscriptionPlan {
   revenueShare?: number;
 }
 
+// Skeleton loading component
+function PlansSkeleton() {
+  return (
+    <section className="py-20 bg-bg" id="plans">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="grid lg:grid-cols-[260px_1fr] gap-8">
+          {/* Left intro skeleton */}
+          <div className="space-y-4">
+            <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+            <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
+            <div className="h-16 w-full bg-gray-200 rounded animate-pulse" />
+            <div className="space-y-2">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="h-5 w-40 bg-gray-200 rounded animate-pulse"
+                />
+              ))}
+            </div>
+            <div className="h-10 w-32 bg-gray-200 rounded-full animate-pulse" />
+          </div>
+
+          {/* Plans grid skeleton */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div
+                key={i}
+                className="bg-white rounded-2xl border-2 border-border p-5 space-y-3"
+              >
+                <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse" />
+                <div className="h-6 w-24 bg-gray-200 rounded animate-pulse" />
+                <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                <div className="h-8 w-20 bg-gray-200 rounded animate-pulse" />
+                <div className="space-y-2">
+                  {[1, 2, 3, 4].map((j) => (
+                    <div
+                      key={j}
+                      className="h-4 w-full bg-gray-200 rounded animate-pulse"
+                    />
+                  ))}
+                </div>
+                <div className="h-10 w-full bg-gray-200 rounded-full animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// Default plans (fallback data)
+const DEFAULT_PLANS: SubscriptionPlan[] = [
+  {
+    id: 'free',
+    name: 'Free',
+    tier: 'FREE',
+    description: 'Basic access to earn rewards',
+    priceMonthly: 0,
+    priceYearly: 0,
+    dailyEarnings: 30,
+    features: [
+      'Watch videos & earn',
+      'Play games & earn',
+      'Complete surveys',
+      'Daily rewards',
+      'Referral program',
+    ],
+    maxDailyVideos: 5,
+    maxDailyGames: 3,
+    maxDailyAds: 5,
+    maxDailySurveys: 2,
+    badgeBoost: 0,
+    priorityWithdrawal: false,
+    vipSupport: false,
+    isActive: true,
+    popular: false,
+    best: false,
+    canCreateContent: false,
+    canMonetize: false,
+    revenueShare: 0,
+  },
+  {
+    id: 'starter',
+    name: 'Starter',
+    tier: 'STARTER',
+    description: 'Start earning with more opportunities',
+    priceMonthly: 6000,
+    priceYearly: 60000,
+    dailyEarnings: 80,
+    features: [
+      'Double earning limits',
+      'Priority access to premium content',
+      'Ad-free experience',
+      'Exclusive games & surveys',
+      'Basic analytics',
+    ],
+    maxDailyVideos: 15,
+    maxDailyGames: 8,
+    maxDailyAds: 15,
+    maxDailySurveys: 5,
+    badgeBoost: 0.15,
+    priorityWithdrawal: false,
+    vipSupport: false,
+    isActive: true,
+    popular: false,
+    best: false,
+    canCreateContent: false,
+    canMonetize: false,
+    revenueShare: 0,
+  },
+  {
+    id: 'silver',
+    name: 'Silver',
+    tier: 'SILVER',
+    description: 'Serious earners get serious rewards',
+    priceMonthly: 15000,
+    priceYearly: 150000,
+    dailyEarnings: 220,
+    features: [
+      'Triple earning limits',
+      'Priority withdrawals',
+      'Exclusive content library',
+      'Premium support',
+      'Advanced analytics',
+      'Content creation tools',
+    ],
+    maxDailyVideos: 30,
+    maxDailyGames: 15,
+    maxDailyAds: 30,
+    maxDailySurveys: 10,
+    badgeBoost: 0.3,
+    priorityWithdrawal: true,
+    vipSupport: false,
+    isActive: true,
+    popular: false,
+    best: false,
+    canCreateContent: true,
+    canMonetize: false,
+    revenueShare: 0,
+  },
+  {
+    id: 'gold',
+    name: 'Gold',
+    tier: 'GOLD',
+    description: 'Best value for creators & earners',
+    priceMonthly: 30000,
+    priceYearly: 300000,
+    dailyEarnings: 500,
+    features: [
+      'Premium earning opportunities',
+      'VIP support',
+      'Content monetization',
+      'Revenue sharing',
+      'Early access to new features',
+      'Verified badge',
+      'Creator dashboard',
+    ],
+    maxDailyVideos: 50,
+    maxDailyGames: 25,
+    maxDailyAds: 50,
+    maxDailySurveys: 15,
+    badgeBoost: 0.3,
+    priorityWithdrawal: true,
+    vipSupport: true,
+    isActive: true,
+    popular: true,
+    best: false,
+    canCreateContent: true,
+    canMonetize: true,
+    revenueShare: 70,
+  },
+  {
+    id: 'platinum',
+    name: 'Platinum',
+    tier: 'PLATINUM',
+    description: 'Maximum potential for top earners',
+    priceMonthly: 60000,
+    priceYearly: 600000,
+    dailyEarnings: 1100,
+    features: [
+      'Unlimited earning potential',
+      'Premium VIP support',
+      'Higher revenue share',
+      'Exclusive content & events',
+      'Instant payouts',
+      'Elite badge',
+      'Personal account manager',
+      'Creator fund access',
+    ],
+    maxDailyVideos: 100,
+    maxDailyGames: 50,
+    maxDailyAds: 100,
+    maxDailySurveys: 25,
+    badgeBoost: 0.3,
+    priorityWithdrawal: true,
+    vipSupport: true,
+    isActive: true,
+    popular: false,
+    best: true,
+    canCreateContent: true,
+    canMonetize: true,
+    revenueShare: 80,
+  },
+  {
+    id: 'premium',
+    name: 'Premium',
+    tier: 'PREMIUM',
+    description: 'The ultimate creator & earner experience',
+    priceMonthly: 120000,
+    priceYearly: 1200000,
+    dailyEarnings: 2000,
+    features: [
+      'Maximum earning potential',
+      'Ultimate VIP support',
+      'Highest revenue share',
+      'All content unlocked',
+      'Exclusive partnerships',
+      'Premium elite badge',
+      'Invite-only events',
+      'Platform revenue share',
+    ],
+    maxDailyVideos: 200,
+    maxDailyGames: 100,
+    maxDailyAds: 200,
+    maxDailySurveys: 50,
+    badgeBoost: 0.5,
+    priorityWithdrawal: true,
+    vipSupport: true,
+    isActive: true,
+    popular: false,
+    best: false,
+    canCreateContent: true,
+    canMonetize: true,
+    revenueShare: 85,
+  },
+];
+
 export function Plans() {
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const { formatAmount } = useSystemCurrency();
 
@@ -143,247 +380,90 @@ export function Plans() {
     fetchPlans();
   }, []);
 
-  const fetchPlans = async () => {
+  const fetchPlans = async (): Promise<void> => {
     setIsLoading(true);
     setError(null);
     try {
       const response = await fetch('/api/subscriptions/plans');
-      if (!response.ok) {
-        throw new Error('Failed to fetch plans');
+
+      // Handle 401 gracefully - use default plans
+      if (response.status === 401) {
+        console.warn('Authentication required for plans, using defaults');
+        setPlans(DEFAULT_PLANS);
+        return;
       }
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch plans: ${response.status}`);
+      }
+
       const data = await response.json();
 
-      const mappedPlans =
-        data.plans?.map((plan: SubscriptionPlan) => ({
-          ...plan,
-          popular: plan.tier === 'GOLD',
-          best: plan.tier === 'PLATINUM',
-          features: plan.features || [],
-        })) || [];
+      // Validate that we have plans data
+      if (
+        !data.plans ||
+        !Array.isArray(data.plans) ||
+        data.plans.length === 0
+      ) {
+        console.warn('No plans received from API, using defaults');
+        setPlans(DEFAULT_PLANS);
+        return;
+      }
+
+      const mappedPlans = data.plans.map((plan: SubscriptionPlan) => ({
+        ...plan,
+        popular: plan.tier === 'GOLD',
+        best: plan.tier === 'PLATINUM',
+        features: plan.features || [],
+        canCreateContent: plan.canCreateContent ?? false,
+        canMonetize: plan.canMonetize ?? false,
+        revenueShare: plan.revenueShare ?? 0,
+      }));
 
       setPlans(mappedPlans);
     } catch (err) {
       console.error('Error fetching plans:', err);
       setError('Failed to load plans. Please try again later.');
-      setPlans(getDefaultPlans());
+      setPlans(DEFAULT_PLANS);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const getDefaultPlans = (): SubscriptionPlan[] => {
-    return [
-      {
-        id: 'free',
-        name: 'Free',
-        tier: 'FREE',
-        description: 'Basic access to earn rewards',
-        priceMonthly: 0,
-        priceYearly: 0,
-        dailyEarnings: 30,
-        features: [
-          'Watch videos & earn',
-          'Play games & earn',
-          'Complete surveys',
-          'Daily rewards',
-          'Referral program',
-        ],
-        maxDailyVideos: 5,
-        maxDailyGames: 3,
-        maxDailyAds: 5,
-        maxDailySurveys: 2,
-        badgeBoost: 0,
-        priorityWithdrawal: false,
-        vipSupport: false,
-        isActive: true,
-        popular: false,
-        best: false,
-        canCreateContent: false,
-        canMonetize: false,
-        revenueShare: 0,
-      },
-      {
-        id: 'starter',
-        name: 'Starter',
-        tier: 'STARTER',
-        description: 'Start earning with more opportunities',
-        priceMonthly: 6000,
-        priceYearly: 60000,
-        dailyEarnings: 80,
-        features: [
-          'Double earning limits',
-          'Priority access to premium content',
-          'Ad-free experience',
-          'Exclusive games & surveys',
-          'Basic analytics',
-        ],
-        maxDailyVideos: 15,
-        maxDailyGames: 8,
-        maxDailyAds: 15,
-        maxDailySurveys: 5,
-        badgeBoost: 0.15,
-        priorityWithdrawal: false,
-        vipSupport: false,
-        isActive: true,
-        popular: false,
-        best: false,
-        canCreateContent: false,
-        canMonetize: false,
-        revenueShare: 0,
-      },
-      {
-        id: 'silver',
-        name: 'Silver',
-        tier: 'SILVER',
-        description: 'Serious earners get serious rewards',
-        priceMonthly: 15000,
-        priceYearly: 150000,
-        dailyEarnings: 220,
-        features: [
-          'Triple earning limits',
-          'Priority withdrawals',
-          'Exclusive content library',
-          'Premium support',
-          'Advanced analytics',
-          'Content creation tools',
-        ],
-        maxDailyVideos: 30,
-        maxDailyGames: 15,
-        maxDailyAds: 30,
-        maxDailySurveys: 10,
-        badgeBoost: 0.3,
-        priorityWithdrawal: true,
-        vipSupport: false,
-        isActive: true,
-        popular: false,
-        best: false,
-        canCreateContent: true,
-        canMonetize: false,
-        revenueShare: 0,
-      },
-      {
-        id: 'gold',
-        name: 'Gold',
-        tier: 'GOLD',
-        description: 'Best value for creators & earners',
-        priceMonthly: 30000,
-        priceYearly: 300000,
-        dailyEarnings: 500,
-        features: [
-          'Premium earning opportunities',
-          'VIP support',
-          'Content monetization',
-          'Revenue sharing',
-          'Early access to new features',
-          'Verified badge',
-          'Creator dashboard',
-        ],
-        maxDailyVideos: 50,
-        maxDailyGames: 25,
-        maxDailyAds: 50,
-        maxDailySurveys: 15,
-        badgeBoost: 0.3,
-        priorityWithdrawal: true,
-        vipSupport: true,
-        isActive: true,
-        popular: true,
-        best: false,
-        canCreateContent: true,
-        canMonetize: true,
-        revenueShare: 70,
-      },
-      {
-        id: 'platinum',
-        name: 'Platinum',
-        tier: 'PLATINUM',
-        description: 'Maximum potential for top earners',
-        priceMonthly: 60000,
-        priceYearly: 600000,
-        dailyEarnings: 1100,
-        features: [
-          'Unlimited earning potential',
-          'Premium VIP support',
-          'Higher revenue share',
-          'Exclusive content & events',
-          'Instant payouts',
-          'Elite badge',
-          'Personal account manager',
-          'Creator fund access',
-        ],
-        maxDailyVideos: 100,
-        maxDailyGames: 50,
-        maxDailyAds: 100,
-        maxDailySurveys: 25,
-        badgeBoost: 0.3,
-        priorityWithdrawal: true,
-        vipSupport: true,
-        isActive: true,
-        popular: false,
-        best: true,
-        canCreateContent: true,
-        canMonetize: true,
-        revenueShare: 80,
-      },
-      {
-        id: 'premium',
-        name: 'Premium',
-        tier: 'PREMIUM',
-        description: 'The ultimate creator & earner experience',
-        priceMonthly: 120000,
-        priceYearly: 1200000,
-        dailyEarnings: 2000,
-        features: [
-          'Maximum earning potential',
-          'Ultimate VIP support',
-          'Highest revenue share',
-          'All content unlocked',
-          'Exclusive partnerships',
-          'Premium elite badge',
-          'Invite-only events',
-          'Platform revenue share',
-        ],
-        maxDailyVideos: 200,
-        maxDailyGames: 100,
-        maxDailyAds: 200,
-        maxDailySurveys: 50,
-        badgeBoost: 0.5,
-        priorityWithdrawal: true,
-        vipSupport: true,
-        isActive: true,
-        popular: false,
-        best: false,
-        canCreateContent: true,
-        canMonetize: true,
-        revenueShare: 85,
-      },
-    ];
-  };
-
-  const getEarningRange = (tier: string) => {
+  const getEarningRange = (tier: string): { min: number; max: number } => {
     return EARNING_RANGES[tier] || EARNING_RANGES.FREE;
   };
 
+  // Show skeleton loading
   if (isLoading) {
-    return (
-      <section className="py-20 bg-bg" id="plans">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 size={32} className="animate-spin text-gold" />
-          </div>
-        </div>
-      </section>
-    );
+    return <PlansSkeleton />;
   }
 
+  // Show error state with retry
   if (error) {
     return (
       <section className="py-20 bg-bg" id="plans">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center py-12">
-            <p className="text-red-500 text-sm">{error}</p>
+            <div className="mb-4 text-red-500">
+              <svg
+                className="w-12 h-12 mx-auto mb-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <p className="text-sm">{error}</p>
+            </div>
             <button
               onClick={fetchPlans}
-              className="mt-4 text-gold font-semibold hover:underline"
+              className="mt-2 text-gold font-semibold hover:underline transition-colors"
             >
               Try again
             </button>
@@ -392,6 +472,9 @@ export function Plans() {
       </section>
     );
   }
+
+  // Ensure we always have plans to display
+  const displayPlans = plans.length > 0 ? plans : DEFAULT_PLANS;
 
   return (
     <motion.section
@@ -446,17 +529,17 @@ export function Plans() {
                 'Priority withdrawals',
                 'Exclusive bonuses',
                 'Ad-free experience',
-              ].map((f, i) => (
+              ].map((feature, index) => (
                 <motion.li
-                  key={f}
+                  key={feature}
                   initial={{ opacity: 0, x: -10 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: 0.6 + i * 0.1, duration: 0.3 }}
+                  transition={{ delay: 0.6 + index * 0.1, duration: 0.3 }}
                   className="flex items-center gap-2 text-sm text-text-secondary"
                 >
                   <CheckCircle2 className="w-4 h-4 text-gold flex-shrink-0" />
-                  {f}
+                  {feature}
                 </motion.li>
               ))}
             </motion.ul>
@@ -475,7 +558,7 @@ export function Plans() {
 
           {/* Plans grid */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {plans.map((plan, i) => {
+            {displayPlans.map((plan, index) => {
               const isHovered = hoveredPlan === plan.id;
               const icon = PLAN_ICONS[plan.tier] || (
                 <Star className="w-5 h-5 text-gold" />
@@ -487,7 +570,7 @@ export function Plans() {
               return (
                 <motion.div
                   key={plan.id}
-                  custom={i}
+                  custom={index}
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true, amount: 0.1 }}
@@ -509,7 +592,7 @@ export function Plans() {
                       initial={{ scale: 0.8, opacity: 0 }}
                       whileInView={{ scale: 1, opacity: 1 }}
                       viewport={{ once: true }}
-                      transition={{ delay: 0.2 + i * 0.1 }}
+                      transition={{ delay: 0.2 + index * 0.1 }}
                       className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-500 to-purple-600 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg shadow-purple-500/30 whitespace-nowrap"
                     >
                       ⭐ BEST VALUE
@@ -521,7 +604,7 @@ export function Plans() {
                       initial={{ scale: 0.8, opacity: 0 }}
                       whileInView={{ scale: 1, opacity: 1 }}
                       viewport={{ once: true }}
-                      transition={{ delay: 0.2 + i * 0.1 }}
+                      transition={{ delay: 0.2 + index * 0.1 }}
                       className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gold text-navy text-[10px] font-bold px-3 py-1 rounded-full shadow-lg shadow-gold/30 whitespace-nowrap"
                     >
                       🔥 MOST POPULAR
@@ -563,7 +646,7 @@ export function Plans() {
                     )}
                   </div>
 
-                  {/* Earning Range - NEW */}
+                  {/* Earning Range */}
                   {!isFree && (
                     <div className="mb-4 p-3 rounded-xl bg-bg border border-border">
                       <div className="flex items-center gap-2 text-[10px] text-text-muted mb-1">
@@ -582,10 +665,10 @@ export function Plans() {
 
                   {/* Features */}
                   <motion.ul className="space-y-1.5 mb-4">
-                    {plan.features.slice(0, 4).map((f, idx) => (
+                    {plan.features.slice(0, 4).map((feature, featureIndex) => (
                       <motion.li
-                        key={f}
-                        custom={idx}
+                        key={feature}
+                        custom={featureIndex}
                         initial="hidden"
                         whileInView="visible"
                         viewport={{ once: true }}
@@ -593,7 +676,7 @@ export function Plans() {
                         className="flex items-start gap-1.5 text-[11px] text-text-secondary"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5 text-gold flex-shrink-0 mt-0.5" />
-                        <span className="leading-tight">{f}</span>
+                        <span className="leading-tight">{feature}</span>
                       </motion.li>
                     ))}
                     {plan.features.length > 4 && (

@@ -29,39 +29,51 @@ import { referralsService } from '@/modules/referrals/service';
 
 export const dynamic = 'force-dynamic';
 
-/** Matches SESSION_EXPIRY_DAYS in auth-utils.ts. Keep the two in step. */
 const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { provider: string } },
 ) {
-  const provider = parseProviderParam(params.provider);
-  if (!provider) return fail(request, 'unknown_provider');
-
-  const { searchParams } = new URL(request.url);
-
-  // User declined consent, or the provider errored.
-  if (searchParams.get('error')) return fail(request, 'cancelled');
-
-  const code = searchParams.get('code');
-  const state = searchParams.get('state');
-  const storedState = request.cookies.get(OAUTH_STATE_COOKIE)?.value;
-  const codeVerifier =
-    request.cookies.get(OAUTH_VERIFIER_COOKIE)?.value ?? null;
-
-  if (!code || !state || !storedState || !safeEquals(state, storedState)) {
-    // CSRF guard. A mismatch means this callback wasn't started by this browser.
-    return fail(request, 'invalid_state');
-  }
-
   try {
-    const { profile, accessToken } = await exchangeCodeForProfile(
-      provider,
-      code,
-      codeVerifier,
-    );
+    const provider = parseProviderParam(params.provider);
+    if (!provider) {
+      return fail(request, 'unknown_provider');
+    }
 
+    const { searchParams } = new URL(request.url);
+
+    // User declined consent, or the provider errored
+    if (searchParams.get('error')) {
+      console.error('[OAUTH] Provider error:', searchParams.get('error'));
+      return fail(request, 'provider_error');
+    }
+
+    const code = searchParams.get('code');
+    const state = searchParams.get('state');
+    const storedState = request.cookies.get(OAUTH_STATE_COOKIE)?.value;
+    const codeVerifier =
+      request.cookies.get(OAUTH_VERIFIER_COOKIE)?.value ?? null;
+
+    if (!code || !state || !storedState || !safeEquals(state, storedState)) {
+      console.error('[OAUTH] Invalid state or missing code');
+      return fail(request, 'invalid_state');
+    }
+
+    // Exchange code for profile
+    let profile: OAuthProfile;
+    let accessToken: string;
+
+    try {
+      const result = await exchangeCodeForProfile(provider, code, codeVerifier);
+      profile = result.profile;
+      accessToken = result.accessToken;
+    } catch (error) {
+      console.error('[OAUTH] Failed to exchange code:', error);
+      return fail(request, 'token_exchange_failed');
+    }
+
+    // Resolve user
     const resolution = await resolveUser(provider, profile);
 
     if (resolution.outcome === 'NEEDS_PASSWORD_LOGIN') {
@@ -73,13 +85,18 @@ export async function GET(
 
     const { userId, isNewUser, wasLinked } = resolution;
 
-    // Referral is RECORDED only. Commission is paid by
-    // referralsService.recordPurchaseCommission when they buy something.
+    // Handle referral
     const referralCode = request.cookies.get(OAUTH_REFERRAL_COOKIE)?.value;
     if (isNewUser && referralCode) {
-      await referralsService.attachPendingReferral(userId, referralCode);
+      try {
+        await referralsService.attachPendingReferral(userId, referralCode);
+      } catch (error) {
+        console.error('[OAUTH] Failed to attach referral:', error);
+        // Non-fatal - continue
+      }
     }
 
+    // Update OAuth account
     await db
       .update(oauthAccounts)
       .set({
@@ -94,9 +111,9 @@ export async function GET(
         ),
       );
 
+    // Audit log
     await db.insert(auditLogs).values({
       userId,
-      // These three must be added to `auditActions` in schema/audit.ts.
       action: isNewUser
         ? 'OAUTH_ACCOUNT_CREATED'
         : wasLinked
@@ -109,16 +126,7 @@ export async function GET(
       userAgent: request.headers.get('user-agent') ?? 'unknown',
     });
 
-    /**
-     * 2FA gate.
-     *
-     * OAuth proves ONE factor — that this person controls the Google account.
-     * A user who deliberately turned on 2FA must still clear the second one, or
-     * social sign-in becomes a way to bypass the protection they asked for.
-     *
-     * NOTE: the cookie name and shape below must match whatever your existing
-     * login route hands to /2fa. Adjust if yours differs.
-     */
+    // Check for 2FA
     const user = await getUserById(userId);
     if (user?.is2FAEnabled) {
       const twoFASessionId = await create2FASession(userId);
@@ -136,7 +144,7 @@ export async function GET(
       return response;
     }
 
-    // --- Full session ---
+    // Create session
     const returnTo = request.cookies.get(OAUTH_RETURN_COOKIE)?.value;
     const destination =
       returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//')
@@ -145,14 +153,7 @@ export async function GET(
 
     const response = NextResponse.redirect(new URL(destination, request.url));
 
-    /**
-     * createAuthToken signs the JWT AND inserts the sessions row, so this stays
-     * consistent with password login — including the DB liveness check that
-     * getSession() performs on every request.
-     *
-     * The cookie is set on the response rather than via setAuthCookie(), which
-     * uses next/headers cookies() and won't attach to a redirect we construct.
-     */
+    // Create auth token
     const token = await createAuthToken(userId);
     response.cookies.set(JWT_COOKIE_NAME, token, {
       httpOnly: true,
@@ -170,7 +171,7 @@ export async function GET(
     clearOAuthCookies(response);
     return response;
   } catch (error) {
-    console.error('[OAUTH] callback failed:', error);
+    console.error('[OAUTH] Callback failed:', error);
     return fail(request, 'oauth_failed');
   }
 }
@@ -184,27 +185,11 @@ type Resolution =
   | { outcome: 'NEEDS_PASSWORD_LOGIN' }
   | { outcome: 'NO_EMAIL' };
 
-/**
- * Decides which Boostly user this external identity belongs to.
- *
- * The linking rules are the security-critical part of any OAuth integration:
- *
- *  1. Known provider account -> that user. The provider's stable id is the
- *     identity, not the email (people change emails).
- *
- *  2. Unknown provider account, email matches an existing user:
- *       - link ONLY if the provider verified the email AND the local account
- *         has verified its own.
- *       - otherwise refuse and require a password login first. Anyone can
- *         create a Facebook account claiming any address; auto-linking on an
- *         unverified email hands them the victim's wallet.
- *
- *  3. No match -> create a new user.
- */
 async function resolveUser(
   provider: OAuthProvider,
   profile: OAuthProfile,
 ): Promise<Resolution> {
+  // Check if OAuth account already linked
   const linked = await db.query.oauthAccounts.findFirst({
     where: and(
       eq(oauthAccounts.provider, provider),
@@ -221,19 +206,26 @@ async function resolveUser(
     };
   }
 
-  // Facebook frequently omits email entirely.
-  if (!profile.email) return { outcome: 'NO_EMAIL' };
+  // No email from provider
+  if (!profile.email) {
+    return { outcome: 'NO_EMAIL' };
+  }
 
+  // Check if user exists with this email
   const existing = await db.query.users.findFirst({
     where: eq(users.email, profile.email),
   });
 
   if (existing) {
+    // Both sides must have verified email
     const bothSidesVerified =
       profile.emailVerified && existing.emailVerifiedAt !== null;
 
-    if (!bothSidesVerified) return { outcome: 'NEEDS_PASSWORD_LOGIN' };
+    if (!bothSidesVerified) {
+      return { outcome: 'NEEDS_PASSWORD_LOGIN' };
+    }
 
+    // Link OAuth account to existing user
     await db.insert(oauthAccounts).values({
       userId: existing.id,
       provider,
@@ -253,15 +245,11 @@ async function resolveUser(
     };
   }
 
+  // Create new user
   const userId = await createOAuthUser(provider, profile);
   return { outcome: 'OK', userId, isNewUser: true, wasLinked: false };
 }
 
-/**
- * Creates user, oauth link, role, wallet and referral code atomically.
- * A partial signup — user with no wallet — would break every later reward
- * credit for that account, permanently.
- */
 async function createOAuthUser(
   provider: OAuthProvider,
   profile: OAuthProfile,
@@ -275,12 +263,9 @@ async function createOAuthUser(
       .values({
         name: profile.name ?? email.split('@')[0],
         email,
-        // Requires users.passwordHash to be nullable.
         passwordHash: null,
         avatar: profile.avatar,
         isActive: true,
-        // A provider-verified email counts as verified — skipping the OTP is
-        // most of the point of social sign-in.
         emailVerifiedAt: profile.emailVerified ? now : null,
         lastLoginAt: now,
         failedLoginAttempts: 0,
@@ -324,10 +309,6 @@ async function createOAuthUser(
   });
 }
 
-// ============================================
-// HELPERS
-// ============================================
-
 function generateReferralCode(userId: string): string {
   const prefix = userId.substring(0, 4).toUpperCase();
   const random = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -335,8 +316,24 @@ function generateReferralCode(userId: string): string {
 }
 
 function fail(request: NextRequest, reason: string): NextResponse {
+  const errorMessages: Record<string, string> = {
+    unknown_provider: 'Unknown authentication provider',
+    provider_error: 'Authentication provider returned an error',
+    invalid_state: 'Invalid authentication state',
+    token_exchange_failed: 'Failed to exchange authentication code',
+    link_requires_login:
+      'Please log in with your password first to link this account',
+    no_email_from_provider: 'No email provided by the authentication service',
+    oauth_failed: 'Authentication failed. Please try again.',
+    cancelled: 'You cancelled the authentication process',
+  };
+
+  const message = errorMessages[reason] || 'Authentication failed';
   const response = NextResponse.redirect(
-    new URL(`/login?error=${reason}`, request.url),
+    new URL(
+      `/login?error=${reason}&message=${encodeURIComponent(message)}`,
+      request.url,
+    ),
   );
   clearOAuthCookies(response);
   return response;

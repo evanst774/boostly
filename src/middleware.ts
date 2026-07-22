@@ -72,6 +72,8 @@ const PUBLIC_ROUTES = [
   '/ref',
 ];
 
+// src/middleware.ts
+
 const PUBLIC_API_ROUTES = [
   '/api/auth/login',
   '/api/auth/logout',
@@ -83,9 +85,16 @@ const PUBLIC_API_ROUTES = [
   '/api/auth/notify-locked',
   '/api/auth/register',
   '/api/auth/verify-email',
+  '/api/auth/oauth/google',
+  '/api/auth/oauth/google/callback',
+  '/api/auth/oauth/facebook',
+  '/api/auth/oauth/facebook/callback',
   '/api/health',
   '/api/public',
   '/api/public/withdrawals/latest',
+  '/api/public/withdrawals/recent',
+  '/api/public/withdrawals/leaderboard',
+  '/api/settings/currency',
 ];
 
 const ADMIN_ROLES = new Set(['SUPER_ADMIN', 'ADMIN']);
