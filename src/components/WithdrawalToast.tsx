@@ -3,7 +3,14 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Wallet, X, Sparkles, Clock } from 'lucide-react';
+import {
+  Wallet,
+  X,
+  Sparkles,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface WithdrawalNotification {
@@ -15,12 +22,11 @@ interface WithdrawalNotification {
 }
 
 interface WithdrawalToastProps {
-  interval?: number; // Time between toasts in milliseconds (gap while hidden)
-  showDuration?: number; // How long each toast stays visible
-  maxNotifications?: number; // How many to pre-fetch
+  interval?: number;
+  showDuration?: number;
+  maxNotifications?: number;
 }
 
-// API response type
 interface ApiResponse {
   withdrawals: Array<{
     id: string;
@@ -31,11 +37,11 @@ interface ApiResponse {
   }>;
 }
 
-const FADE_MS = 500; // must match the CSS transition-duration below
+const FADE_MS = 500;
 
 export function WithdrawalToast({
-  interval = 50000, // 50 seconds default
-  showDuration = 6000, // 6 seconds visible
+  interval = 50000,
+  showDuration = 6000,
   maxNotifications = 200,
 }: WithdrawalToastProps) {
   const [currentToast, setCurrentToast] =
@@ -45,8 +51,8 @@ export function WithdrawalToast({
   const [toasts, setToasts] = useState<WithdrawalNotification[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Use refs for timers to avoid re-renders
   const timersRef = useRef<{
     showTimer: NodeJS.Timeout | null;
     hideTimer: NodeJS.Timeout | null;
@@ -59,7 +65,17 @@ export function WithdrawalToast({
 
   const isMounted = useRef(true);
 
-  // Type guard
+  // ─── Detect mobile ──────────────────────────────
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // ─── Type guard ──────────────────────────────────
   function isApiResponse(data: unknown): data is ApiResponse {
     return (
       typeof data === 'object' &&
@@ -69,7 +85,7 @@ export function WithdrawalToast({
     );
   }
 
-  // Clean up all timers
+  // ─── Clean up all timers ──────────────────────
   const clearAllTimers = useCallback(() => {
     const { showTimer, hideTimer, intervalTimer } = timersRef.current;
     if (showTimer) clearTimeout(showTimer);
@@ -82,7 +98,7 @@ export function WithdrawalToast({
     };
   }, []);
 
-  // Fetch recent withdrawals
+  // ─── Fetch recent withdrawals ──────────────────
   const fetchRecentWithdrawals = useCallback(async () => {
     try {
       const response = await fetch(
@@ -112,8 +128,7 @@ export function WithdrawalToast({
     }
   }, [maxNotifications]);
 
-  // Swap in the next toast's data. Visibility is owned entirely by
-  // startRotation, so this only updates *what* is shown, not *whether*.
+  // ─── Show next toast ────────────────────────────
   const showNextToast = useCallback(() => {
     setCurrentIndex((prevIndex) => {
       if (toasts.length === 0) return prevIndex;
@@ -123,7 +138,17 @@ export function WithdrawalToast({
     });
   }, [toasts]);
 
-  // Drives the full show -> fade out -> wait `interval` -> show next cycle.
+  // ─── Show previous toast ────────────────────────
+  const showPreviousToast = useCallback(() => {
+    setCurrentIndex((prevIndex) => {
+      if (toasts.length === 0) return prevIndex;
+      const nextIndex = (prevIndex - 1 + toasts.length) % toasts.length;
+      setCurrentToast(toasts[nextIndex]);
+      return nextIndex;
+    });
+  }, [toasts]);
+
+  // ─── Start rotation ─────────────────────────────
   const startRotation = useCallback(() => {
     clearAllTimers();
 
@@ -131,27 +156,17 @@ export function WithdrawalToast({
       return;
     }
 
-    // 1. Keep the current toast visible for `showDuration` ms.
     timersRef.current.showTimer = setTimeout(() => {
       if (!isMounted.current) return;
-
-      // 2. Fade it out.
       setIsVisible(false);
 
-      // 3. Wait for the fade-out transition to finish...
       timersRef.current.hideTimer = setTimeout(() => {
         if (!isMounted.current) return;
 
-        // 4. ...then wait the actual gap (`interval`) before the next toast.
-        //    This was the missing piece causing toasts to reappear every
-        //    ~5-6s regardless of the `interval` prop.
         timersRef.current.intervalTimer = setTimeout(() => {
           if (!isMounted.current) return;
-
           showNextToast();
           setIsVisible(true);
-
-          // 5. Restart the cycle for the new toast.
           startRotation();
         }, interval);
       }, FADE_MS);
@@ -166,7 +181,7 @@ export function WithdrawalToast({
     clearAllTimers,
   ]);
 
-  // Initial fetch
+  // ─── Initial fetch ──────────────────────────────
   useEffect(() => {
     isMounted.current = true;
     fetchRecentWithdrawals();
@@ -177,8 +192,7 @@ export function WithdrawalToast({
     };
   }, [fetchRecentWithdrawals, clearAllTimers]);
 
-  // Kick off the very first appearance once data is ready, then hand off
-  // to startRotation for every cycle after that.
+  // ─── Start rotation when ready ──────────────────
   useEffect(() => {
     if (!isLoading && toasts.length > 0 && !isPaused) {
       const initialDelay = setTimeout(() => {
@@ -190,22 +204,10 @@ export function WithdrawalToast({
 
       return () => clearTimeout(initialDelay);
     }
-    // Intentionally only re-runs when loading/toasts flip, not on every
-    // startRotation identity change, to avoid restarting the whole cycle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, toasts.length]);
 
-  // Handle pause on hover
-  const handleMouseEnter = () => {
-    setIsPaused(true);
-    clearAllTimers();
-  };
-
-  const handleMouseLeave = () => {
-    setIsPaused(false);
-  };
-
-  // Resume rotation once unpaused
+  // ─── Handle pause/resume ────────────────────────
   useEffect(() => {
     if (!isPaused && !isLoading && toasts.length > 0 && isVisible) {
       startRotation();
@@ -213,7 +215,7 @@ export function WithdrawalToast({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPaused]);
 
-  // Format time ago
+  // ─── Format time ago ─────────────────────────────
   const formatTimeAgo = (timestamp: string) => {
     const now = new Date();
     const past = new Date(timestamp);
@@ -226,10 +228,11 @@ export function WithdrawalToast({
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
   };
 
+  // ─── Loading state ──────────────────────────────
   if (isLoading || !currentToast) {
     return (
-      <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full">
-        <div className="bg-[#0D1835] rounded-2xl shadow-xl border border-white/10 p-4 animate-pulse">
+      <div className="fixed bottom-4 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-50 max-w-full sm:max-w-sm">
+        <div className="bg-gradient-to-br from-[#0D1835] via-[#111C33] to-[#0D1835] rounded-2xl shadow-xl border border-white/10 p-4 animate-pulse">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-white/10" />
             <div className="flex-1">
@@ -242,21 +245,27 @@ export function WithdrawalToast({
     );
   }
 
+  // ─── Mobile vs Desktop positioning ──────────────
+  const positionClasses = isMobile
+    ? 'bottom-4 left-4 right-4 max-w-full'
+    : 'bottom-6 right-6 max-w-sm';
+
   return (
     <div
-      className="fixed bottom-6 right-6 z-50 max-w-sm w-full"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      className={cn(
+        'fixed z-50 transition-all duration-300',
+        positionClasses,
+        isVisible
+          ? 'opacity-100 translate-y-0'
+          : 'opacity-0 translate-y-6 pointer-events-none',
+      )}
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={() => setIsPaused(true)}
+      onTouchEnd={() => setIsPaused(false)}
     >
-      <div
-        className={cn(
-          'relative bg-gradient-to-br from-[#0D1835] via-[#111C33] to-[#0D1835] rounded-2xl shadow-2xl border border-white/10 p-5 transition-all duration-500 transform overflow-hidden',
-          isVisible
-            ? 'opacity-100 translate-y-0 scale-100'
-            : 'opacity-0 translate-y-6 scale-95 pointer-events-none',
-        )}
-      >
-        {/* Glow effect */}
+      <div className="relative bg-gradient-to-br from-[#0D1835] via-[#111C33] to-[#0D1835] rounded-2xl shadow-2xl border border-white/10 p-4 sm:p-5 overflow-hidden">
+        {/* Glow effects */}
         <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl" />
         <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-500/10 rounded-full blur-2xl" />
 
@@ -271,85 +280,137 @@ export function WithdrawalToast({
           />
         </div>
 
-        <div className="relative z-10 flex items-start gap-3">
-          {/* Icon with pulse ring */}
-          <div className="flex-shrink-0 relative">
-            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#3366FF]/20 to-[#7C3AED]/20 flex items-center justify-center border border-white/10">
-              <Wallet size={18} className="text-[#86EFAC]" />
-            </div>
-            {/* Live indicator */}
-            <div className="absolute -top-0.5 -right-0.5 flex items-center gap-1 bg-[#22C55E] rounded-full px-1.5 py-0.5 border border-[#0D1835]">
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm text-white/90">
-              <span className="font-bold text-white">
-                {currentToast.displayName}
-              </span>
-              <span className="text-white/60 mx-1">withdrew</span>
-              <span className="font-bold text-[#86EFAC]">
-                {currentToast.amount.toLocaleString()} {currentToast.currency}
-              </span>
-            </p>
-            <div className="flex items-center gap-2 mt-1">
-              <Clock size={10} className="text-white/40" />
-              <span className="text-xs text-white/40">
-                {formatTimeAgo(currentToast.timestamp)}
-              </span>
-              <span className="w-1 h-1 rounded-full bg-white/20" />
-              <div className="flex items-center gap-1">
-                <Sparkles size={10} className="text-[#FCD34D]" />
-                <span className="text-xs text-[#FCD34D] font-medium">Live</span>
+        <div className="relative z-10">
+          {/* Main content */}
+          <div className="flex items-start gap-3">
+            {/* Icon with pulse ring */}
+            <div className="flex-shrink-0 relative">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-[#3366FF]/20 to-[#7C3AED]/20 flex items-center justify-center border border-white/10">
+                <Wallet size={isMobile ? 16 : 18} className="text-[#86EFAC]" />
+              </div>
+              {/* Live indicator */}
+              <div className="absolute -top-0.5 -right-0.5 flex items-center gap-1 bg-[#22C55E] rounded-full px-1.5 py-0.5 border border-[#0D1835]">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               </div>
             </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs sm:text-sm text-white/90 leading-relaxed">
+                <span className="font-bold text-white">
+                  {currentToast.displayName}
+                </span>
+                <span className="text-white/60 mx-1">withdrew</span>
+                <span className="font-bold text-[#86EFAC]">
+                  {currentToast.amount.toLocaleString()} {currentToast.currency}
+                </span>
+              </p>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <Clock size={isMobile ? 8 : 10} className="text-white/40" />
+                <span className="text-[10px] sm:text-xs text-white/40">
+                  {formatTimeAgo(currentToast.timestamp)}
+                </span>
+                <span className="w-1 h-1 rounded-full bg-white/20" />
+                <div className="flex items-center gap-1">
+                  <Sparkles
+                    size={isMobile ? 8 : 10}
+                    className="text-[#FCD34D]"
+                  />
+                  <span className="text-[10px] sm:text-xs text-[#FCD34D] font-medium">
+                    Live
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Close button */}
+            <button
+              className="flex-shrink-0 text-white/30 hover:text-white/70 transition-colors mt-0.5 p-1 touch-manipulation"
+              onClick={() => {
+                setIsVisible(false);
+                clearAllTimers();
+              }}
+              aria-label="Close notification"
+            >
+              <X size={isMobile ? 14 : 16} />
+            </button>
           </div>
 
-          {/* Close button */}
-          <button
-            className="flex-shrink-0 text-white/30 hover:text-white/70 transition-colors mt-0.5"
-            onClick={() => {
-              setIsVisible(false);
-              clearAllTimers();
-            }}
-          >
-            <X size={16} />
-          </button>
-        </div>
+          {/* Navigation controls - only on mobile */}
+          {isMobile && toasts.length > 1 && (
+            <div className="flex items-center justify-between mt-3 gap-2">
+              <button
+                onClick={showPreviousToast}
+                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors touch-manipulation"
+                aria-label="Previous withdrawal"
+              >
+                <ChevronLeft size={14} className="text-white/40" />
+              </button>
 
-        {/* Progress indicators */}
-        <div className="relative z-10 flex items-center gap-1.5 mt-3">
-          {toasts.slice(0, 5).map((_, index) => (
-            <div
-              key={index}
-              className={cn(
-                'h-1 rounded-full transition-all duration-500',
-                index === currentIndex % 5
-                  ? 'bg-gradient-to-r from-[#3366FF] to-[#7C3AED] w-4'
-                  : 'bg-white/10 w-1.5',
-              )}
-            />
-          ))}
-          {toasts.length > 5 && (
-            <span className="text-[10px] text-white/30 ml-1">
-              +{toasts.length - 5}
-            </span>
+              <div className="flex items-center gap-1.5 flex-1 justify-center">
+                {toasts.slice(0, 5).map((_, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      'h-1 rounded-full transition-all duration-500',
+                      index === currentIndex % 5
+                        ? 'bg-gradient-to-r from-[#3366FF] to-[#7C3AED] w-4'
+                        : 'bg-white/10 w-1.5',
+                    )}
+                  />
+                ))}
+                {toasts.length > 5 && (
+                  <span className="text-[10px] text-white/30 ml-1">
+                    +{toasts.length - 5}
+                  </span>
+                )}
+              </div>
+
+              <button
+                onClick={showNextToast}
+                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors touch-manipulation"
+                aria-label="Next withdrawal"
+              >
+                <ChevronRight size={14} className="text-white/40" />
+              </button>
+            </div>
           )}
-        </div>
 
-        {/* Counter */}
-        <p className="relative z-10 text-[10px] text-white/20 text-center mt-2">
-          {Math.min(currentIndex + 1, toasts.length)} of {toasts.length} recent
-          withdrawals
-        </p>
+          {/* Progress indicators - desktop */}
+          {!isMobile && (
+            <div className="flex items-center gap-1.5 mt-3">
+              {toasts.slice(0, 5).map((_, index) => (
+                <div
+                  key={index}
+                  className={cn(
+                    'h-1 rounded-full transition-all duration-500',
+                    index === currentIndex % 5
+                      ? 'bg-gradient-to-r from-[#3366FF] to-[#7C3AED] w-4'
+                      : 'bg-white/10 w-1.5',
+                  )}
+                />
+              ))}
+              {toasts.length > 5 && (
+                <span className="text-[10px] text-white/30 ml-1">
+                  +{toasts.length - 5}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Counter */}
+          <p className="text-[10px] text-white/20 text-center mt-2">
+            {Math.min(currentIndex + 1, toasts.length)} of {toasts.length}{' '}
+            recent withdrawals
+          </p>
+        </div>
       </div>
     </div>
   );
 }
 
-// Helper: Shuffle array
+// ─── Helpers ──────────────────────────────────────────
+
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -359,7 +420,6 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-// Helper: Generate demo data (fallback)
 function generateDemoWithdrawals(): WithdrawalNotification[] {
   const names = [
     'Alice M.',

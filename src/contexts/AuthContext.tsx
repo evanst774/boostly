@@ -1,4 +1,5 @@
 // src/contexts/AuthContext.tsx
+
 'use client';
 
 import React, {
@@ -46,6 +47,12 @@ interface LoginResponse {
   success?: boolean;
 }
 
+interface OAuthState {
+  provider: 'google' | 'facebook' | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
@@ -53,6 +60,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   isAccountLocked: boolean;
+  oauthState: OAuthState;
   login: (
     email: string,
     password: string,
@@ -70,19 +78,15 @@ interface AuthContextType {
     sessionId: string,
   ) => Promise<boolean>;
   resend2FA: (sessionId: string) => Promise<void>;
+  initiateOAuth: (provider: 'google' | 'facebook', returnTo?: string) => void;
+  handleOAuthCallback: (params: URLSearchParams) => Promise<void>;
+  clearOAuthState: () => void;
 }
 
 // ============================================
 // CONSTANTS
 // ============================================
 
-// FIX: '/register' was missing here. It's already an AUTH_ROUTE in
-// middleware.ts, but this list wasn't updated to match. That meant
-// checkAuth() classified /register as a PROTECTED route (not public,
-// not an auth page) — so a normal, expected 401 from /api/auth/me on
-// a fresh visitor with no cookie was treated as "you got logged out,"
-// triggering clearDeadSessionCookie() + redirect to /login. This must
-// stay in sync with middleware.ts's AUTH_ROUTES list.
 const AUTH_PAGES = [
   '/login',
   '/register',
@@ -94,8 +98,6 @@ const AUTH_PAGES = [
   '/account-locked',
 ];
 
-// Mirrors middleware.ts PUBLIC_ROUTES so checkAuth() doesn't force a
-// redirect-to-login on pages that are meant to be public.
 const PUBLIC_ROUTES = [
   '/',
   '/forbidden',
@@ -113,12 +115,9 @@ const PUBLIC_ROUTES = [
   '/trial',
   '/splash',
   '/onboarding',
-  // Mirrors the same addition in middleware.ts — referral links are
-  // hit by signed-out visitors, so this has to stay public.
   '/ref',
 ];
 
-// Admin roles go to /admin/dashboard
 const DASHBOARD_ROUTES = {
   [SystemRoles.SUPER_ADMIN]: '/admin/dashboard',
   [SystemRoles.ADMIN]: '/admin/dashboard',
@@ -146,14 +145,9 @@ function isAuthPagePath(pathname: string): boolean {
 }
 
 // ============================================
-// Clears the auth cookie via /api/auth/logout before redirecting on
-// a dead DB session. middleware.ts can only verify JWT validity, not
-// DB session liveness (edge runtime can't reach the DB), so its
-// "bounce logged-in users off /login" check would otherwise see a
-// still-valid JWT and immediately redirect back to /dashboard,
-// creating a loop. Clearing the cookie first means middleware sees
-// no token on the next request.
+// HELPERS
 // ============================================
+
 async function clearDeadSessionCookie(): Promise<void> {
   try {
     await fetch('/api/auth/logout', {
@@ -175,6 +169,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAccountLocked, setIsAccountLocked] = useState(false);
+  const [oauthState, setOauthState] = useState<OAuthState>({
+    provider: null,
+    isLoading: false,
+    error: null,
+  });
   const router = useRouter();
   const pathname = usePathname();
 
@@ -224,9 +223,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         return null;
       } else {
-        // 401: no token, invalid token, or a revoked/expired DB
-        // session. Must clear the cookie BEFORE redirecting, or
-        // middleware will bounce /login straight back here.
         setUser(null);
         setIsAccountLocked(false);
 
@@ -290,14 +286,125 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [pathname, router]);
 
   // ============================================
+  // OAUTH HELPERS
+  // ============================================
+
+  const initiateOAuth = useCallback(
+    (provider: 'google' | 'facebook', returnTo: string = '/dashboard') => {
+      setOauthState({ provider, isLoading: true, error: null });
+
+      const params = new URLSearchParams();
+      params.set('returnTo', returnTo);
+
+      // Store return URL in session storage for recovery
+      try {
+        sessionStorage.setItem('oauth_return_to', returnTo);
+      } catch {
+        // Ignore storage errors
+      }
+
+      const url = `/api/auth/oauth/${provider}?${params.toString()}`;
+      window.location.href = url;
+    },
+    [],
+  );
+
+  const handleOAuthCallback = useCallback(
+    async (params: URLSearchParams): Promise<void> => {
+      const token = params.get('token');
+      const error = params.get('error');
+      const message = params.get('message');
+
+      setOauthState((prev) => ({ ...prev, isLoading: true }));
+
+      if (error) {
+        setOauthState({
+          provider: null,
+          isLoading: false,
+          error: message || 'Authentication failed. Please try again.',
+        });
+        toast.error(message || 'Authentication failed');
+        router.push('/login');
+        return;
+      }
+
+      if (token) {
+        try {
+          // Verify the token and fetch user
+          const res = await fetch('/api/auth/me', {
+            credentials: 'include',
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.user) {
+              setUser(data.user);
+              setIsAccountLocked(false);
+              toast.success(
+                `Welcome${data.user.name ? ` ${data.user.name}` : ''}!`,
+              );
+
+              const returnTo =
+                sessionStorage.getItem('oauth_return_to') || '/dashboard';
+              sessionStorage.removeItem('oauth_return_to');
+
+              const redirectPath = getRoleRedirectPath(data.user.role);
+              router.push(returnTo || redirectPath);
+              return;
+            }
+          }
+        } catch (err) {
+          console.error('[OAuth] Failed to verify token:', err);
+        }
+      }
+
+      // If we get here, something went wrong
+      setOauthState({
+        provider: null,
+        isLoading: false,
+        error: 'Authentication failed. Please try again.',
+      });
+      toast.error('Authentication failed');
+      router.push('/login');
+    },
+    [router],
+  );
+
+  const clearOAuthState = useCallback(() => {
+    setOauthState({
+      provider: null,
+      isLoading: false,
+      error: null,
+    });
+  }, []);
+
+  // ============================================
   // EFFECTS
   // ============================================
 
+  // Handle OAuth callback on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const error = params.get('error');
+
+    if (token || error) {
+      handleOAuthCallback(params);
+    }
+  }, [handleOAuthCallback]);
+
+  // Check auth on mount and pathname change
   useEffect(() => {
     checkAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
+  // Handle redirects based on auth state
   useEffect(() => {
     if (isLoading) return;
     if (!pathname) return;
@@ -315,16 +422,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // FIX: this is the client-side half of the "admin lands on the
-    // consumer dashboard" fix. middleware.ts now bounces an
-    // authenticated ADMIN/SUPER_ADMIN away from any non-/admin route on
-    // the server, but that only covers requests middleware actually
-    // sees. A client-side transition (router.push, a <Link>, the
-    // post-login redirect landing on a stale cached RSC payload) can
-    // render before the next server round-trip catches it. This closes
-    // that gap by re-checking on every pathname change: an admin who
-    // ends up anywhere outside /admin that isn't public/auth gets sent
-    // to the admin panel.
+    // Admin routing
     if (
       user &&
       isAdminRole(user.role) &&
@@ -501,13 +599,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) throw new Error('Logout failed');
       setUser(null);
       setIsAccountLocked(false);
+      clearOAuthState();
       toast.success('Logged out successfully');
       window.location.href = '/login';
     } catch (error) {
       console.error('Logout error:', error);
       toast.error('Failed to logout');
     }
-  }, []);
+  }, [clearOAuthState]);
 
   // ============================================
   // COMPUTED
@@ -529,12 +628,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAdmin,
         isSuperAdmin,
         isAccountLocked,
+        oauthState,
         login,
         logout,
         checkAuth,
         refreshUser,
         verify2FA,
         resend2FA,
+        initiateOAuth,
+        handleOAuthCallback,
+        clearOAuthState,
       }}
     >
       {children}
