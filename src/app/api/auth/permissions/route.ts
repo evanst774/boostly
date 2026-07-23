@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session.server';
 import { getUserPermissions } from '@/lib/auth/permissions';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     try {
         const user = await getCurrentUser();

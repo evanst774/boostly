@@ -15,6 +15,8 @@ import { verifyTOTPCode } from '@/lib/totp';
 import { parseEnabledMethods } from '@/lib/utils';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 const SESSION_COOKIE_NAME = JWT_COOKIE_NAME;
 
 // ─── helpers ────────────────────────────────────────────────

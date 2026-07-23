@@ -13,15 +13,12 @@ import {
   Lock,
   ArrowRight,
   Loader2,
-  Sparkles,
-  Shield,
-  Zap,
-  Coins,
-  ArrowLeft,
+  Check,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
+import AuthShell from '@/components/auth/AuthShell';
 
 // ─── Custom SVG Icons ──────────────────────────────
 
@@ -52,29 +49,6 @@ const FacebookIcon = () => (
   </svg>
 );
 
-const BoostlyLogoIcon = () => (
-  <svg className="w-12 h-12" viewBox="0 0 40 40" fill="none">
-    <rect width="40" height="40" rx="12" fill="url(#gradient)" />
-    <defs>
-      <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#2563EB" />
-        <stop offset="100%" stopColor="#7C3AED" />
-      </linearGradient>
-    </defs>
-    <path d="M12 28V12h16v16H12z" fill="white" opacity="0.2" />
-    <path d="M16 24V16h8v8h-8z" fill="white" />
-    <path
-      d="M20 12v4M20 24v4M12 20h4M24 20h4"
-      stroke="white"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
-    <circle cx="20" cy="20" r="2" fill="white" />
-  </svg>
-);
-
-// ─── Main Component ───────────────────────────────
-
 export default function LoginPage() {
   const router = useRouter();
   const { login, isLoading: authLoading } = useAuth();
@@ -86,17 +60,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // ─── Detect mobile ──────────────────────────────
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 640);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // ─── Load saved email ──────────────────────────────
   useEffect(() => {
@@ -150,7 +113,12 @@ export default function LoginPage() {
 
       // Check if email verification is needed
       if (result?.needsVerification) {
-        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        // NOTE: added `from=login` so /verify-email knows to auto-send the
+        // code (it only auto-sends when from === 'login' — previously this
+        // redirect omitted that param, so auto-send never fired here).
+        router.push(
+          `/verify-email?email=${encodeURIComponent(email)}&from=login`,
+        );
         return;
       }
 
@@ -174,261 +142,182 @@ export default function LoginPage() {
     }
   };
 
-  // ─── Render ──────────────────────────────────────────
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      <div className="w-full max-w-md">
-        {/* Enhanced Header */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 rounded-2xl blur-xl opacity-30 animate-pulse" />
-              <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center shadow-xl">
-                <BoostlyLogoIcon />
-              </div>
-            </div>
+    <AuthShell
+      bottomPrompt="New to Boostly?"
+      bottomLinkText="Create an account"
+      bottomLinkHref="/register"
+    >
+      <div className="text-center lg:text-left mb-7">
+        <h2 className="text-2xl sm:text-[26px] font-bold text-white mb-1.5">
+          Welcome back
+        </h2>
+        <p className="text-[13.5px] text-white/45">
+          Continue earning your daily rewards.
+        </p>
+      </div>
+
+      {/* Social login */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <button
+          type="button"
+          onClick={() => handleOAuthLogin('google')}
+          disabled={isOAuthLoading !== null}
+          className="flex-1 py-3 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex items-center justify-center gap-3 text-sm font-medium text-white/80 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px]"
+        >
+          {isOAuthLoading === 'google' ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <GoogleIcon />
+          )}
+          <span>Google</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleOAuthLogin('facebook')}
+          disabled={isOAuthLoading !== null}
+          className="flex-1 py-3 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex items-center justify-center gap-3 text-sm font-medium text-white/80 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px]"
+        >
+          {isOAuthLoading === 'facebook' ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <FacebookIcon />
+          )}
+          <span>Facebook</span>
+        </button>
+      </div>
+
+      <div className="flex items-center gap-4 mb-6">
+        <div className="flex-1 h-px bg-white/10" />
+        <span className="text-[10px] text-white/30 font-medium uppercase tracking-wider">
+          or continue with email
+        </span>
+        <div className="flex-1 h-px bg-white/10" />
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#F87171] text-sm text-center"
+          >
+            {error}
+          </motion.div>
+        )}
+
+        {/* Email */}
+        <div>
+          <label
+            htmlFor="email"
+            className="text-xs font-semibold text-white/70 block mb-1.5"
+          >
+            Email Address
+          </label>
+          <div className="relative">
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              className="w-full py-2.5 pl-10 pr-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all"
+              placeholder="you@example.com"
+            />
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-navy mb-2">
-            Welcome Back! 👋
-          </h1>
-          <p className="text-text-secondary text-sm flex items-center justify-center gap-2">
-            <Sparkles className="w-4 h-4 text-gold" />
-            Continue earning your daily rewards
-            <Sparkles className="w-4 h-4 text-gold" />
-          </p>
         </div>
 
-        {/* Feature Badges */}
-        <div className="grid grid-cols-3 gap-2 mb-6">
-          {[
-            { icon: Coins, label: 'Earn Rewards' },
-            { icon: Zap, label: 'Fast Payouts' },
-            { icon: Shield, label: 'Secure' },
-          ].map((item, i) => (
-            <div
-              key={i}
-              className="flex flex-col items-center gap-1 p-2 bg-white/50 backdrop-blur-sm rounded-xl border border-gray-200/50"
+        {/* Password */}
+        <div>
+          <div className="flex justify-between items-center mb-1.5">
+            <label
+              htmlFor="password"
+              className="text-xs font-semibold text-white/70"
             >
-              <item.icon className="w-4 h-4 text-primary" />
-              <span className="text-[10px] font-medium text-text-secondary">
-                {item.label}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Main Card */}
-        <div className="bg-white rounded-3xl shadow-2xl border border-gray-200/50 overflow-hidden">
-          {/* Back Button */}
-          <div className="px-6 pt-4">
+              Password
+            </label>
+            <Link
+              href="/forgot-password"
+              className="text-xs text-[#93C5FD] font-medium hover:text-[#BFDBFE] transition-colors"
+            >
+              Forgot password?
+            </Link>
+          </div>
+          <div className="relative">
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              className="w-full py-2.5 pl-10 pr-10 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all"
+              placeholder="Enter your password"
+            />
             <button
               type="button"
-              onClick={() => router.push('/')}
-              className="flex items-center gap-1.5 text-text-muted hover:text-navy text-sm transition-colors group touch-manipulation"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors p-1"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
-              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-              Back
+              {showPassword ? (
+                <EyeOff className="w-4 h-4" />
+              ) : (
+                <Eye className="w-4 h-4" />
+              )}
             </button>
           </div>
-
-          <div className="p-6 sm:p-8">
-            {/* ─── Social Login ──────────────────────────── */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-6">
-              <button
-                type="button"
-                onClick={() => handleOAuthLogin('google')}
-                disabled={isOAuthLoading !== null}
-                className="flex-1 py-3 px-4 border-2 border-gray-200 rounded-2xl flex items-center justify-center gap-2.5 text-sm font-medium text-text-secondary hover:border-blue-500 hover:bg-blue-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[48px]"
-              >
-                {isOAuthLoading === 'google' ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <GoogleIcon />
-                )}
-                <span className="hidden sm:inline">Continue with Google</span>
-                <span className="sm:hidden">Google</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleOAuthLogin('facebook')}
-                disabled={isOAuthLoading !== null}
-                className="flex-1 py-3 px-4 border-2 border-gray-200 rounded-2xl flex items-center justify-center gap-2.5 text-sm font-medium text-text-secondary hover:border-blue-600 hover:bg-blue-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[48px]"
-              >
-                {isOAuthLoading === 'facebook' ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <FacebookIcon />
-                )}
-                <span className="hidden sm:inline">Continue with Facebook</span>
-                <span className="sm:hidden">Facebook</span>
-              </button>
-            </div>
-
-            {/* ─── Divider ──────────────────────────────────── */}
-            <div className="flex items-center gap-4 mb-6">
-              <div className="flex-1 h-px bg-gradient-to-r from-transparent to-gray-300" />
-              <span className="text-xs text-text-muted whitespace-nowrap font-medium">
-                or continue with email
-              </span>
-              <div className="flex-1 h-px bg-gradient-to-l from-transparent to-gray-300" />
-            </div>
-
-            {/* ─── Form ─────────────────────────────────────── */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-600 text-sm text-center"
-                >
-                  {error}
-                </motion.div>
-              )}
-
-              {/* Email */}
-              <div>
-                <label
-                  htmlFor="email"
-                  className="text-sm font-semibold text-navy block mb-1.5"
-                >
-                  Email Address
-                </label>
-                <div className="relative">
-                  {!isMobile && (
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-                  )}
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    autoComplete="email"
-                    className={cn(
-                      'w-full py-3 bg-gray-50 border-2 border-gray-200 rounded-2xl text-navy placeholder:text-text-muted text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all touch-manipulation',
-                      !isMobile ? 'pl-12 pr-4' : 'px-4',
-                    )}
-                    placeholder="you@example.com"
-                  />
-                </div>
-              </div>
-
-              {/* Password */}
-              <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <label
-                    htmlFor="password"
-                    className="text-sm font-semibold text-navy"
-                  >
-                    Password
-                  </label>
-                  <Link
-                    href="/forgot-password"
-                    className="text-xs text-primary font-medium hover:text-primary-hover transition-colors"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-                <div className="relative">
-                  {!isMobile && (
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-                  )}
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    autoComplete="current-password"
-                    className={cn(
-                      'w-full py-3 bg-gray-50 border-2 border-gray-200 rounded-2xl text-navy placeholder:text-text-muted text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all touch-manipulation',
-                      !isMobile ? 'pl-12 pr-12' : 'px-4 pr-12',
-                    )}
-                    placeholder="Enter your password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-navy transition-colors p-1 touch-manipulation"
-                    aria-label={
-                      showPassword ? 'Hide password' : 'Show password'
-                    }
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Remember Me */}
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRememberMe(!rememberMe)}
-                  className={cn(
-                    'w-5 h-5 rounded-lg border-2 transition-all flex items-center justify-center flex-shrink-0 touch-manipulation',
-                    rememberMe
-                      ? 'bg-primary border-primary'
-                      : 'border-gray-300',
-                  )}
-                  aria-label={rememberMe ? 'Remember me' : "Don't remember me"}
-                >
-                  {rememberMe && (
-                    <svg
-                      className="w-3 h-3 text-white"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={3}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  )}
-                </button>
-                <span className="text-sm text-text-secondary">Remember me</span>
-              </div>
-
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={isLoading || authLoading}
-                className="w-full py-3.5 bg-gold hover:bg-gold-hover text-navy font-bold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-gold disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[52px] text-base"
-              >
-                {isLoading || authLoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  <>
-                    Sign In
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </form>
-
-            {/* Footer */}
-            <p className="text-center text-sm text-text-muted mt-6">
-              Don&apos;t have an account?{' '}
-              <Link
-                href="/register"
-                className="text-primary font-semibold hover:text-primary-hover transition-colors"
-              >
-                Create one
-              </Link>
-            </p>
-          </div>
         </div>
-      </div>
-    </div>
+
+        {/* Remember me */}
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setRememberMe(!rememberMe)}
+            className={cn(
+              'w-4 h-4 rounded border-2 transition-all flex items-center justify-center flex-shrink-0',
+              rememberMe ? 'bg-[#2563EB] border-[#2563EB]' : 'border-white/30',
+            )}
+            aria-label={rememberMe ? 'Remember me' : "Don't remember me"}
+          >
+            {rememberMe && <Check className="w-2.5 h-2.5 text-white" />}
+          </button>
+          <span className="text-[13px] text-white/50">Remember me</span>
+        </div>
+
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={isLoading || authLoading}
+          className="w-full py-3 bg-[#FBBF24] hover:bg-[#F59E0B] text-[#0F172A] font-semibold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#FBBF24]/20 hover:shadow-[#FBBF24]/40 disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] text-sm mt-2"
+        >
+          {isLoading || authLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Signing in...
+            </>
+          ) : (
+            <>
+              Sign In
+              <ArrowRight className="w-4 h-4" />
+            </>
+          )}
+        </button>
+      </form>
+
+      <p className="hidden lg:block text-center text-xs text-white/30 mt-6">
+        Don&apos;t have an account?{' '}
+        <Link
+          href="/register"
+          className="text-[#93C5FD] font-semibold hover:text-[#BFDBFE] transition-colors"
+        >
+          Create one
+        </Link>
+      </p>
+    </AuthShell>
   );
 }

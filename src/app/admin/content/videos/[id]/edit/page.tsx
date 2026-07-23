@@ -1,8 +1,9 @@
 // src/app/admin/content/videos/[id]/edit/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import Image from 'next/image';
 import {
   ArrowLeft,
   Save,
@@ -10,7 +11,7 @@ import {
   CheckCircle,
   AlertCircle,
   Video,
-  Image,
+  Image as ImageIcon,
   Tag,
   DollarSign,
   Star,
@@ -52,11 +53,8 @@ export default function EditVideoPage() {
   } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  useEffect(() => {
-    fetchVideo();
-  }, [videoId]);
-
-  const fetchVideo = async () => {
+  // Fetch video function - wrapped in useCallback with videoId dependency
+  const fetchVideo = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/content/videos/${videoId}`);
@@ -84,7 +82,12 @@ export default function EditVideoPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [videoId]);
+
+  // Fetch video on mount - now includes fetchVideo in dependencies
+  useEffect(() => {
+    fetchVideo();
+  }, [fetchVideo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -295,7 +298,7 @@ export default function EditVideoPage() {
                 Thumbnail URL
               </label>
               <div className="relative">
-                <Image
+                <ImageIcon
                   size={18}
                   className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8]"
                 />
@@ -533,6 +536,25 @@ export default function EditVideoPage() {
               </div>
             )}
           </div>
+
+          {/* Thumbnail Preview */}
+          {formData.thumbnailUrl && (
+            <div className="mt-4 p-4 bg-[#F8FAFC] dark:bg-[#0F172A] rounded-xl border border-[#F1F5F9] dark:border-[#334155]">
+              <p className="text-sm font-medium text-[#0F172A] dark:text-white mb-2">
+                Thumbnail Preview
+              </p>
+              <div className="relative aspect-video w-full max-w-xs rounded-lg overflow-hidden bg-[#F1F5F9] dark:bg-[#334155]">
+                <Image
+                  src={formData.thumbnailUrl}
+                  alt="Video thumbnail preview"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 320px) 100vw, 320px"
+                  unoptimized={formData.thumbnailUrl.startsWith('data:')}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Message */}
           {message && (

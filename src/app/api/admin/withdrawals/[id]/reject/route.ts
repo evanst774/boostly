@@ -14,6 +14,8 @@ import {
 } from '@/lib/db/schema/wallet';
 import { eq, sql } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } },

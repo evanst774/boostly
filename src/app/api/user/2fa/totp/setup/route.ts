@@ -10,6 +10,8 @@ import {
   generateBackupCodes,
 } from '@/lib/totp';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST() {
   try {
     const user = await getCurrentUser();

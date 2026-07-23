@@ -6,6 +6,8 @@ import { ContentPermissions } from '@/modules/content/permissions';
 import { updateSurveySchema } from '@/modules/content/validation';
 import { surveysService } from '@/modules/content';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } },

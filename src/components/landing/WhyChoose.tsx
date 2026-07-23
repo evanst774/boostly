@@ -1,8 +1,18 @@
 // src/components/landing/WhyChoose.tsx
+
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion, Variants } from 'framer-motion';
-import { Coins, Users, Wallet, Shield, Globe2, TrendingUp } from 'lucide-react';
+import {
+  Coins,
+  Users,
+  Wallet,
+  Shield,
+  Globe2,
+  TrendingUp
+} from 'lucide-react';
+import { useSystemCurrency } from '@/hooks/useSystemCurrency';
 
 const REASONS = [
   {
@@ -95,7 +105,109 @@ const iconVariants: Variants = {
   },
 };
 
+// ─── Stats Skeleton ──────────────────────────────────
+
+function StatsSkeleton() {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="text-center animate-pulse">
+          <div className="h-8 w-20 bg-gray-200 rounded mx-auto mb-1" />
+          <div className="h-3 w-16 bg-gray-200 rounded mx-auto" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────
+
 export function WhyChoose() {
+  const {
+    currency,
+    formatAmount,
+    isLoading: currencyLoading,
+  } = useSystemCurrency();
+  const [stats, setStats] = useState({
+    totalUsers: 500000,
+    totalRewardsPaid: 25000000,
+    userRating: 4.8,
+    satisfaction: 98,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  // ─── Fetch real stats ──────────────────────────────
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch('/api/public/stats');
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch stats');
+        }
+
+        const data = await response.json();
+
+        setStats({
+          totalUsers: data.totalUsers || 500000,
+          totalRewardsPaid: data.totalRewardsPaid || 25000000,
+          userRating: 4.8, // This would come from a reviews endpoint
+          satisfaction: data.userSatisfaction || 98,
+        });
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+        // Keep fallback values
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  // ─── Format user count ──────────────────────────────
+  const formatUserCount = (count: number): string => {
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M+`;
+    }
+    if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}K+`;
+    }
+    return count.toString();
+  };
+
+  // ─── Format currency value ──────────────────────────
+  const formatCurrencyValue = (amount: number): string => {
+    if (currencyLoading) {
+      return `$${(amount / 1000000).toFixed(1)}M+`;
+    }
+
+    try {
+      if (amount >= 1000000) {
+        const value = amount / 1000000;
+        const formatted = value.toFixed(1);
+        const cleanValue = formatted.endsWith('.0')
+          ? formatted.slice(0, -2)
+          : formatted;
+        return `${currency.symbol}${cleanValue}M+`;
+      }
+      if (amount >= 1000) {
+        const value = amount / 1000;
+        const formatted = value.toFixed(1);
+        const cleanValue = formatted.endsWith('.0')
+          ? formatted.slice(0, -2)
+          : formatted;
+        return `${currency.symbol}${cleanValue}K+`;
+      }
+      return formatAmount(amount);
+    } catch {
+      return `$${(amount / 1000000).toFixed(1)}M+`;
+    }
+  };
+
+  const showLoading = isLoading || currencyLoading;
+
   return (
     <motion.section
       initial="hidden"
@@ -194,24 +306,38 @@ export function WhyChoose() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.5, duration: 0.4 }}
-          className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto"
+          className="mt-12"
         >
-          <div className="text-center">
-            <p className="text-2xl font-black text-navy">500K+</p>
-            <p className="text-xs text-text-muted">Active Users</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-black text-gold">$25M+</p>
-            <p className="text-xs text-text-muted">Rewards Paid</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-black text-navy">4.8★</p>
-            <p className="text-xs text-text-muted">User Rating</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-black text-gold">98%</p>
-            <p className="text-xs text-text-muted">Satisfaction</p>
-          </div>
+          {showLoading ? (
+            <StatsSkeleton />
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+              <div className="text-center">
+                <p className="text-2xl font-black text-navy">
+                  {formatUserCount(stats.totalUsers)}
+                </p>
+                <p className="text-xs text-text-muted">Active Users</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-black text-gold">
+                  {formatCurrencyValue(stats.totalRewardsPaid)}
+                </p>
+                <p className="text-xs text-text-muted">Rewards Paid</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-black text-navy">
+                  {stats.userRating.toFixed(1)}★
+                </p>
+                <p className="text-xs text-text-muted">User Rating</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-black text-gold">
+                  {stats.satisfaction}%
+                </p>
+                <p className="text-xs text-text-muted">Satisfaction</p>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* Bottom CTA */}

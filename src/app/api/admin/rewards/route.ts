@@ -7,6 +7,8 @@ import { db } from '@/lib/db';
 import { rewards, RewardStatusEnum } from '@/lib/db/schema/rewards';
 import { eq, desc, sql } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();

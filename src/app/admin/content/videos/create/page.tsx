@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   ArrowLeft,
   Save,
@@ -10,7 +11,7 @@ import {
   CheckCircle,
   AlertCircle,
   Video,
-  Image,
+  Image as ImageIcon,
   Tag,
   DollarSign,
   Star,
@@ -209,7 +210,7 @@ export default function CreateVideoPage() {
                 Thumbnail URL
               </label>
               <div className="relative">
-                <Image
+                <ImageIcon
                   size={18}
                   className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8]"
                 />
@@ -225,6 +226,25 @@ export default function CreateVideoPage() {
               </div>
             </div>
           </div>
+
+          {/* Thumbnail Preview */}
+          {formData.thumbnailUrl && (
+            <div className="p-4 bg-[#F8FAFC] dark:bg-[#0F172A] rounded-xl border border-[#F1F5F9] dark:border-[#334155]">
+              <p className="text-sm font-medium text-[#0F172A] dark:text-white mb-2">
+                Thumbnail Preview
+              </p>
+              <div className="relative aspect-video w-full max-w-xs rounded-lg overflow-hidden bg-[#F1F5F9] dark:bg-[#334155]">
+                <Image
+                  src={formData.thumbnailUrl}
+                  alt="Video thumbnail preview"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 320px) 100vw, 320px"
+                  unoptimized={formData.thumbnailUrl.startsWith('data:')}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Duration & Reward */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

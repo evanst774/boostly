@@ -1,7 +1,7 @@
 // src/app/(dashboard)/earn/videos/page.tsx
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -235,7 +235,9 @@ export default function VideosPage() {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<UICategory>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedVideo, setSelectedVideo] = useState<VideoWithProgress | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<VideoWithProgress | null>(
+    null,
+  );
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -246,7 +248,9 @@ export default function VideosPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   const seekBarRef = useRef<HTMLDivElement>(null);
-  const [recommendedVideos, setRecommendedVideos] = useState<VideoWithProgress[]>([]);
+  const [recommendedVideos, setRecommendedVideos] = useState<
+    VideoWithProgress[]
+  >([]);
   const [allVideos, setAllVideos] = useState<VideoWithProgress[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
@@ -276,21 +280,25 @@ export default function VideosPage() {
 
   const { trackWatch } = useVideoWatch();
 
-  const videos = data?.videos || [];
+  // Memoize videos to prevent unnecessary re-renders
+  const videos = useMemo(() => data?.videos || [], [data?.videos]);
   const stats = data?.stats || { totalEarned: 0, watched: 0, available: 0 };
   const total = data?.total || 0;
   const totalPages = data?.totalPages || 1;
 
-  // Update all videos when data changes
+  // Create a stable reference for videos using useMemo
+  const stableVideos = useMemo(() => videos, [videos]);
+
+  // Update all videos when data changes - now using stableVideos
   useEffect(() => {
     if (page === 1) {
-      setAllVideos(videos);
+      setAllVideos(stableVideos);
     } else {
-      setAllVideos((prev) => [...prev, ...videos]);
+      setAllVideos((prev) => [...prev, ...stableVideos]);
     }
     setHasMore(page < totalPages);
     setIsLoadingMore(false);
-  }, [videos, page, totalPages]);
+  }, [stableVideos, page, totalPages]);
 
   // Update recommendations when all videos change
   useEffect(() => {
@@ -326,7 +334,8 @@ export default function VideosPage() {
     }
   };
 
-  const togglePlay = () => {
+  // Wrap togglePlay in useCallback to stabilize it
+  const togglePlay = useCallback(() => {
     if (videoRef.current) {
       if (isPlaying) {
         videoRef.current.pause();
@@ -335,7 +344,7 @@ export default function VideosPage() {
       }
       setIsPlaying(!isPlaying);
     }
-  };
+  }, [isPlaying]);
 
   const handleTimeUpdate = () => {
     if (videoRef.current && selectedVideo) {
@@ -452,7 +461,7 @@ export default function VideosPage() {
     }
   }, [hasMore, isLoadingMore, isLoading]);
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts - now includes togglePlay in dependencies
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isPlayerOpen) {
@@ -466,8 +475,7 @@ export default function VideosPage() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isPlayerOpen, isPlaying]);
-
+  }, [isPlayerOpen, togglePlay]); // Added togglePlay to dependencies
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
@@ -948,13 +956,7 @@ export default function VideosPage() {
                       )}
                     </button>
 
-                    {/*
-                      FIX: this bar previously had no interaction handler at
-                      all — it was purely decorative (fill width + hover
-                      handle) despite the cursor-pointer styling. Now
-                      supports click-to-seek and drag-to-scrub via Pointer
-                      Events, which unify mouse + touch handling.
-                    */}
+                    {/* Seek Bar */}
                     <div
                       ref={seekBarRef}
                       onPointerDown={handleSeekPointerDown}

@@ -8,6 +8,8 @@ import { hashPassword, verifyPassword } from '@/lib/db/auth-utils';
 import { createAuditLog } from '@/lib/audit';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const changePasswordSchema = z.object({
     currentPassword: z.string().min(1),
     newPassword: z.string().min(8).regex(/[A-Z]/).regex(/[a-z]/).regex(/[0-9]/).regex(/[^A-Za-z0-9]/),

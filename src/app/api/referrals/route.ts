@@ -6,6 +6,8 @@ import { referralsService } from '@/modules/referrals/service';
 import { ReferralsPermissions } from '@/modules/referrals/permissions';
 import { createReferralSchema } from '@/modules/referrals/validation';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();

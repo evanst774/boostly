@@ -8,6 +8,8 @@ import { users } from '@/lib/db/schema/users';
 import { roles, userRoles } from '@/lib/db/schema/rbac';
 import { eq, sql } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const currentUser = await getCurrentUser();

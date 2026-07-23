@@ -7,6 +7,8 @@ import { createSurveySchema } from '@/modules/content/validation';
 import { surveysService } from '@/modules/content';
 import { SurveyStatusEnum, type SurveyStatus } from '@/lib/db/schema';
 
+export const dynamic = 'force-dynamic';
+
 const VALID_STATUSES = Object.values(SurveyStatusEnum) as string[];
 
 function parseStatus(raw: string | null): SurveyStatus | undefined {

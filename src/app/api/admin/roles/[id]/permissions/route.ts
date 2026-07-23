@@ -7,6 +7,8 @@ import { db } from '@/lib/db';
 import { permissions, rolePermissions } from '@/lib/db/schema/rbac';
 import { eq } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
     request: Request,
     { params }: { params: { id: string } }

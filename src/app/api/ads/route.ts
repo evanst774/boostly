@@ -4,6 +4,8 @@ import { getCurrentUser } from '@/lib/auth/session.server';
 import { adWatchesService } from '@/modules/rewards/service';
 import { createAdWatchSchema } from '@/modules/rewards/validation';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();

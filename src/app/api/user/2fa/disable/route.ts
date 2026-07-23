@@ -7,6 +7,8 @@ import { sudoSettings, sudoSessions } from '@/lib/db/schema/auth';
 import { eq, and } from 'drizzle-orm';
 import { verifyTOTPCode } from '@/lib/totp';
 
+export const dynamic = 'force-dynamic';
+
 type TwoFAMethod = 'EMAIL' | 'TOTP';
 
 export async function POST(request: NextRequest) {

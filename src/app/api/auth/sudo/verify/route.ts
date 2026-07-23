@@ -7,6 +7,8 @@ import { users } from '@/lib/db/schema/users';
 import { eq, and, gt } from 'drizzle-orm';
 import { verifyTOTPCode } from '@/lib/totp';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser();

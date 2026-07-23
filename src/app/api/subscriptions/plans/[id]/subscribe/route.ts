@@ -4,6 +4,8 @@ import { getCurrentUser } from '@/lib/auth/session.server';
 import { badgesService } from '@/modules/badges/service';
 import { subscribeToPlanSchema } from '@/modules/badges/validation';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } },

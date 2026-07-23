@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { JWT_COOKIE_NAME } from '@/lib/jwt';
 import { verifyJWT } from '@/lib/jwt';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
     const token = request.cookies.get(JWT_COOKIE_NAME)?.value;
 

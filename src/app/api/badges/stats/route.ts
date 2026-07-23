@@ -5,6 +5,8 @@ import { requirePermission } from '@/lib/auth/permissions';
 import { badgesService } from '@/modules/badges/service';
 import { BadgesPermissions } from '@/modules/badges/permissions';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const user = await getCurrentUser();

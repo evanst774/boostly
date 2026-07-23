@@ -7,6 +7,8 @@ import { eq } from 'drizzle-orm';
 import { sendEmail, buildPasswordResetEmailHTML } from '@/lib/mail';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
     try {
         const { email } = await request.json();

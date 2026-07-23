@@ -4,6 +4,8 @@ import { NextResponse } from 'next/server';
 import { notificationsService } from '@/lib/notifications';
 import { requireAuth } from '@/lib/db/auth-utils';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const user = await requireAuth();

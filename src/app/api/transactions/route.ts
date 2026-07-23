@@ -9,6 +9,8 @@ import {
   type TransactionStatus,
 } from '@/lib/db/schema/wallet';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();

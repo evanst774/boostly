@@ -5,6 +5,8 @@ import { getCurrentUser } from '@/lib/auth/session.server';
 import { withdrawalActivityService } from '@/services/withdrawal-activity.service';
 import { requirePermission } from '@/lib/auth/permissions';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();

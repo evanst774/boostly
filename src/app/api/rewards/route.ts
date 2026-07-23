@@ -4,6 +4,8 @@ import { getCurrentUser } from '@/lib/auth/session.server';
 import { rewardsService } from '@/modules/rewards/service';
 import { REWARD_TYPE_LIST, type RewardType } from '@/lib/db/schema/rewards';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();

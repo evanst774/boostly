@@ -11,6 +11,8 @@ import {
 } from '@/lib/db/schema/wallet';
 import { eq, desc, sql } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();

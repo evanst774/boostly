@@ -1,13 +1,12 @@
 // src/components/landing/Footer.tsx
+
 'use client';
 
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, Variants } from 'framer-motion';
 
-// lucide-react has removed brand/logo icons (Facebook, Instagram, Twitter,
-// YouTube) across recent versions — using inline SVGs instead, styled to
-// match lucide's stroke-icon look (24x24, currentColor, strokeWidth 2)
+// Social Icons
 function FacebookIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -75,43 +74,24 @@ function YoutubeIcon({ className }: { className?: string }) {
   );
 }
 
-const FOOTER_COLUMNS = [
-  {
-    title: 'Platform',
-    links: ['Features', 'How It Works', 'Plans', 'FAQs'],
-    hrefs: ['#features', '#how', '#plans', '#faq'],
-  },
-  {
-    title: 'Earn',
-    links: ['Watch Videos', 'Play Games', 'Offers', 'Surveys'],
-    hrefs: ['/earn/videos', '/games', '/earn/offers', '/earn/surveys'],
-  },
-  {
-    title: 'Company',
-    links: ['About Us', 'Blog', 'Careers', 'Contact Us'],
-    hrefs: ['/about', '/blog', '/careers', '/contact'],
-  },
-  {
-    title: 'Legal',
-    links: ['Terms of Service', 'Privacy Policy', 'Cookies Policy'],
-    hrefs: ['/terms', '/privacy', '/cookies'],
-  },
-];
-
-// All social icons are inline SVGs now — lucide-react no longer ships brand logos
 const SOCIAL_LINKS = [
-  { icon: FacebookIcon, href: '#', label: 'Facebook' },
-  { icon: TwitterIcon, href: '#', label: 'Twitter' },
-  { icon: InstagramIcon, href: '#', label: 'Instagram' },
-  { icon: YoutubeIcon, href: '#', label: 'YouTube' },
+  {
+    icon: FacebookIcon,
+    href: 'https://facebook.com/boostly',
+    label: 'Facebook',
+  },
+  { icon: TwitterIcon, href: 'https://twitter.com/boostly', label: 'Twitter' },
+  {
+    icon: InstagramIcon,
+    href: 'https://instagram.com/boostly',
+    label: 'Instagram',
+  },
+  { icon: YoutubeIcon, href: 'https://youtube.com/boostly', label: 'YouTube' },
 ];
 
-// Footer variants with proper typing
+// Footer variants
 const footerVariants: Variants = {
-  hidden: {
-    opacity: 0,
-    y: 20,
-  },
+  hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
     y: 0,
@@ -120,10 +100,7 @@ const footerVariants: Variants = {
 };
 
 const columnVariants: Variants = {
-  hidden: {
-    opacity: 0,
-    y: 10,
-  },
+  hidden: { opacity: 0, y: 10 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
@@ -162,7 +139,7 @@ export function Footer() {
       className="bg-navy border-t border-white/10 py-12"
     >
       <div className="max-w-6xl mx-auto px-6">
-        <div className="grid sm:grid-cols-2 md:grid-cols-6 gap-8 mb-10">
+        <div className="grid sm:grid-cols-2 md:grid-cols-5 gap-8 mb-10">
           {/* Brand Column */}
           <motion.div
             variants={columnVariants}
@@ -200,6 +177,8 @@ export function Footer() {
                 <motion.a
                   key={label}
                   href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   variants={iconVariants}
                   whileHover="hover"
                   whileTap="tap"
@@ -212,37 +191,139 @@ export function Footer() {
             </div>
           </motion.div>
 
-          {/* Footer Columns */}
-          {FOOTER_COLUMNS.map((col, i) => (
-            <motion.div
-              key={col.title}
-              variants={columnVariants}
-              custom={i + 1}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-            >
-              <p className="text-white text-xs font-bold uppercase tracking-wide mb-3">
-                {col.title}
-              </p>
-              <ul className="space-y-2.5">
-                {col.links.map((link, idx) => (
-                  <motion.li
-                    key={link}
-                    variants={linkVariants}
-                    whileHover="hover"
+          {/* Platform */}
+          <motion.div
+            variants={columnVariants}
+            custom={1}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            <p className="text-white text-xs font-bold uppercase tracking-wide mb-3">
+              Platform
+            </p>
+            <ul className="space-y-2.5">
+              {[
+                { name: 'Features', href: '#features' },
+                { name: 'How It Works', href: '#how' },
+                { name: 'Plans', href: '#plans' },
+                { name: 'FAQ', href: '/resources/faq' },
+              ].map((link) => (
+                <motion.li
+                  key={link.name}
+                  variants={linkVariants}
+                  whileHover="hover"
+                >
+                  <Link
+                    href={link.href}
+                    className="text-white/40 hover:text-white text-xs transition-colors duration-200"
                   >
-                    <Link
-                      href={col.hrefs[idx] || '#'}
-                      className="text-white/40 hover:text-white text-xs transition-colors duration-200"
-                    >
-                      {link}
-                    </Link>
-                  </motion.li>
-                ))}
-              </ul>
-            </motion.div>
-          ))}
+                    {link.name}
+                  </Link>
+                </motion.li>
+              ))}
+            </ul>
+          </motion.div>
+
+          {/* Earn */}
+          <motion.div
+            variants={columnVariants}
+            custom={2}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            <p className="text-white text-xs font-bold uppercase tracking-wide mb-3">
+              Earn
+            </p>
+            <ul className="space-y-2.5">
+              {[
+                { name: 'Watch Videos', href: '/earn/videos' },
+                { name: 'Play Games', href: '/games' },
+                { name: 'Complete Surveys', href: '/earn/surveys' },
+                { name: 'Refer Friends', href: '/referrals' },
+              ].map((link) => (
+                <motion.li
+                  key={link.name}
+                  variants={linkVariants}
+                  whileHover="hover"
+                >
+                  <Link
+                    href={link.href}
+                    className="text-white/40 hover:text-white text-xs transition-colors duration-200"
+                  >
+                    {link.name}
+                  </Link>
+                </motion.li>
+              ))}
+            </ul>
+          </motion.div>
+
+          {/* Company */}
+          <motion.div
+            variants={columnVariants}
+            custom={3}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            <p className="text-white text-xs font-bold uppercase tracking-wide mb-3">
+              Company
+            </p>
+            <ul className="space-y-2.5">
+              {[
+                { name: 'About Us', href: '/about' },
+                { name: 'Resources', href: '/resources' },
+                { name: 'Support', href: '/support' },
+              ].map((link) => (
+                <motion.li
+                  key={link.name}
+                  variants={linkVariants}
+                  whileHover="hover"
+                >
+                  <Link
+                    href={link.href}
+                    className="text-white/40 hover:text-white text-xs transition-colors duration-200"
+                  >
+                    {link.name}
+                  </Link>
+                </motion.li>
+              ))}
+            </ul>
+          </motion.div>
+
+          {/* Legal */}
+          <motion.div
+            variants={columnVariants}
+            custom={4}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            <p className="text-white text-xs font-bold uppercase tracking-wide mb-3">
+              Legal
+            </p>
+            <ul className="space-y-2.5">
+              {[
+                { name: 'Terms of Service', href: '/terms' },
+                { name: 'Privacy Policy', href: '/privacy' },
+                { name: 'Cookie Policy', href: '/cookies' },
+              ].map((link) => (
+                <motion.li
+                  key={link.name}
+                  variants={linkVariants}
+                  whileHover="hover"
+                >
+                  <Link
+                    href={link.href}
+                    className="text-white/40 hover:text-white text-xs transition-colors duration-200"
+                  >
+                    {link.name}
+                  </Link>
+                </motion.li>
+              ))}
+            </ul>
+          </motion.div>
         </div>
 
         {/* Bottom Bar */}
@@ -254,8 +335,8 @@ export function Footer() {
           className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-white/10"
         >
           <p className="text-white/30 text-xs">
-            © {year} <span className="text-white/60">Boostly Pvt Ltd</span>. All
-            rights reserved.
+            © {year} <span className="text-white/60">Boostly</span>. All rights
+            reserved.
           </p>
           <div className="flex items-center gap-6 text-white/30 text-xs">
             <Link href="/privacy" className="hover:text-white/60 transition">

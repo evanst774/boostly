@@ -1,7 +1,7 @@
 // src/components/crypto/CryptoWallet.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Wallet,
@@ -48,11 +48,8 @@ export function CryptoWallet({ userId }: CryptoWalletProps) {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, [userId]);
-
-  const fetchData = async () => {
+  // Fetch data function - wrapped in useCallback with userId dependency
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [walletsRes, ratesRes] = await Promise.all([
@@ -68,7 +65,12 @@ export function CryptoWallet({ userId }: CryptoWalletProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
+
+  // Fetch data on mount and when userId changes - now includes fetchData in dependencies
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const copyAddress = async (address: string, id: string) => {
     await navigator.clipboard.writeText(address);

@@ -5,6 +5,8 @@ import { users } from '@/lib/db/schema/users';
 import { otpVerifications } from '@/lib/db/schema/auth';
 import { eq, and, gt } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
     try {
         const { token } = await request.json();

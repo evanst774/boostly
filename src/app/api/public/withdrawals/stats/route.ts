@@ -5,6 +5,8 @@ import { db } from '@/lib/db';
 import { withdrawals } from '@/lib/db/schema/wallet';
 import { eq, sql, and, gte } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const today = new Date();

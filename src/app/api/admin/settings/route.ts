@@ -12,6 +12,8 @@ import {
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const settingsSchema = z.object({
   // Company Information
   companyName: z.string().optional(),

@@ -5,6 +5,8 @@ import { videosService } from '@/modules/content/services/videos/videos.service'
 import { gamesService } from '@/modules/content/services/games/games.service';
 import { surveysService } from '@/modules/content/services/surveys/surveys.service';
 
+export const dynamic = 'force-dynamic';
+
 type ContentType = 'videos' | 'games' | 'surveys';
 
 export async function PATCH(

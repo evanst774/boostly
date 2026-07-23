@@ -8,6 +8,8 @@ import { userBadges } from '@/lib/db/schema/badges';
 import { badges } from '@/lib/db/schema/badges';
 import { eq, desc, sql, and, gte } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;

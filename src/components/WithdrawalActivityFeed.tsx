@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Wallet } from 'lucide-react';
 
 interface PublicWithdrawal {
@@ -20,11 +20,8 @@ export function WithdrawalActivityFeed({ limit = 5 }: { limit?: number }) {
   const [withdrawals, setWithdrawals] = useState<PublicWithdrawal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    fetchPublicWithdrawals();
-  }, []);
-
-  const fetchPublicWithdrawals = async () => {
+  // Fetch public withdrawals - wrapped in useCallback with limit dependency
+  const fetchPublicWithdrawals = useCallback(async () => {
     try {
       // This endpoint returns ONLY completed withdrawals with user names
       // but limited to 10 recent ones for privacy
@@ -38,7 +35,12 @@ export function WithdrawalActivityFeed({ limit = 5 }: { limit?: number }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [limit]);
+
+  // Fetch on mount - now includes fetchPublicWithdrawals in dependencies
+  useEffect(() => {
+    fetchPublicWithdrawals();
+  }, [fetchPublicWithdrawals]);
 
   if (isLoading) {
     return (

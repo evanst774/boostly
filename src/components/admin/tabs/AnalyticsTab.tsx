@@ -76,6 +76,7 @@ export function AnalyticsTab() {
   const [isDark, setIsDark] = useState(false);
   const chartRef = useRef<ChartJS<'line'>>(null);
 
+  // Dark mode detection effect
   useEffect(() => {
     // Check if dark mode is enabled
     const darkMode = document.documentElement.classList.contains('dark');
@@ -92,11 +93,8 @@ export function AnalyticsTab() {
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, [timeRange]);
-
-  const fetchAnalytics = async () => {
+  // Fetch analytics function - wrapped in useCallback with timeRange dependency
+  const fetchAnalytics = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/admin/analytics?range=${timeRange}`);
@@ -107,7 +105,12 @@ export function AnalyticsTab() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [timeRange]);
+
+  // Fetch analytics when timeRange changes - now includes fetchAnalytics in dependencies
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   const handleExport = useCallback(() => {
     const blob = new Blob([JSON.stringify(data, null, 2)], {

@@ -1,7 +1,7 @@
 // src/app/admin/users/[id]/edit/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -41,11 +41,8 @@ export default function EditUserPage() {
     text: string;
   } | null>(null);
 
-  useEffect(() => {
-    fetchUserAndRoles();
-  }, [userId]);
-
-  const fetchUserAndRoles = async () => {
+  // Fetch user and roles - wrapped in useCallback with userId dependency
+  const fetchUserAndRoles = useCallback(async () => {
     setIsLoading(true);
     try {
       const [userRes, rolesRes] = await Promise.all([
@@ -70,7 +67,12 @@ export default function EditUserPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userId]);
+
+  // Fetch user on mount - now includes fetchUserAndRoles in dependencies
+  useEffect(() => {
+    fetchUserAndRoles();
+  }, [fetchUserAndRoles]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

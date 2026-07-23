@@ -5,6 +5,8 @@ import { requirePermission } from '@/lib/auth/permissions';
 import { walletService } from '@/modules/wallet/service';
 import { WalletPermissions } from '@/modules/wallet/permissions';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const user = await getCurrentUser();

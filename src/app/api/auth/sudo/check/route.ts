@@ -6,6 +6,8 @@ import { sudoSessions } from '@/lib/db/schema/auth';
 import { eq, and, gt } from 'drizzle-orm';
 import { SUDO_CONFIG } from '@/lib/constants/sudo';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const user = await getCurrentUser();

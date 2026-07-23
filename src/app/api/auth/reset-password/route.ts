@@ -8,6 +8,7 @@ import { createAuditLog } from '@/lib/audit';
 import { eq, and, gt } from 'drizzle-orm';
 import { hashPassword } from '@/lib/db/auth-utils';
 
+export const dynamic = 'force-dynamic';
 // ============================================
 // Validation Schema
 // ============================================

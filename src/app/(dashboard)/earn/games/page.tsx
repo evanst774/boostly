@@ -1,7 +1,7 @@
 // src/app/(dashboard)/earn/games/page.tsx
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -488,14 +488,20 @@ export default function GamesPage() {
     limit: 20,
   });
 
-  const games = data?.games ?? [];
+  // Memoize games to prevent unnecessary re-renders
+  const games = useMemo(() => data?.games ?? [], [data?.games]);
   const total = data?.total ?? 0;
   const totalPages = data?.totalPages ?? 1;
   const hasMore = page < totalPages;
 
+  // Use useMemo to stabilize the games reference and fix the dependency warning
+  const stableGames = useMemo(() => games, [games]);
+
   useEffect(() => {
-    setAllGames((prev) => (page === 1 ? games : [...prev, ...games]));
-  }, [games, page]);
+    setAllGames((prev) =>
+      page === 1 ? stableGames : [...prev, ...stableGames],
+    );
+  }, [stableGames, page]);
 
   const handleCategoryChange = (category: UICategory) => {
     setSelectedCategory(category);

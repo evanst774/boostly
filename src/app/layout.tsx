@@ -152,12 +152,6 @@ export default function RootLayout({
           href="https://cdnjs.cloudflare.com"
           crossOrigin="anonymous"
         />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
 
         {/* Font Awesome */}
         <link
@@ -166,11 +160,15 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
 
-        {/* Google Fonts */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
+        {/*
+          Google Fonts (Inter, Outfit, Space Grotesk) are now loaded via
+          next/font/google in ClientLayout.tsx instead of a manual <link>
+          tag here. next/font self-hosts and optimizes the font files at
+          build time, avoiding a runtime request to fonts.googleapis.com
+          and fixing the `no-page-custom-font` warning. The preconnects
+          for fonts.googleapis.com / fonts.gstatic.com have been removed
+          since nothing fetches from them directly anymore.
+        */}
 
         {/* Favicons */}
         <link rel="icon" href="/img/favicons/favicon.ico" sizes="any" />

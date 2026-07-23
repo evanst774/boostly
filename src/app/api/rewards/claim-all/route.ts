@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session.server';
 import { rewardsService } from '@/modules/rewards/service';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST() {
   try {
     const user = await getCurrentUser();

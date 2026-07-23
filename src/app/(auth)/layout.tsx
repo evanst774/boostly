@@ -9,14 +9,14 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-navy flex items-center justify-center p-4 safe-top safe-bottom">
+    <div className="min-h-screen bg-[#0F172A] flex items-center justify-center safe-top safe-bottom">
       <AnimatePresence mode="wait">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="w-full max-w-md"
+          className="w-full"
         >
           {children}
         </motion.div>

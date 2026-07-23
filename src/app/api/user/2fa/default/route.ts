@@ -5,6 +5,8 @@ import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema/users';
 import { eq } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 type TwoFAMethod = 'EMAIL' | 'TOTP';
 
 export async function POST(request: NextRequest) {

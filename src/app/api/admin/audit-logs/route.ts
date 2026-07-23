@@ -14,6 +14,8 @@ import { roles } from '@/lib/db/schema/rbac';
 import { userRoles } from '@/lib/db/schema/rbac';
 import { and, eq, like, or, sql, desc, SQL } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 // ============================================
 // BOOSTLY ACTION DESCRIPTION MAP
 // ============================================

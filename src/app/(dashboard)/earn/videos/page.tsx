@@ -37,7 +37,7 @@
  *    surfaced back to the user instead of being silently dropped.
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -213,22 +213,86 @@ const categories: {
   icon: React.ReactNode;
   color: string;
 }[] = [
-  { value: 'all', label: 'All', icon: <TrendingUp className="w-3.5 h-3.5" />, color: 'from-blue-500 to-purple-500' },
-  { value: 'business', label: 'Business', icon: <Briefcase className="w-3.5 h-3.5" />, color: 'from-emerald-500 to-teal-500' },
-  { value: 'finance', label: 'Finance', icon: <Coins className="w-3.5 h-3.5" />, color: 'from-amber-500 to-yellow-500' },
-  { value: 'tech', label: 'Tech', icon: <Cpu className="w-3.5 h-3.5" />, color: 'from-cyan-500 to-blue-500' },
-  { value: 'education', label: 'Education', icon: <BookOpen className="w-3.5 h-3.5" />, color: 'from-indigo-500 to-purple-500' },
-  { value: 'entertainment', label: 'Entertainment', icon: <Film className="w-3.5 h-3.5" />, color: 'from-pink-500 to-rose-500' },
-  { value: 'lifestyle', label: 'Lifestyle', icon: <Heart className="w-3.5 h-3.5" />, color: 'from-red-400 to-pink-500' },
-  { value: 'gaming', label: 'Gaming', icon: <Trophy className="w-3.5 h-3.5" />, color: 'from-violet-500 to-purple-500' },
-  { value: 'sports', label: 'Sports', icon: <Flame className="w-3.5 h-3.5" />, color: 'from-orange-500 to-red-500' },
-  { value: 'music', label: 'Music', icon: <Music className="w-3.5 h-3.5" />, color: 'from-fuchsia-500 to-pink-500' },
-  { value: 'news', label: 'News', icon: <Newspaper className="w-3.5 h-3.5" />, color: 'from-slate-500 to-gray-500' },
-  { value: 'tutorial', label: 'Tutorial', icon: <Target className="w-3.5 h-3.5" />, color: 'from-blue-500 to-indigo-500' },
+  {
+    value: 'all',
+    label: 'All',
+    icon: <TrendingUp className="w-3.5 h-3.5" />,
+    color: 'from-blue-500 to-purple-500',
+  },
+  {
+    value: 'business',
+    label: 'Business',
+    icon: <Briefcase className="w-3.5 h-3.5" />,
+    color: 'from-emerald-500 to-teal-500',
+  },
+  {
+    value: 'finance',
+    label: 'Finance',
+    icon: <Coins className="w-3.5 h-3.5" />,
+    color: 'from-amber-500 to-yellow-500',
+  },
+  {
+    value: 'tech',
+    label: 'Tech',
+    icon: <Cpu className="w-3.5 h-3.5" />,
+    color: 'from-cyan-500 to-blue-500',
+  },
+  {
+    value: 'education',
+    label: 'Education',
+    icon: <BookOpen className="w-3.5 h-3.5" />,
+    color: 'from-indigo-500 to-purple-500',
+  },
+  {
+    value: 'entertainment',
+    label: 'Entertainment',
+    icon: <Film className="w-3.5 h-3.5" />,
+    color: 'from-pink-500 to-rose-500',
+  },
+  {
+    value: 'lifestyle',
+    label: 'Lifestyle',
+    icon: <Heart className="w-3.5 h-3.5" />,
+    color: 'from-red-400 to-pink-500',
+  },
+  {
+    value: 'gaming',
+    label: 'Gaming',
+    icon: <Trophy className="w-3.5 h-3.5" />,
+    color: 'from-violet-500 to-purple-500',
+  },
+  {
+    value: 'sports',
+    label: 'Sports',
+    icon: <Flame className="w-3.5 h-3.5" />,
+    color: 'from-orange-500 to-red-500',
+  },
+  {
+    value: 'music',
+    label: 'Music',
+    icon: <Music className="w-3.5 h-3.5" />,
+    color: 'from-fuchsia-500 to-pink-500',
+  },
+  {
+    value: 'news',
+    label: 'News',
+    icon: <Newspaper className="w-3.5 h-3.5" />,
+    color: 'from-slate-500 to-gray-500',
+  },
+  {
+    value: 'tutorial',
+    label: 'Tutorial',
+    icon: <Target className="w-3.5 h-3.5" />,
+    color: 'from-blue-500 to-indigo-500',
+  },
 ];
 
 // Recommendation Algorithm
-function getRecommendations(videos: VideoWithProgress[], watchedIds: string[], limit: number = 6) {
+function getRecommendations(
+  videos: VideoWithProgress[],
+  watchedIds: string[],
+  limit: number = 6,
+) {
   const scoredVideos = videos.map((video) => {
     let score = 0;
     score += ((video.views || 0) / 100) * 0.3;
@@ -240,7 +304,8 @@ function getRecommendations(videos: VideoWithProgress[], watchedIds: string[], l
     if (watchedIds.includes(video.id)) score *= 0.3;
 
     const daysSinceCreation =
-      (Date.now() - new Date(video.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+      (Date.now() - new Date(video.createdAt).getTime()) /
+      (1000 * 60 * 60 * 24);
     score += Math.max(0, 30 - daysSinceCreation) * 0.5;
 
     return { ...video, score };
@@ -250,7 +315,11 @@ function getRecommendations(videos: VideoWithProgress[], watchedIds: string[], l
 }
 
 // Loading Skeleton Components
-function VideoSkeleton({ isRecommendation = false }: { isRecommendation?: boolean }) {
+function VideoSkeleton({
+  isRecommendation = false,
+}: {
+  isRecommendation?: boolean;
+}) {
   if (isRecommendation) {
     return (
       <div className="animate-pulse bg-white dark:bg-[#1E293B] rounded-xl border border-[#F1F5F9] dark:border-[#334155] overflow-hidden">
@@ -302,7 +371,9 @@ export default function VideosPage() {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<UICategory>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedVideo, setSelectedVideo] = useState<VideoWithProgress | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<VideoWithProgress | null>(
+    null,
+  );
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -321,7 +392,9 @@ export default function VideosPage() {
   const ytContainerRef = useRef<HTMLDivElement>(null);
   const ytPlayerRef = useRef<YouTubePlayerInstance | null>(null);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const skipWarningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipWarningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // Furthest point (seconds) the user has legitimately watched to. Anything
   // beyond this + tolerance is treated as a skip and reverted.
@@ -333,7 +406,9 @@ export default function VideosPage() {
   // open session (server is idempotent regardless, this just avoids noise).
   const rewardHandledRef = useRef(false);
 
-  const [recommendedVideos, setRecommendedVideos] = useState<VideoWithProgress[]>([]);
+  const [recommendedVideos, setRecommendedVideos] = useState<
+    VideoWithProgress[]
+  >([]);
   const [allVideos, setAllVideos] = useState<VideoWithProgress[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
@@ -345,7 +420,8 @@ export default function VideosPage() {
     setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
   }, []);
 
-  const schemaCategory = selectedCategory === 'all' ? undefined : categoryMap[selectedCategory];
+  const schemaCategory =
+    selectedCategory === 'all' ? undefined : categoryMap[selectedCategory];
 
   const { data, isLoading, refetch } = useVideos({
     category: schemaCategory,
@@ -356,21 +432,27 @@ export default function VideosPage() {
 
   const { trackWatch } = useVideoWatch();
 
-  const videos = data?.videos || [];
+  // Memoize videos to prevent unnecessary re-renders
+  const videos = useMemo(() => data?.videos || [], [data?.videos]);
   const stats = data?.stats || { totalEarned: 0, watched: 0, available: 0 };
   const total = data?.total || 0;
   const totalPages = data?.totalPages || 1;
 
+  // Create a stable reference for videos using useMemo
+  const stableVideos = useMemo(() => videos, [videos]);
+
+  // Update all videos when data changes - now using stableVideos
   useEffect(() => {
     if (page === 1) {
-      setAllVideos(videos);
+      setAllVideos(stableVideos);
     } else {
-      setAllVideos((prev) => [...prev, ...videos]);
+      setAllVideos((prev) => [...prev, ...stableVideos]);
     }
     setHasMore(page < totalPages);
     setIsLoadingMore(false);
-  }, [videos, page, totalPages]);
+  }, [stableVideos, page, totalPages]);
 
+  // Update recommendations when allVideos or watchHistory changes
   useEffect(() => {
     if (allVideos.length > 0) {
       const recommended = getRecommendations(allVideos, watchHistory, 6);
@@ -378,7 +460,9 @@ export default function VideosPage() {
     }
   }, [allVideos, watchHistory]);
 
-  const youtubeId = selectedVideo ? extractYouTubeId(selectedVideo.videoUrl) : null;
+  const youtubeId = selectedVideo
+    ? extractYouTubeId(selectedVideo.videoUrl)
+    : null;
 
   // ============================================
   // Cleanup helpers
@@ -411,7 +495,11 @@ export default function VideosPage() {
       rewardHandledRef.current = true;
 
       try {
-        const result = await trackWatch(videoId, 100, Math.max(1, Math.round(watchedSeconds)));
+        const result = await trackWatch(
+          videoId,
+          100,
+          Math.max(1, Math.round(watchedSeconds)),
+        );
         const rewardEarned = result?.rewardEarned ?? 0;
 
         if (rewardEarned > 0) {
@@ -435,8 +523,12 @@ export default function VideosPage() {
 
   const flashSkipWarning = useCallback(() => {
     setSkipWarning(true);
-    if (skipWarningTimeoutRef.current) clearTimeout(skipWarningTimeoutRef.current);
-    skipWarningTimeoutRef.current = setTimeout(() => setSkipWarning(false), 1500);
+    if (skipWarningTimeoutRef.current)
+      clearTimeout(skipWarningTimeoutRef.current);
+    skipWarningTimeoutRef.current = setTimeout(
+      () => setSkipWarning(false),
+      1500,
+    );
   }, []);
 
   // ============================================
@@ -445,8 +537,10 @@ export default function VideosPage() {
   const handleWatchVideo = (video: VideoWithProgress) => {
     setSelectedVideo(video);
     setIsPlayerOpen(true);
-    const resumeSeconds = ((video.watchProgress || 0) / 100) * (video.duration || 0);
-    maxWatchedTimeRef.current = video.watchProgress && video.watchProgress < 98 ? resumeSeconds : 0;
+    const resumeSeconds =
+      ((video.watchProgress || 0) / 100) * (video.duration || 0);
+    maxWatchedTimeRef.current =
+      video.watchProgress && video.watchProgress < 98 ? resumeSeconds : 0;
     lastReportedPctRef.current = video.watchProgress || 0;
     rewardHandledRef.current = false;
     setProgress(video.watchProgress || 0);
@@ -457,7 +551,9 @@ export default function VideosPage() {
     // Opened-video ping (progress tracking only; not a reward event).
     trackWatch(video.id, 0, 0);
 
-    setWatchHistory((prev) => (prev.includes(video.id) ? prev : [...prev, video.id]));
+    setWatchHistory((prev) =>
+      prev.includes(video.id) ? prev : [...prev, video.id],
+    );
   };
 
   const handleClosePlayer = () => {
@@ -494,7 +590,8 @@ export default function VideosPage() {
           modestbranding: 1,
           iv_load_policy: 3,
           playsinline: 1,
-          origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+          origin:
+            typeof window !== 'undefined' ? window.location.origin : undefined,
         },
         events: {
           onReady: (event: YouTubePlayerEvent) => {
@@ -508,27 +605,44 @@ export default function VideosPage() {
             stopPolling();
             pollIntervalRef.current = setInterval(() => {
               const player = ytPlayerRef.current;
-              if (!player || typeof player.getCurrentTime !== 'function') return;
-              if (player.getPlayerState?.() !== window.YT.PlayerState.PLAYING) return;
+              if (!player || typeof player.getCurrentTime !== 'function')
+                return;
+              if (player.getPlayerState?.() !== window.YT.PlayerState.PLAYING)
+                return;
 
               const current = player.getCurrentTime() || 0;
-              const duration = player.getDuration() || selectedVideo.duration || 0;
+              const duration =
+                player.getDuration() || selectedVideo.duration || 0;
 
-              if (current > maxWatchedTimeRef.current + SEEK_TOLERANCE_SECONDS) {
+              if (
+                current >
+                maxWatchedTimeRef.current + SEEK_TOLERANCE_SECONDS
+              ) {
                 // Forward jump beyond what's been legitimately watched —
                 // revert it and let the user know skipping isn't allowed.
                 player.seekTo(maxWatchedTimeRef.current, true);
                 flashSkipWarning();
               } else {
-                maxWatchedTimeRef.current = Math.max(maxWatchedTimeRef.current, current);
+                maxWatchedTimeRef.current = Math.max(
+                  maxWatchedTimeRef.current,
+                  current,
+                );
               }
 
-              const pct = duration ? Math.min((maxWatchedTimeRef.current / duration) * 100, 100) : 0;
+              const pct = duration
+                ? Math.min((maxWatchedTimeRef.current / duration) * 100, 100)
+                : 0;
               setProgress(pct);
 
-              if (Math.floor(pct / 5) > Math.floor(lastReportedPctRef.current / 5)) {
+              if (
+                Math.floor(pct / 5) > Math.floor(lastReportedPctRef.current / 5)
+              ) {
                 lastReportedPctRef.current = pct;
-                trackWatch(selectedVideo.id, Math.min(pct, 100), Math.floor(maxWatchedTimeRef.current));
+                trackWatch(
+                  selectedVideo.id,
+                  Math.min(pct, 100),
+                  Math.floor(maxWatchedTimeRef.current),
+                );
               }
             }, POLL_INTERVAL_MS);
           },
@@ -542,7 +656,10 @@ export default function VideosPage() {
             } else if (state === window.YT.PlayerState.ENDED) {
               setIsPlaying(false);
               setProgress(100);
-              const duration = ytPlayerRef.current?.getDuration?.() || selectedVideo.duration || 0;
+              const duration =
+                ytPlayerRef.current?.getDuration?.() ||
+                selectedVideo.duration ||
+                0;
               maxWatchedTimeRef.current = duration || maxWatchedTimeRef.current;
               reportCompletion(selectedVideo.id, maxWatchedTimeRef.current);
             }
@@ -586,14 +703,23 @@ export default function VideosPage() {
         flashSkipWarning();
         return;
       }
-      maxWatchedTimeRef.current = Math.max(maxWatchedTimeRef.current, currentTime);
+      maxWatchedTimeRef.current = Math.max(
+        maxWatchedTimeRef.current,
+        currentTime,
+      );
 
       const newProgress = (maxWatchedTimeRef.current / duration) * 100;
       setProgress(Math.min(newProgress, 100));
 
-      if (Math.floor(newProgress / 5) > Math.floor(lastReportedPctRef.current / 5)) {
+      if (
+        Math.floor(newProgress / 5) > Math.floor(lastReportedPctRef.current / 5)
+      ) {
         lastReportedPctRef.current = newProgress;
-        trackWatch(selectedVideo.id, Math.min(newProgress, 100), Math.floor(maxWatchedTimeRef.current));
+        trackWatch(
+          selectedVideo.id,
+          Math.min(newProgress, 100),
+          Math.floor(maxWatchedTimeRef.current),
+        );
       }
     }
   };
@@ -602,7 +728,10 @@ export default function VideosPage() {
   // timeupdate, in case a user drags a native OS/media-key scrub control.
   const handleSeeking = () => {
     if (!videoRef.current) return;
-    if (videoRef.current.currentTime > maxWatchedTimeRef.current + SEEK_TOLERANCE_SECONDS) {
+    if (
+      videoRef.current.currentTime >
+      maxWatchedTimeRef.current + SEEK_TOLERANCE_SECONDS
+    ) {
       videoRef.current.currentTime = maxWatchedTimeRef.current;
       flashSkipWarning();
     }
@@ -612,7 +741,8 @@ export default function VideosPage() {
     setIsPlaying(false);
     setProgress(100);
     if (selectedVideo) {
-      const duration = videoRef.current?.duration || selectedVideo.duration || 0;
+      const duration =
+        videoRef.current?.duration || selectedVideo.duration || 0;
       maxWatchedTimeRef.current = Math.max(maxWatchedTimeRef.current, duration);
       reportCompletion(selectedVideo.id, maxWatchedTimeRef.current);
     }
@@ -625,7 +755,8 @@ export default function VideosPage() {
       !hasResumedRef.current &&
       videoRef.current.duration
     ) {
-      const resumeTime = (selectedVideo.watchProgress / 100) * videoRef.current.duration;
+      const resumeTime =
+        (selectedVideo.watchProgress / 100) * videoRef.current.duration;
       if (selectedVideo.watchProgress < 98) {
         videoRef.current.currentTime = resumeTime;
         maxWatchedTimeRef.current = resumeTime;
@@ -721,7 +852,8 @@ export default function VideosPage() {
   useEffect(() => {
     return () => {
       stopPolling();
-      if (skipWarningTimeoutRef.current) clearTimeout(skipWarningTimeoutRef.current);
+      if (skipWarningTimeoutRef.current)
+        clearTimeout(skipWarningTimeoutRef.current);
     };
   }, [stopPolling]);
 
@@ -813,7 +945,9 @@ export default function VideosPage() {
             <div className="bg-gradient-to-r from-[#F59E0B] to-[#FBBF24] p-1 rounded-lg">
               <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
             </div>
-            <h2 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-white">🔥 Recommended for You</h2>
+            <h2 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-white">
+              🔥 Recommended for You
+            </h2>
             <span className="text-[8px] sm:text-[10px] text-[#94A3B8] dark:text-[#64748B] hidden sm:inline">
               • Based on your activity
             </span>
@@ -838,7 +972,9 @@ export default function VideosPage() {
                       sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-3xl sm:text-4xl">🎬</div>
+                    <div className="w-full h-full flex items-center justify-center text-3xl sm:text-4xl">
+                      🎬
+                    </div>
                   )}
                   <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
@@ -861,7 +997,8 @@ export default function VideosPage() {
                   </h3>
                   <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
                     <span className="text-[8px] sm:text-[9px] text-[#22C55E] font-bold bg-[#F0FDF4] dark:bg-[#22C55E]/20 px-1 py-0.5 rounded-full flex items-center gap-0.5">
-                      <Award className="w-2 h-2 sm:w-2.5 sm:h-2.5" />+{formatAmount(video.rewardAmount)}
+                      <Award className="w-2 h-2 sm:w-2.5 sm:h-2.5" />+
+                      {formatAmount(video.rewardAmount)}
                     </span>
                     <span className="text-[8px] sm:text-[9px] text-[#64748B] dark:text-[#94A3B8] flex items-center gap-0.5">
                       <Eye className="w-2 h-2 sm:w-2.5 sm:h-2.5" />
@@ -879,9 +1016,13 @@ export default function VideosPage() {
       <div className="space-y-2 sm:space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-white">
-            {selectedCategory === 'all' ? 'All Videos' : categories.find((c) => c.value === selectedCategory)?.label}
+            {selectedCategory === 'all'
+              ? 'All Videos'
+              : categories.find((c) => c.value === selectedCategory)?.label}
           </h2>
-          <span className="text-[8px] sm:text-[10px] text-[#94A3B8] dark:text-[#64748B]">{total} videos</span>
+          <span className="text-[8px] sm:text-[10px] text-[#94A3B8] dark:text-[#64748B]">
+            {total} videos
+          </span>
         </div>
 
         {isLoading && page === 1 ? (
@@ -889,7 +1030,9 @@ export default function VideosPage() {
         ) : allVideos.length === 0 ? (
           <div className="text-center py-8 sm:py-12 bg-white dark:bg-[#1E293B] rounded-xl border border-[#F1F5F9] dark:border-[#334155]">
             <div className="text-4xl sm:text-5xl mb-2 sm:mb-3">🎬</div>
-            <p className="text-sm sm:text-base text-[#64748B] dark:text-[#94A3B8] font-medium">No videos found</p>
+            <p className="text-sm sm:text-base text-[#64748B] dark:text-[#94A3B8] font-medium">
+              No videos found
+            </p>
             <p className="text-[10px] sm:text-xs text-[#94A3B8] dark:text-[#64748B] mt-0.5 sm:mt-1">
               Try adjusting your search or filters
             </p>
@@ -901,7 +1044,9 @@ export default function VideosPage() {
               const isCompleted = progress >= 80;
               const isWatched = progress > 0;
               const isSponsored = video.isSponsored || false;
-              const isRecommended = recommendedVideos.some((v) => v.id === video.id);
+              const isRecommended = recommendedVideos.some(
+                (v) => v.id === video.id,
+              );
 
               return (
                 <motion.div
@@ -910,7 +1055,9 @@ export default function VideosPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                   className={`bg-white dark:bg-[#1E293B] rounded-xl border ${
-                    isRecommended ? 'border-[#F59E0B]/30 dark:border-[#F59E0B]/20' : 'border-[#F1F5F9] dark:border-[#334155]'
+                    isRecommended
+                      ? 'border-[#F59E0B]/30 dark:border-[#F59E0B]/20'
+                      : 'border-[#F1F5F9] dark:border-[#334155]'
                   } shadow-sm p-2.5 sm:p-3 md:p-4 flex gap-2.5 sm:gap-3 md:gap-4 cursor-pointer hover:shadow-md hover:border-[#2563EB] dark:hover:border-[#60A5FA] transition-all group relative touch-min-target`}
                   onClick={() => handleWatchVideo(video)}
                 >
@@ -931,7 +1078,9 @@ export default function VideosPage() {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xl sm:text-2xl md:text-3xl">🎬</div>
+                      <div className="w-full h-full flex items-center justify-center text-xl sm:text-2xl md:text-3xl">
+                        🎬
+                      </div>
                     )}
 
                     {isSponsored && (
@@ -978,7 +1127,8 @@ export default function VideosPage() {
                         {formatDuration(video.duration)}
                       </span>
                       <span className="text-[8px] sm:text-[9px] md:text-xs font-bold text-[#22C55E] dark:text-[#4ADE80] bg-[#F0FDF4] dark:bg-[#22C55E]/20 px-1 sm:px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                        <Award className="w-[9px] h-[9px] sm:w-2.5 sm:h-2.5" />+{formatAmount(video.rewardAmount)}
+                        <Award className="w-[9px] h-[9px] sm:w-2.5 sm:h-2.5" />+
+                        {formatAmount(video.rewardAmount)}
                       </span>
                       <span className="hidden xs:inline-block text-[8px] sm:text-[9px] md:text-xs text-[#64748B] dark:text-[#94A3B8] bg-[#F8FAFC] dark:bg-[#334155] px-1 sm:px-1.5 py-0.5 rounded-full">
                         {video.category}
@@ -1007,7 +1157,9 @@ export default function VideosPage() {
                           />
                         </div>
                         <p className="text-[7px] sm:text-[8px] md:text-[9px] text-[#64748B] dark:text-[#94A3B8] mt-0.5">
-                          {isCompleted ? '✅ Completed' : `${Math.round(progress)}% watched`}
+                          {isCompleted
+                            ? '✅ Completed'
+                            : `${Math.round(progress)}% watched`}
                         </p>
                       </div>
                     )}
@@ -1026,7 +1178,10 @@ export default function VideosPage() {
         )}
 
         {hasMore && (
-          <div id="load-more-trigger" className="py-3 sm:py-4 flex justify-center">
+          <div
+            id="load-more-trigger"
+            className="py-3 sm:py-4 flex justify-center"
+          >
             {isLoadingMore ? (
               <div className="flex items-center gap-2 text-[#64748B] dark:text-[#94A3B8]">
                 <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
@@ -1094,7 +1249,10 @@ export default function VideosPage() {
                 {youtubeId ? (
                   <>
                     {/* YouTube IFrame API mounts here */}
-                    <div ref={ytContainerRef} className="absolute inset-0 w-full h-full" />
+                    <div
+                      ref={ytContainerRef}
+                      className="absolute inset-0 w-full h-full"
+                    />
                     {/* Blocks clicks/double-clicks reaching the iframe (native
                         YouTube skip-forward/back double-tap, branding links,
                         etc.) while still letting our custom controls work. */}
@@ -1122,8 +1280,12 @@ export default function VideosPage() {
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
-                      <div className="text-4xl sm:text-5xl md:text-6xl mb-2 sm:mb-3">🎬</div>
-                      <p className="text-white/60 text-[10px] sm:text-xs md:text-sm">{selectedVideo.title}</p>
+                      <div className="text-4xl sm:text-5xl md:text-6xl mb-2 sm:mb-3">
+                        🎬
+                      </div>
+                      <p className="text-white/60 text-[10px] sm:text-xs md:text-sm">
+                        {selectedVideo.title}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -1177,8 +1339,10 @@ export default function VideosPage() {
                     </div>
 
                     <span className="text-white/80 text-[8px] sm:text-[10px] md:text-xs font-mono whitespace-nowrap">
-                      {formatTime((progress / 100) * (selectedVideo.duration || 272))} /{' '}
-                      {formatDuration(selectedVideo.duration || 272)}
+                      {formatTime(
+                        (progress / 100) * (selectedVideo.duration || 272),
+                      )}{' '}
+                      / {formatDuration(selectedVideo.duration || 272)}
                     </span>
 
                     <button
@@ -1203,15 +1367,22 @@ export default function VideosPage() {
                   <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mt-1.5 sm:mt-2 md:mt-3">
                     <div className="flex-1">
                       <div className="flex items-center justify-between text-[8px] sm:text-[9px] md:text-xs text-white/60 mb-0.5">
-                        <span className="hidden xs:inline">Watch to earn {formatAmount(selectedVideo.rewardAmount)}</span>
-                        <span className="xs:hidden">Earn {formatAmount(selectedVideo.rewardAmount)}</span>
+                        <span className="hidden xs:inline">
+                          Watch to earn{' '}
+                          {formatAmount(selectedVideo.rewardAmount)}
+                        </span>
+                        <span className="xs:hidden">
+                          Earn {formatAmount(selectedVideo.rewardAmount)}
+                        </span>
                         <span>{Math.round(progress)}%</span>
                       </div>
                       <div className="h-1 sm:h-1.5 bg-white/10 rounded-full overflow-hidden">
                         <div
                           className={cn(
                             'h-full rounded-full transition-all duration-500',
-                            progress >= 80 ? 'bg-[#22C55E]' : 'bg-gradient-to-r from-[#2563EB] to-[#22C55E]',
+                            progress >= 80
+                              ? 'bg-[#22C55E]'
+                              : 'bg-gradient-to-r from-[#2563EB] to-[#22C55E]',
                           )}
                           style={{ width: `${progress}%` }}
                         />
@@ -1249,11 +1420,19 @@ export default function VideosPage() {
                       : 'bg-white/10 border border-white/20',
                   )}
                 >
-                  <Award className={cn('w-4 h-4 sm:w-5 sm:h-5', rewardToast.amount > 0 ? 'text-[#22C55E]' : 'text-white/70')} />
+                  <Award
+                    className={cn(
+                      'w-4 h-4 sm:w-5 sm:h-5',
+                      rewardToast.amount > 0
+                        ? 'text-[#22C55E]'
+                        : 'text-white/70',
+                    )}
+                  />
                   <p className="text-[11px] sm:text-xs md:text-sm text-white font-medium">
                     {rewardToast.amount > 0
                       ? `Nice! You earned ${formatAmount(rewardToast.amount)}, added to your wallet.`
-                      : rewardToast.message || "You've already earned this reward — come back tomorrow!"}
+                      : rewardToast.message ||
+                        "You've already earned this reward — come back tomorrow!"}
                   </p>
                 </motion.div>
               )}
@@ -1262,9 +1441,13 @@ export default function VideosPage() {
             {/* Player Bottom Info */}
             <div className="p-2 sm:p-3 md:p-4 bg-black/50 backdrop-blur-sm border-t border-white/10 safe-bottom">
               <div className="max-w-4xl mx-auto w-full">
-                <h3 className="text-white font-bold text-[10px] sm:text-xs md:text-sm">{selectedVideo.title}</h3>
+                <h3 className="text-white font-bold text-[10px] sm:text-xs md:text-sm">
+                  {selectedVideo.title}
+                </h3>
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 md:gap-3 mt-0.5 sm:mt-1">
-                  <span className="text-[8px] sm:text-[10px] md:text-xs text-white/60">{selectedVideo.category}</span>
+                  <span className="text-[8px] sm:text-[10px] md:text-xs text-white/60">
+                    {selectedVideo.category}
+                  </span>
                   <span className="text-white/20">•</span>
                   <span className="text-[8px] sm:text-[10px] md:text-xs text-white/60 flex items-center gap-0.5">
                     <Eye className="w-2.5 h-2.5 sm:w-3 sm:h-3" />

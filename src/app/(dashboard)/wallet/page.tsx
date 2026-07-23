@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowUpRight,
@@ -112,16 +112,8 @@ export default function WalletPage() {
     'all' | 'pending' | 'completed' | 'failed'
   >('all');
 
-  useEffect(() => {
-    fetchWalletData();
-    fetchWithdrawalActivity();
-  }, []);
-
-  useEffect(() => {
-    fetchWithdrawalActivity();
-  }, [withdrawalFilter]);
-
-  const fetchWalletData = async () => {
+  // Fetch wallet data - wrapped in useCallback
+  const fetchWalletData = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch('/api/wallet?limit=5');
@@ -132,9 +124,10 @@ export default function WalletPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchWithdrawalActivity = async () => {
+  // Fetch withdrawal activity - wrapped in useCallback with dependency on withdrawalFilter
+  const fetchWithdrawalActivity = useCallback(async () => {
     setIsWithdrawalsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -152,7 +145,18 @@ export default function WalletPage() {
     } finally {
       setIsWithdrawalsLoading(false);
     }
-  };
+  }, [withdrawalFilter]); // Added withdrawalFilter as dependency
+
+  // Initial load - now includes fetchWithdrawalActivity in dependencies
+  useEffect(() => {
+    fetchWalletData();
+    fetchWithdrawalActivity();
+  }, [fetchWalletData, fetchWithdrawalActivity]); // Added both functions
+
+  // Fetch when filter changes - now uses fetchWithdrawalActivity
+  useEffect(() => {
+    fetchWithdrawalActivity();
+  }, [fetchWithdrawalActivity]); // Now depends on the memoized function
 
   const handleCopyAddress = (address: string) => {
     navigator.clipboard?.writeText(address);

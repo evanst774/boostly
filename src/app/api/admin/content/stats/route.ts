@@ -9,6 +9,8 @@ import { games } from '@/lib/db/schema/games';
 import { surveys } from '@/lib/db/schema/surveys';
 import { sql } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const currentUser = await getCurrentUser();

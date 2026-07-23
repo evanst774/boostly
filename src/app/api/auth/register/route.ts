@@ -17,6 +17,7 @@ import {
   REFERRAL_COMMISSION_RATE,
 } from '@/modules/referrals/service';
 
+export const dynamic = 'force-dynamic';
 // ─── Validation ─────────────────────────────────────────────
 
 const registerSchema = z.object({

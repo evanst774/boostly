@@ -1,7 +1,7 @@
 // src/app/admin/users/[id]/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -30,11 +30,8 @@ export default function UserDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    fetchUser();
-  }, [userId]);
-
-  const fetchUser = async () => {
+  // Fetch user - wrapped in useCallback with userId dependency
+  const fetchUser = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/admin/users/${userId}`);
@@ -45,7 +42,12 @@ export default function UserDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userId]);
+
+  // Fetch user on mount - now includes fetchUser in dependencies
+  useEffect(() => {
+    fetchUser();
+  }, [fetchUser]);
 
   const handleCopyId = () => {
     navigator.clipboard.writeText(userId);

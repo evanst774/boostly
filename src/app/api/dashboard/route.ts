@@ -9,6 +9,8 @@ import {
   surveysService,
 } from '@/modules/content/services';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const user = await getCurrentUser();

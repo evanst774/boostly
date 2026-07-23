@@ -5,6 +5,8 @@ import { requirePermission } from '@/lib/auth/permissions';
 import { referralsService } from '@/modules/referrals/service';
 import { ReferralsPermissions } from '@/modules/referrals/permissions';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } },

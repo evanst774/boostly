@@ -194,11 +194,12 @@ export function useNotifications(limit: number = 20): UseNotificationsReturn {
   }, [fetchNotifications, hasMore, isLoading]);
 
   // ─── Initial fetch ────────────────────────────────────
+  // Now includes fetchNotifications in dependencies
   useEffect(() => {
     if (user) {
       fetchNotifications(true);
     }
-  }, [user]);
+  }, [user, fetchNotifications]); // Added fetchNotifications to dependencies
 
   return {
     notifications,

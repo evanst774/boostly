@@ -17,6 +17,8 @@ import type {
 
 // ─── Fetch sudo settings for the current user ──────────────────────────
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const user = await getCurrentUser();

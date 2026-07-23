@@ -7,6 +7,8 @@ import { db } from '@/lib/db';
 import { roles, permissions, rolePermissions } from '@/lib/db/schema/rbac';
 import { eq, asc } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     try {
         const user = await getCurrentUser();

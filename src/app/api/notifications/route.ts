@@ -8,6 +8,8 @@ import type {
   NotificationType,
 } from '@/lib/notifications/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth();

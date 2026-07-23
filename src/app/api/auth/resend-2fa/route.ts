@@ -5,6 +5,7 @@ import { users, otpVerifications, twoFASessions } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
 // Generate and send OTP for email 2FA
 async function sendEmailOTP(
   userId: string,

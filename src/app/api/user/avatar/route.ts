@@ -6,6 +6,8 @@ import { users } from '@/lib/db/schema/users';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const updateAvatarSchema = z.object({
   avatarUrl: z.url(),
   avatarKey: z.string(),

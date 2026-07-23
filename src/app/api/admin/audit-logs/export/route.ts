@@ -8,6 +8,8 @@ import { auditLogs, AuditEntityType } from '@/lib/db/schema/audit';
 import { users } from '@/lib/db/schema/users';
 import { and, desc, eq, like, or, sql, SQL } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();

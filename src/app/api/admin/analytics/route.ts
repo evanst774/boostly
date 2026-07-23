@@ -5,6 +5,8 @@ import { requirePermission } from '@/lib/auth/permissions';
 import { PermissionKeys } from '@/modules/rbac/permissions';
 import { adminStatsService } from '@/modules/admin/stats.service';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const currentUser = await getCurrentUser();

@@ -16,14 +16,12 @@ import {
   Check,
   Gift,
   AlertCircle,
-  ArrowLeft,
-  PartyPopper,
-  Rocket,
   BadgeCheck,
-  Sparkles,
-  Shield,
-  Zap,
-  Coins,
+  ArrowRight,
+  PlayCircle,
+  Users,
+  Wallet,
+  PartyPopper,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -57,26 +55,40 @@ const FacebookIcon = () => (
   </svg>
 );
 
-const BoostlyLogoIcon = () => (
-  <svg className="w-12 h-12" viewBox="0 0 40 40" fill="none">
-    <rect width="40" height="40" rx="12" fill="url(#gradient)" />
-    <defs>
-      <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#2563EB" />
-        <stop offset="100%" stopColor="#7C3AED" />
-      </linearGradient>
-    </defs>
-    <path d="M12 28V12h16v16H12z" fill="white" opacity="0.2" />
-    <path d="M16 24V16h8v8h-8z" fill="white" />
-    <path
-      d="M20 12v4M20 24v4M12 20h4M24 20h4"
-      stroke="white"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
-    <circle cx="20" cy="20" r="2" fill="white" />
-  </svg>
-);
+// ─── Reward chip (signature decoration) ───────────
+// Colors + animation are hardcoded here (not pulled from tailwind.config)
+// so this renders correctly even if your theme extensions aren't compiling.
+
+const RewardChip = ({
+  icon,
+  label,
+  tone,
+  style,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  tone: 'gold' | 'primary' | 'success';
+  style?: React.CSSProperties;
+}) => {
+  const toneClasses = {
+    gold: 'bg-[#FBBF24]/15 border-[#FBBF24]/30 text-[#FBBF24]',
+    primary: 'bg-[#2563EB]/15 border-[#2563EB]/30 text-[#93C5FD]',
+    success: 'bg-[#22C55E]/15 border-[#22C55E]/30 text-[#4ADE80]',
+  }[tone];
+
+  return (
+    <div
+      className={cn(
+        'absolute flex items-center gap-2 px-3.5 py-2 rounded-full border backdrop-blur-md shadow-lg',
+        toneClasses,
+      )}
+      style={{ ...style, animation: 'boostlyFloat 3s ease-in-out infinite' }}
+    >
+      {icon}
+      <span className="text-xs font-semibold whitespace-nowrap">{label}</span>
+    </div>
+  );
+};
 
 // ─── Main Component ───────────────────────────────
 
@@ -87,9 +99,6 @@ export default function RegisterPage() {
   const [isOAuthLoading, setIsOAuthLoading] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [currentStep, setCurrentStep] = useState<'info' | 'auth' | 'complete'>(
-    'info',
-  );
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -100,38 +109,15 @@ export default function RegisterPage() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [referralValid, setReferralValid] = useState<boolean | null>(null);
   const [isCheckingReferral, setIsCheckingReferral] = useState(false);
-  const referralTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const referralTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ─── Detect mobile ──────────────────────────────
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 640);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // ─── Capture referral code from URL ──────────────
-  useEffect(() => {
-    const ref = searchParams.get('ref');
-    if (ref) {
-      const code = ref.toUpperCase().trim();
-      setForm((prev) => ({ ...prev, referralCode: code }));
-      toast.success(`Referral code applied: ${code}`, {
-        duration: 4000,
-        icon: <Gift className="w-5 h-5 text-gold" />,
-      });
-      checkReferralCode(code);
-    }
-
-    return () => {
-      if (referralTimeoutRef.current) {
-        clearTimeout(referralTimeoutRef.current);
-      }
-    };
-  }, [searchParams]);
+  // ─── Password requirements ──────────────────────────
+  const [passwordRequirements, setPasswordRequirements] = useState({
+    length: false,
+    number: false,
+    upper: false,
+    special: false,
+  });
 
   // ─── Check referral code validity ──────────────
   const checkReferralCode = useCallback(async (code: string) => {
@@ -151,13 +137,13 @@ export default function RegisterPage() {
         setReferralValid(true);
         toast.success("Valid referral code! You'll get a welcome bonus.", {
           duration: 3000,
-          icon: <BadgeCheck className="w-5 h-5 text-success" />,
+          icon: <BadgeCheck className="w-5 h-5 text-[#22C55E]" />,
         });
       } else {
         setReferralValid(false);
         toast.error('Invalid referral code. Please check and try again.', {
           duration: 3000,
-          icon: <AlertCircle className="w-5 h-5 text-danger" />,
+          icon: <AlertCircle className="w-5 h-5 text-[#EF4444]" />,
         });
       }
     } catch {
@@ -166,6 +152,38 @@ export default function RegisterPage() {
       setIsCheckingReferral(false);
     }
   }, []);
+
+  // ─── Capture referral code from URL ──────────────
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      const code = ref.toUpperCase().trim();
+      setForm((prev) => ({ ...prev, referralCode: code }));
+      toast.success(`Referral code applied: ${code}`, {
+        duration: 4000,
+        icon: <Gift className="w-5 h-5 text-[#FBBF24]" />,
+      });
+      checkReferralCode(code);
+    }
+
+    return () => {
+      if (referralTimeoutRef.current) {
+        clearTimeout(referralTimeoutRef.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // ─── Check password requirements ──────────────────
+  useEffect(() => {
+    const pw = form.password;
+    setPasswordRequirements({
+      length: pw.length >= 8,
+      number: /[0-9]/.test(pw),
+      upper: /[A-Z]/.test(pw),
+      special: /[^A-Za-z0-9]/.test(pw),
+    });
+  }, [form.password]);
 
   // ─── Handle referral code change ──────────────
   const handleReferralChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -285,9 +303,9 @@ export default function RegisterPage() {
       toast.success(successMessage, {
         duration: 5000,
         icon: data.referral ? (
-          <PartyPopper className="w-5 h-5 text-gold" />
+          <PartyPopper className="w-5 h-5 text-[#FBBF24]" />
         ) : (
-          <Check className="w-5 h-5 text-success" />
+          <Check className="w-5 h-5 text-[#22C55E]" />
         ),
       });
 
@@ -299,513 +317,563 @@ export default function RegisterPage() {
     }
   };
 
-  // ─── Step Navigation ──────────────────────────────
-  const goToStep = (step: 'info' | 'auth') => {
-    setCurrentStep(step);
-  };
+  const pwScore = [
+    passwordRequirements.length,
+    passwordRequirements.upper,
+    passwordRequirements.number,
+    passwordRequirements.special,
+  ].filter(Boolean).length;
 
   // ─── Render ──────────────────────────────────────────
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      <div className="w-full max-w-md">
-        {/* Enhanced Header */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 rounded-2xl blur-xl opacity-30 animate-pulse" />
-              <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center shadow-xl">
-                <BoostlyLogoIcon />
+    <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-0 lg:p-6">
+      {/* Hardcoded keyframes — not dependent on tailwind.config animation/keyframes */}
+      <style>{`
+        @keyframes boostlyFloat {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-8px); }
+        }
+      `}</style>
+
+      <div className="w-full lg:max-w-[1100px] grid grid-cols-1 lg:grid-cols-[420px_1fr] lg:rounded-3xl lg:border lg:border-white/10 lg:shadow-xl overflow-hidden bg-[#1E293B]/30">
+        {/* ═══════════ LEFT PANEL (brand) ═══════════ */}
+        <div
+          className="hidden lg:flex flex-col relative overflow-hidden p-10"
+          style={{
+            background:
+              'linear-gradient(160deg, #0F172A 0%, #1E293B 55%, #334155 100%)',
+          }}
+        >
+          {/* subtle grid overlay */}
+          <div
+            className="absolute inset-0 opacity-[0.04] pointer-events-none"
+            style={{
+              backgroundImage:
+                'linear-gradient(rgba(37,99,235,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,.5) 1px, transparent 1px)',
+              backgroundSize: '32px 32px',
+            }}
+          />
+
+          {/* Brand */}
+          <div className="relative z-10 flex items-center gap-3 mb-2">
+            <div className="relative w-9 h-9 flex-shrink-0">
+              <div className="absolute inset-0 bg-gradient-to-r from-[#2563EB] via-[#FBBF24] to-[#8B5CF6] rounded-lg blur-md opacity-50" />
+              <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#FBBF24] flex items-center justify-center">
+                <span className="text-base font-black text-white">B</span>
+              </div>
+            </div>
+            <span className="text-xl font-bold text-white tracking-tight">
+              Boostly
+            </span>
+          </div>
+          <p className="relative z-10 text-sm text-white/50 mb-5">
+            Watch. Refer. Earn.
+          </p>
+          <div className="relative z-10 w-9 h-0.5 bg-[#FBBF24] mb-7" />
+
+          <h1 className="relative z-10 text-[28px] leading-[1.25] font-bold text-white mb-3.5">
+            Built to reward{' '}
+            <span
+              style={{
+                background: 'linear-gradient(135deg, #FBBF24, #F59E0B)',
+                WebkitBackgroundClip: 'text',
+                backgroundClip: 'text',
+                color: 'transparent',
+              }}
+            >
+              every minute
+            </span>{' '}
+            you spend here
+          </h1>
+          <p className="relative z-10 text-sm text-white/50 leading-relaxed max-w-[280px] mb-9">
+            Join thousands earning daily points, referral bonuses, and cash
+            payouts on Boostly.
+          </p>
+
+          {/* Feature list */}
+          <div className="relative z-10 flex flex-col gap-5">
+            <div className="flex gap-3.5 items-start">
+              <div className="w-9 h-9 flex-shrink-0 rounded-[10px] border border-[#2563EB]/35 bg-[#2563EB]/10 flex items-center justify-center text-[#93C5FD]">
+                <PlayCircle className="w-[18px] h-[18px]" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white mb-0.5">
+                  Watch &amp; Earn
+                </div>
+                <div className="text-[12.5px] text-white/45 leading-relaxed">
+                  Get rewarded in points for every video you watch
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3.5 items-start">
+              <div className="w-9 h-9 flex-shrink-0 rounded-[10px] border border-[#FBBF24]/35 bg-[#FBBF24]/10 flex items-center justify-center text-[#FBBF24]">
+                <Users className="w-[18px] h-[18px]" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white mb-0.5">
+                  Refer Friends
+                </div>
+                <div className="text-[12.5px] text-white/45 leading-relaxed">
+                  Earn a welcome bonus for every friend who joins
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3.5 items-start">
+              <div className="w-9 h-9 flex-shrink-0 rounded-[10px] border border-[#8B5CF6]/35 bg-[#8B5CF6]/10 flex items-center justify-center text-[#C4B5FD]">
+                <Wallet className="w-[18px] h-[18px]" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white mb-0.5">
+                  Instant Payouts
+                </div>
+                <div className="text-[12.5px] text-white/45 leading-relaxed">
+                  Cash out to fiat or crypto whenever you like
+                </div>
               </div>
             </div>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-navy mb-2">
-            Join Boostly
-          </h1>
-          <p className="text-text-secondary text-sm flex items-center justify-center gap-2">
-            <Sparkles className="w-4 h-4 text-gold" />
-            Start earning rewards today
-            <Sparkles className="w-4 h-4 text-gold" />
-          </p>
-        </div>
 
-        {/* Feature Badges */}
-        <div className="grid grid-cols-3 gap-2 mb-6">
-          {[
-            { icon: Coins, label: 'Earn Rewards' },
-            { icon: Zap, label: 'Fast Payouts' },
-            { icon: Shield, label: 'Secure' },
-          ].map((item, i) => (
-            <div
-              key={i}
-              className="flex flex-col items-center gap-1 p-2 bg-white/50 backdrop-blur-sm rounded-xl border border-gray-200/50"
+          {/* Signature decoration: floating reward chips */}
+          <div className="relative z-10 flex-1 min-h-[140px] mt-8">
+            <RewardChip
+              icon={<Gift className="w-3.5 h-3.5" />}
+              label="+500 referral bonus"
+              tone="gold"
+              style={{ top: 8, left: 8, animationDelay: '0s' }}
+            />
+            <RewardChip
+              icon={<PlayCircle className="w-3.5 h-3.5" />}
+              label="+50 pts watched"
+              tone="primary"
+              style={{ top: 64, left: 96, animationDelay: '.8s' }}
+            />
+            <RewardChip
+              icon={<Wallet className="w-3.5 h-3.5" />}
+              label="$24.80 available"
+              tone="success"
+              style={{ top: 128, left: 16, animationDelay: '1.6s' }}
+            />
+          </div>
+
+          <div className="relative z-10 mt-auto pt-6 text-sm text-white/50">
+            Already have an account?{' '}
+            <Link
+              href="/login"
+              className="text-[#FBBF24] font-semibold hover:text-[#F59E0B] transition-colors"
             >
-              <item.icon className="w-4 h-4 text-primary" />
-              <span className="text-[10px] font-medium text-text-secondary">
-                {item.label}
-              </span>
-            </div>
-          ))}
+              Log in
+            </Link>
+          </div>
         </div>
 
-        {/* Main Card */}
-        <div className="bg-white rounded-3xl shadow-2xl border border-gray-200/50 overflow-hidden">
-          {/* Back Button */}
-          <div className="px-6 pt-4">
+        {/* ═══════════ RIGHT PANEL (form) ═══════════ */}
+        <div className="flex flex-col bg-[#0F172A] px-5 py-8 sm:px-10 sm:py-10 lg:px-12 lg:py-11 max-h-screen overflow-y-auto">
+          {/* Mobile-only brand header */}
+          <div className="lg:hidden flex items-center gap-2.5 mb-8">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#FBBF24] flex items-center justify-center flex-shrink-0">
+              <span className="text-sm font-black text-white">B</span>
+            </div>
+            <span className="text-lg font-bold text-white tracking-tight">
+              Boostly
+            </span>
+          </div>
+
+          <div className="text-center lg:text-left mb-7">
+            <h2 className="text-2xl sm:text-[26px] font-bold text-white mb-1.5">
+              Create your account
+            </h2>
+            <p className="text-[13.5px] text-white/45">
+              Join Boostly and start earning daily rewards.
+            </p>
+          </div>
+
+          {/* Step indicator */}
+          <div className="flex items-center justify-center lg:justify-start mb-8">
+            {[
+              { n: 1, label: 'Account', state: 'active' as const },
+              { n: 2, label: 'Verify Email', state: 'upcoming' as const },
+              { n: 3, label: 'Start Earning', state: 'upcoming' as const },
+            ].map((step, i, arr) => (
+              <div key={step.n} className="flex items-center">
+                <div className="flex flex-col items-center gap-1.5">
+                  <div
+                    className={cn(
+                      'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border transition-all',
+                      step.state === 'active'
+                        ? 'border-[#2563EB] text-[#93C5FD] shadow-[0_0_0_3px_rgba(37,99,235,.15)]'
+                        : 'border-white/15 text-white/30 bg-white/[0.02]',
+                    )}
+                  >
+                    {step.n}
+                  </div>
+                  <div
+                    className={cn(
+                      'hidden sm:block text-[11px] font-medium whitespace-nowrap',
+                      step.state === 'active'
+                        ? 'text-[#93C5FD]'
+                        : 'text-white/30',
+                    )}
+                  >
+                    {step.label}
+                  </div>
+                </div>
+                {i < arr.length - 1 && (
+                  <div className="w-10 sm:w-16 h-px bg-white/10 mx-1 mb-4" />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Social sign-up */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-6">
             <button
               type="button"
-              onClick={() => router.push('/')}
-              className="flex items-center gap-1.5 text-text-muted hover:text-navy text-sm transition-colors group touch-manipulation"
+              onClick={() => handleOAuthSignup('google')}
+              disabled={isOAuthLoading !== null}
+              className="flex-1 py-3 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex items-center justify-center gap-3 text-sm font-medium text-white/80 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[48px]"
             >
-              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-              Back
+              {isOAuthLoading === 'google' ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <GoogleIcon />
+              )}
+              <span>Google</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleOAuthSignup('facebook')}
+              disabled={isOAuthLoading !== null}
+              className="flex-1 py-3 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex items-center justify-center gap-3 text-sm font-medium text-white/80 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[48px]"
+            >
+              {isOAuthLoading === 'facebook' ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <FacebookIcon />
+              )}
+              <span>Facebook</span>
             </button>
           </div>
 
-          <div className="p-6 sm:p-8">
-            {/* Step Indicator */}
-            <div className="flex items-center gap-2 mb-6">
-              {['info', 'auth'].map((step, index) => (
-                <div key={step} className="flex items-center gap-2 flex-1">
+          {/* Divider */}
+          <div className="flex items-center gap-4 mb-6">
+            <div className="flex-1 h-px bg-white/10" />
+            <span className="text-[10px] text-white/30 font-medium uppercase tracking-wider">
+              or continue with email
+            </span>
+            <div className="flex-1 h-px bg-white/10" />
+          </div>
+
+          {/* Referral banner */}
+          {form.referralCode && (
+            <div
+              className={cn(
+                'flex items-center gap-3 p-3 rounded-xl mb-5 transition-all text-sm',
+                referralValid === true
+                  ? 'bg-[#22C55E]/10 border border-[#22C55E]/20'
+                  : referralValid === false
+                    ? 'bg-[#EF4444]/10 border border-[#EF4444]/20'
+                    : 'bg-[#FBBF24]/10 border border-[#FBBF24]/20',
+              )}
+            >
+              {referralValid === true ? (
+                <BadgeCheck className="w-4 h-4 text-[#4ADE80] flex-shrink-0" />
+              ) : referralValid === false ? (
+                <AlertCircle className="w-4 h-4 text-[#F87171] flex-shrink-0" />
+              ) : (
+                <Gift className="w-4 h-4 text-[#FBBF24] flex-shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-white">
+                  {referralValid === true
+                    ? 'Valid referral code!'
+                    : referralValid === false
+                      ? 'Invalid referral code'
+                      : 'Referral code applied'}
+                </p>
+                <p className="text-[10px] text-white/40 truncate">
+                  {referralValid === true
+                    ? "You'll get a welcome bonus when you sign up!"
+                    : referralValid === false
+                      ? 'Please check the code and try again'
+                      : `Code: ${form.referralCode}`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setForm((prev) => ({ ...prev, referralCode: '' }));
+                  setReferralValid(null);
+                }}
+                className="text-white/30 hover:text-white/70 transition-colors flex-shrink-0 p-1 touch-manipulation"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Name */}
+            <div>
+              <label className="text-xs font-semibold text-white/70 block mb-1.5">
+                Full Name
+              </label>
+              <div className="relative">
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                  autoComplete="name"
+                  className="w-full py-2.5 pl-10 pr-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all touch-manipulation"
+                  placeholder="John Doe"
+                />
+              </div>
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="text-xs font-semibold text-white/70 block mb-1.5">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  required
+                  autoComplete="email"
+                  className="w-full py-2.5 pl-10 pr-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all touch-manipulation"
+                  placeholder="you@example.com"
+                />
+              </div>
+            </div>
+
+            {/* Password + Confirm */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-semibold text-white/70 block mb-1.5">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={form.password}
+                    onChange={(e) =>
+                      setForm({ ...form, password: e.target.value })
+                    }
+                    required
+                    autoComplete="new-password"
+                    className="w-full py-2.5 pl-10 pr-10 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all touch-manipulation"
+                    placeholder="Create a password"
+                  />
                   <button
                     type="button"
-                    onClick={() => goToStep(step as 'info' | 'auth')}
-                    className={cn(
-                      'flex-1 py-2 rounded-xl text-xs font-semibold transition-all',
-                      currentStep === step
-                        ? 'bg-primary text-white shadow-lg shadow-primary/30'
-                        : 'bg-gray-100 text-text-muted hover:bg-gray-200',
-                    )}
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors p-1 touch-manipulation"
+                    aria-label={
+                      showPassword ? 'Hide password' : 'Show password'
+                    }
                   >
-                    {step === 'info' ? 'Your Info' : 'Secure Account'}
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
-                  {index === 0 && (
-                    <div className="w-8 h-0.5 bg-gray-200 flex-shrink-0" />
-                  )}
                 </div>
-              ))}
-            </div>
+              </div>
 
-            {/* ─── Social Sign-up (Always Visible) ──────────── */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-6">
-              <button
-                type="button"
-                onClick={() => handleOAuthSignup('google')}
-                disabled={isOAuthLoading !== null}
-                className="flex-1 py-3 px-4 border-2 border-border rounded-2xl flex items-center justify-center gap-2.5 text-sm font-medium text-text-secondary hover:border-blue-500 hover:bg-blue-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[48px]"
-              >
-                {isOAuthLoading === 'google' ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <GoogleIcon />
-                )}
-                <span className="hidden sm:inline">Continue with Google</span>
-                <span className="sm:hidden">Google</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleOAuthSignup('facebook')}
-                disabled={isOAuthLoading !== null}
-                className="flex-1 py-3 px-4 border-2 border-border rounded-2xl flex items-center justify-center gap-2.5 text-sm font-medium text-text-secondary hover:border-blue-600 hover:bg-blue-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[48px]"
-              >
-                {isOAuthLoading === 'facebook' ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <FacebookIcon />
-                )}
-                <span className="hidden sm:inline">Continue with Facebook</span>
-                <span className="sm:hidden">Facebook</span>
-              </button>
-            </div>
-
-            {/* ─── Divider ──────────────────────────────────── */}
-            <div className="flex items-center gap-4 mb-6">
-              <div className="flex-1 h-px bg-gradient-to-r from-transparent to-gray-300" />
-              <span className="text-xs text-text-muted whitespace-nowrap font-medium">
-                or continue with email
-              </span>
-              <div className="flex-1 h-px bg-gradient-to-l from-transparent to-gray-300" />
-            </div>
-
-            {/* ─── Referral Code Banner ────────────────────── */}
-            {form.referralCode && (
-              <div
-                className={cn(
-                  'flex items-center gap-3 p-3 rounded-2xl mb-5 transition-all',
-                  referralValid === true
-                    ? 'bg-green-50 border border-green-300'
-                    : referralValid === false
-                      ? 'bg-red-50 border border-red-300'
-                      : 'bg-amber-50 border border-amber-300',
-                )}
-              >
-                {referralValid === true ? (
-                  <BadgeCheck className="w-5 h-5 text-success flex-shrink-0" />
-                ) : referralValid === false ? (
-                  <AlertCircle className="w-5 h-5 text-danger flex-shrink-0" />
-                ) : (
-                  <Gift className="w-5 h-5 text-gold flex-shrink-0" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-navy">
-                    {referralValid === true
-                      ? 'Valid referral code!'
-                      : referralValid === false
-                        ? 'Invalid referral code'
-                        : 'Referral code applied'}
-                  </p>
-                  <p className="text-xs text-text-secondary truncate">
-                    {referralValid === true
-                      ? "You'll get a welcome bonus when you sign up!"
-                      : referralValid === false
-                        ? 'Please check the code and try again'
-                        : `Code: ${form.referralCode}`}
-                  </p>
+              <div>
+                <label className="text-xs font-semibold text-white/70 block mb-1.5">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                  <input
+                    type={showConfirm ? 'text' : 'password'}
+                    value={form.confirmPassword}
+                    onChange={(e) =>
+                      setForm({ ...form, confirmPassword: e.target.value })
+                    }
+                    required
+                    autoComplete="new-password"
+                    className="w-full py-2.5 pl-10 pr-10 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all touch-manipulation"
+                    placeholder="Confirm your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(!showConfirm)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors p-1 touch-manipulation"
+                    aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirm ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setForm((prev) => ({ ...prev, referralCode: '' }));
-                    setReferralValid(null);
-                  }}
-                  className="text-text-muted hover:text-danger transition-colors flex-shrink-0 p-1 touch-manipulation"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+              </div>
+            </div>
+
+            {/* Password requirements grid */}
+            {form.password.length > 0 && (
+              <div>
+                <div className="flex gap-1 mb-2.5">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        'flex-1 h-1 rounded-full transition-all',
+                        i < pwScore
+                          ? pwScore <= 1
+                            ? 'bg-[#EF4444]'
+                            : pwScore <= 2
+                              ? 'bg-[#F59E0B]'
+                              : 'bg-[#22C55E]'
+                          : 'bg-white/10',
+                      )}
+                    />
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                  {[
+                    { key: 'length', label: 'At least 8 characters' },
+                    { key: 'upper', label: 'One uppercase letter' },
+                    { key: 'number', label: 'One number' },
+                    { key: 'special', label: 'One special character' },
+                  ].map((req) => {
+                    const met =
+                      passwordRequirements[
+                        req.key as keyof typeof passwordRequirements
+                      ];
+                    return (
+                      <div
+                        key={req.key}
+                        className={cn(
+                          'flex items-center gap-2 text-xs transition-colors',
+                          met ? 'text-white' : 'text-white/40',
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            'w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 transition-all',
+                            met
+                              ? 'bg-[#22C55E] border-[#22C55E]'
+                              : 'border-white/15',
+                          )}
+                        >
+                          {met && <Check className="w-2.5 h-2.5 text-white" />}
+                        </div>
+                        {req.label}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
-            {/* ─── Form ─────────────────────────────────────── */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Name - Always visible */}
-              <div
+            {/* Referral Code */}
+            <div>
+              <label className="text-xs font-semibold text-white/70 block mb-1.5">
+                Referral Code{' '}
+                <span className="text-white/30 font-normal">(optional)</span>
+              </label>
+              <div className="relative">
+                <Gift className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                <input
+                  type="text"
+                  value={form.referralCode}
+                  onChange={handleReferralChange}
+                  className="w-full py-2.5 pl-10 pr-10 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all uppercase touch-manipulation"
+                  placeholder="e.g. BOOSTLY123"
+                />
+                {isCheckingReferral && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Loader2 className="w-4 h-4 text-white/30 animate-spin" />
+                  </div>
+                )}
+                {referralValid === true && !isCheckingReferral && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Check className="w-4 h-4 text-[#4ADE80]" />
+                  </div>
+                )}
+                {referralValid === false && !isCheckingReferral && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <X className="w-4 h-4 text-[#F87171]" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Terms */}
+            <div className="flex items-start gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setAgreeTerms(!agreeTerms)}
                 className={cn(
-                  'transition-all',
-                  currentStep === 'auth' && 'sm:block',
+                  'w-4 h-4 rounded border-2 transition-all flex items-center justify-center flex-shrink-0 mt-0.5 touch-manipulation',
+                  agreeTerms
+                    ? 'bg-[#2563EB] border-[#2563EB]'
+                    : 'border-white/30',
                 )}
+                aria-label={agreeTerms ? 'Agree to terms' : 'Disagree to terms'}
               >
-                <label
-                  htmlFor="name"
-                  className="text-sm font-semibold text-navy block mb-1.5"
+                {agreeTerms && <Check className="w-2.5 h-2.5 text-white" />}
+              </button>
+              <span className="text-[11px] text-white/50 leading-relaxed">
+                I agree to the{' '}
+                <Link
+                  href="/terms"
+                  className="text-[#93C5FD] hover:text-[#BFDBFE] transition-colors"
                 >
-                  Full Name
-                </label>
-                <div className="relative">
-                  {!isMobile && (
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-                  )}
-                  <input
-                    id="name"
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    required
-                    autoComplete="name"
-                    className={cn(
-                      'w-full py-3 bg-gray-50 border-2 border-gray-200 rounded-2xl text-navy placeholder:text-text-muted text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all touch-manipulation',
-                      !isMobile ? 'pl-12 pr-4' : 'px-4',
-                    )}
-                    placeholder="John Doe"
-                  />
-                </div>
-              </div>
-
-              {/* Email - Always visible */}
-              <div>
-                <label
-                  htmlFor="email"
-                  className="text-sm font-semibold text-navy block mb-1.5"
+                  Terms of Service
+                </Link>{' '}
+                and{' '}
+                <Link
+                  href="/privacy"
+                  className="text-[#93C5FD] hover:text-[#BFDBFE] transition-colors"
                 >
-                  Email Address
-                </label>
-                <div className="relative">
-                  {!isMobile && (
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-                  )}
-                  <input
-                    id="email"
-                    type="email"
-                    value={form.email}
-                    onChange={(e) =>
-                      setForm({ ...form, email: e.target.value })
-                    }
-                    required
-                    autoComplete="email"
-                    className={cn(
-                      'w-full py-3 bg-gray-50 border-2 border-gray-200 rounded-2xl text-navy placeholder:text-text-muted text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all touch-manipulation',
-                      !isMobile ? 'pl-12 pr-4' : 'px-4',
-                    )}
-                    placeholder="you@example.com"
-                  />
-                </div>
-              </div>
+                  Privacy Policy
+                </Link>
+              </span>
+            </div>
 
-              {/* Password - Step 2 */}
-              <div
-                className={cn(
-                  'transition-all duration-300 overflow-hidden',
-                  currentStep === 'auth'
-                    ? 'max-h-[500px] opacity-100'
-                    : 'max-h-0 opacity-0',
-                )}
-              >
-                <div className="space-y-4 pt-2">
-                  <div>
-                    <label
-                      htmlFor="password"
-                      className="text-sm font-semibold text-navy block mb-1.5"
-                    >
-                      Password
-                    </label>
-                    <div className="relative">
-                      {!isMobile && (
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-                      )}
-                      <input
-                        id="password"
-                        type={showPassword ? 'text' : 'password'}
-                        value={form.password}
-                        onChange={(e) =>
-                          setForm({ ...form, password: e.target.value })
-                        }
-                        required
-                        autoComplete="new-password"
-                        className={cn(
-                          'w-full py-3 bg-gray-50 border-2 border-gray-200 rounded-2xl text-navy placeholder:text-text-muted text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all touch-manipulation',
-                          !isMobile ? 'pl-12 pr-12' : 'px-4 pr-12',
-                        )}
-                        placeholder="Min. 8 characters"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-navy transition-colors p-1 touch-manipulation"
-                        aria-label={
-                          showPassword ? 'Hide password' : 'Show password'
-                        }
-                      >
-                        {showPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                    {form.password.length > 0 && (
-                      <div className="mt-2">
-                        <div className="flex gap-1 mb-1">
-                          {[0, 1, 2, 3].map((i) => {
-                            let score = 0;
-                            if (form.password.length >= 8) score++;
-                            if (/[A-Z]/.test(form.password)) score++;
-                            if (/[0-9]/.test(form.password)) score++;
-                            if (/[^A-Za-z0-9]/.test(form.password)) score++;
-                            const filled = i < score;
-                            return (
-                              <div
-                                key={i}
-                                className={`flex-1 h-1 rounded-full transition-all ${
-                                  filled
-                                    ? score <= 1
-                                      ? 'bg-red-500'
-                                      : score <= 2
-                                        ? 'bg-amber-500'
-                                        : 'bg-green-500'
-                                    : 'bg-gray-200'
-                                }`}
-                              />
-                            );
-                          })}
-                        </div>
-                        <span className="text-xs text-text-muted">
-                          {form.password.length < 8
-                            ? 'Weak'
-                            : form.password.length < 12
-                              ? 'Fair'
-                              : 'Strong'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 bg-[#FBBF24] hover:bg-[#F59E0B] text-[#0F172A] font-semibold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#FBBF24]/20 hover:shadow-[#FBBF24]/40 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[48px] text-sm mt-2"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                <>
+                  Create Account
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
 
-                  <div>
-                    <label
-                      htmlFor="confirm"
-                      className="text-sm font-semibold text-navy block mb-1.5"
-                    >
-                      Confirm Password
-                    </label>
-                    <div className="relative">
-                      {!isMobile && (
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-                      )}
-                      <input
-                        id="confirm"
-                        type={showConfirm ? 'text' : 'password'}
-                        value={form.confirmPassword}
-                        onChange={(e) =>
-                          setForm({ ...form, confirmPassword: e.target.value })
-                        }
-                        required
-                        autoComplete="new-password"
-                        className={cn(
-                          'w-full py-3 bg-gray-50 border-2 border-gray-200 rounded-2xl text-navy placeholder:text-text-muted text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all touch-manipulation',
-                          !isMobile ? 'pl-12 pr-12' : 'px-4 pr-12',
-                        )}
-                        placeholder="Re-enter password"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirm(!showConfirm)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-navy transition-colors p-1 touch-manipulation"
-                        aria-label={
-                          showConfirm ? 'Hide password' : 'Show password'
-                        }
-                      >
-                        {showConfirm ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Referral Code */}
-                  <div>
-                    <label
-                      htmlFor="referral"
-                      className="text-sm font-semibold text-navy block mb-1.5"
-                    >
-                      Referral Code{' '}
-                      <span className="text-text-muted font-normal">
-                        (optional)
-                      </span>
-                    </label>
-                    <div className="relative">
-                      {!isMobile && (
-                        <Gift className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-                      )}
-                      <input
-                        id="referral"
-                        type="text"
-                        value={form.referralCode}
-                        onChange={handleReferralChange}
-                        className={cn(
-                          'w-full py-3 bg-gray-50 border-2 border-gray-200 rounded-2xl text-navy placeholder:text-text-muted text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all uppercase touch-manipulation',
-                          !isMobile ? 'pl-12 pr-12' : 'px-4 pr-12',
-                        )}
-                        placeholder="e.g. BOOSTLY123"
-                      />
-                      {isCheckingReferral && (
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                          <Loader2 className="w-4 h-4 text-text-muted animate-spin" />
-                        </div>
-                      )}
-                      {referralValid === true && !isCheckingReferral && (
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                          <Check className="w-4 h-4 text-success" />
-                        </div>
-                      )}
-                      {referralValid === false && !isCheckingReferral && (
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                          <X className="w-4 h-4 text-danger" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Terms */}
-                  <div className="flex items-start gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setAgreeTerms(!agreeTerms)}
-                      className={cn(
-                        'w-5 h-5 rounded-lg border-2 transition-all flex items-center justify-center flex-shrink-0 mt-0.5 touch-manipulation',
-                        agreeTerms
-                          ? 'bg-primary border-primary'
-                          : 'border-gray-300',
-                      )}
-                      aria-label={
-                        agreeTerms ? 'Agree to terms' : 'Disagree to terms'
-                      }
-                    >
-                      {agreeTerms && <Check className="w-3 h-3 text-white" />}
-                    </button>
-                    <span className="text-sm text-text-secondary">
-                      I agree to the{' '}
-                      <Link
-                        href="/terms"
-                        className="text-primary font-medium hover:text-primary-hover transition-colors"
-                      >
-                        Terms of Service
-                      </Link>{' '}
-                      and{' '}
-                      <Link
-                        href="/privacy"
-                        className="text-primary font-medium hover:text-primary-hover transition-colors"
-                      >
-                        Privacy Policy
-                      </Link>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-2">
-                {currentStep === 'info' ? (
-                  <button
-                    type="button"
-                    onClick={() => goToStep('auth')}
-                    className="flex-1 py-3.5 bg-primary hover:bg-primary-hover text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-primary/30 touch-manipulation min-h-[52px] text-base"
-                  >
-                    Continue
-                    <ArrowLeft className="w-4 h-4 rotate-180" />
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => goToStep('info')}
-                      className="flex-1 py-3.5 bg-gray-100 hover:bg-gray-200 text-navy font-bold rounded-2xl flex items-center justify-center gap-2 transition-all touch-manipulation min-h-[52px] text-base"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      Back
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="flex-1 py-3.5 bg-gold hover:bg-gold-hover text-navy font-bold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-gold disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[52px] text-base"
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          Creating...
-                        </>
-                      ) : (
-                        <>
-                          <Rocket className="w-5 h-5" />
-                          Create Account
-                        </>
-                      )}
-                    </button>
-                  </>
-                )}
-              </div>
-            </form>
-
-            {/* Footer */}
-            <p className="text-center text-sm text-text-muted mt-6">
-              Already have an account?{' '}
-              <Link
-                href="/login"
-                className="text-primary font-semibold hover:text-primary-hover transition-colors"
-              >
-                Sign in
-              </Link>
-            </p>
-          </div>
+          {/* Footer */}
+          <p className="text-center lg:hidden text-xs text-white/30 mt-6">
+            Already have an account?{' '}
+            <Link
+              href="/login"
+              className="text-white/60 hover:text-white font-semibold transition-colors"
+            >
+              Sign in
+            </Link>
+          </p>
         </div>
       </div>
     </div>

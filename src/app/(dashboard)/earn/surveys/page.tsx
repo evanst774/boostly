@@ -1,7 +1,7 @@
 // src/app/(dashboard)/earn/surveys/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -421,20 +421,24 @@ export default function SurveysPage() {
     limit: 20,
   });
 
-  const surveys = data?.surveys || [];
+  // Memoize surveys to prevent unnecessary re-renders
+  const surveys = useMemo(() => data?.surveys || [], [data?.surveys]);
   const totalPages = data?.totalPages || 1;
   const stats = data?.stats || { totalEarned: 0, completed: 0, available: 0 };
 
-  // Update all surveys when data changes
+  // Create a stable reference for surveys using useMemo
+  const stableSurveys = useMemo(() => surveys, [surveys]);
+
+  // Update all surveys when data changes - now using stableSurveys
   useEffect(() => {
     if (page === 1) {
-      setAllSurveys(surveys);
+      setAllSurveys(stableSurveys);
     } else {
-      setAllSurveys((prev) => [...prev, ...surveys]);
+      setAllSurveys((prev) => [...prev, ...stableSurveys]);
     }
     setHasMore(page < totalPages);
     setIsLoadingMore(false);
-  }, [surveys, page, totalPages]);
+  }, [stableSurveys, page, totalPages]);
 
   const handleStartSurvey = (survey: SurveySummary) => {
     setSelectedSurvey(survey);

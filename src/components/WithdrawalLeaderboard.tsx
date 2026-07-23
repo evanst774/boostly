@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Trophy, Medal, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -21,11 +21,8 @@ export function WithdrawalLeaderboard() {
   const [period, setPeriod] = useState<'week' | 'month' | 'all'>('month');
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    fetchTopWithdrawers();
-  }, [period]);
-
-  const fetchTopWithdrawers = async () => {
+  // Fetch top withdrawers - wrapped in useCallback with period dependency
+  const fetchTopWithdrawers = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch(
@@ -38,7 +35,12 @@ export function WithdrawalLeaderboard() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [period]);
+
+  // Fetch on mount and when period changes - now includes fetchTopWithdrawers in dependencies
+  useEffect(() => {
+    fetchTopWithdrawers();
+  }, [fetchTopWithdrawers]);
 
   const getRankIcon = (rank: number) => {
     switch (rank) {

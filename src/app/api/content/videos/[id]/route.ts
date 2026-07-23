@@ -6,6 +6,8 @@ import { ContentPermissions } from '@/modules/content/permissions';
 import { updateVideoSchema } from '@/modules/content/validation';
 import { videosService } from '@/modules/content';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } },

@@ -8,6 +8,8 @@ import { verifyPassword } from '@/lib/db/auth-utils';
 import { sendEmail, build2FAOTPEmailHTML } from '@/lib/mail';
 import { createAuditLog } from '@/lib/audit';
 
+export const dynamic = 'force-dynamic';
+
 export async function PUT(request: NextRequest) {
   try {
     const user = await getCurrentUser();

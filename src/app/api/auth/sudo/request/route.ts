@@ -9,6 +9,8 @@ import { sendEmail, buildSudoOTPEmailHTML } from '@/lib/mail';
 import crypto from 'crypto';
 import { SUDO_CONFIG } from '@/lib/constants/sudo';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser();

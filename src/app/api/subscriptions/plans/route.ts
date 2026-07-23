@@ -6,6 +6,8 @@ import { badgesService } from '@/modules/badges/service';
 import { BadgesPermissions } from '@/modules/badges/permissions';
 import { createSubscriptionPlanSchema } from '@/modules/badges/validation';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
 

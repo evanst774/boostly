@@ -5,6 +5,8 @@ import { sessions, users } from '@/lib/db/schema';
 import { roles } from '@/lib/db/schema/rbac';
 import { eq } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const token = request.cookies.get('auth-token')?.value;

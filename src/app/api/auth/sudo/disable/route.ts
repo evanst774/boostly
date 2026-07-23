@@ -7,6 +7,8 @@ import { db } from '@/lib/db';
 import { sudoSettings, sudoSessions } from '@/lib/db/schema/auth';
 import { eq, and } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST() {
   try {
     const user = await getCurrentUser();

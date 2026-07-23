@@ -5,6 +5,8 @@ import { sessions, otpVerifications, twoFASessions } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { JWT_COOKIE_NAME } from '@/lib/jwt';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
     try {
         // Get the current token from the cookie

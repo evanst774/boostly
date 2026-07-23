@@ -2,14 +2,8 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import {
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  RefreshCw
-} from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Clock, CheckCircle2, XCircle, Loader2, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -42,11 +36,8 @@ export function WithdrawalActivity() {
     'all' | 'pending' | 'completed' | 'failed'
   >('all');
 
-  useEffect(() => {
-    fetchActivity();
-  }, [filter]);
-
-  const fetchActivity = async () => {
+  // Fetch activity function - wrapped in useCallback with filter dependency
+  const fetchActivity = useCallback(async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -65,7 +56,12 @@ export function WithdrawalActivity() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filter]);
+
+  // Fetch activity when filter changes - now includes fetchActivity in dependencies
+  useEffect(() => {
+    fetchActivity();
+  }, [fetchActivity]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {

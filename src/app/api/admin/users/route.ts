@@ -15,6 +15,8 @@ import { eq, and, or, like, sql, desc, inArray, SQL } from 'drizzle-orm';
 import { hashPassword } from '@/lib/db/auth-utils';
 import { buildWelcomeEmailHTML, sendEmail } from '@/lib/mail';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();

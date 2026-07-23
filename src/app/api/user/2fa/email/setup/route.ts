@@ -6,6 +6,8 @@ import { otpVerifications } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { sendEmail, build2FAOTPEmailHTML } from '@/lib/mail';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST() {
   try {
     const user = await getCurrentUser();

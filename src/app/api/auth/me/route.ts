@@ -8,6 +8,8 @@ import { eq } from 'drizzle-orm';
 import { verifyJWT, JWT_COOKIE_NAME } from '@/lib/jwt';
 import { SystemRoles } from '@/modules/rbac/roles';
 
+export const dynamic = 'force-dynamic';
+
 // ============================================
 // FIX: the only functional bug here was the
 // 'SALES_PERSON' hardcoded fallback role, which

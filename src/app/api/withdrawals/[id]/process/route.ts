@@ -6,6 +6,8 @@ import { walletService } from '@/modules/wallet/service';
 import { WalletPermissions } from '@/modules/wallet/permissions';
 import { processWithdrawalSchema } from '@/modules/wallet/validation';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } },

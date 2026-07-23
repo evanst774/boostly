@@ -83,6 +83,7 @@ export default function AdminAnalyticsPage() {
   // for 'line') rejects.
   const chartRef = useRef<ChartJS<'line', number[], string>>(null);
 
+  // Dark mode detection effect
   useEffect(() => {
     const darkMode = document.documentElement.classList.contains('dark');
     setIsDark(darkMode);
@@ -98,11 +99,8 @@ export default function AdminAnalyticsPage() {
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, [timeRange]);
-
-  const fetchAnalytics = async () => {
+  // Fetch analytics function - wrapped in useCallback with timeRange dependency
+  const fetchAnalytics = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/admin/analytics?range=${timeRange}`);
@@ -113,7 +111,12 @@ export default function AdminAnalyticsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [timeRange]); // Added timeRange as dependency
+
+  // Fetch analytics when timeRange changes - now includes fetchAnalytics in dependencies
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]); // Now depends on the memoized function
 
   const handleExport = useCallback(() => {
     if (!data) return;

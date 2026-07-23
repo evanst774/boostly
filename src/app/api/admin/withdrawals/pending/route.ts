@@ -7,6 +7,8 @@ import { db } from '@/lib/db';
 import { withdrawals, type Withdrawal } from '@/lib/db/schema/wallet';
 import { eq, desc } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const currentUser = await getCurrentUser();

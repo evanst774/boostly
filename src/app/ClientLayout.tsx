@@ -3,7 +3,12 @@
 
 import { useState, useEffect } from 'react';
 import localFont from 'next/font/local';
-import { Manrope, Plus_Jakarta_Sans, Space_Grotesk } from 'next/font/google';
+import {
+  Manrope,
+  Plus_Jakarta_Sans,
+  Space_Grotesk,
+  Inter,
+} from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
 import NextTopLoader from 'nextjs-toploader';
 import { Providers } from './providers';
@@ -34,6 +39,16 @@ const spaceGrotesk = Space_Grotesk({
   variable: '--font-space-grotesk',
   display: 'swap',
   weight: ['300', '400', '500', '600', '700'],
+});
+
+// Inter - previously loaded via a manual <link> tag in layout.tsx.
+// Moved here so it's optimized/self-hosted via next/font, which also
+// fixes the `no-page-custom-font` ESLint warning.
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+  weight: ['400', '500', '600', '700', '800', '900'],
 });
 
 // ============================================
@@ -179,6 +194,7 @@ export default function ClientLayout({
         ${manrope.variable}
         ${plusJakartaSans.variable}
         ${spaceGrotesk.variable}
+        ${inter.variable}
         ${avenirMedium.variable}
         ${avenirBlack.variable}
         ${outfit.variable}

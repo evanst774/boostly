@@ -7,6 +7,8 @@ import { eq } from 'drizzle-orm';
 import { createAuditLog } from '@/lib/audit';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const updateProfileSchema = z.object({
     name: z.string().min(2).max(100),
     phone: z.string().optional(),

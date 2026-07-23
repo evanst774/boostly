@@ -5,6 +5,8 @@ import { requirePermission } from '@/lib/auth/permissions';
 import { ContentPermissions } from '@/modules/content/permissions';
 import { videosService } from '@/modules/content';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const user = await getCurrentUser();

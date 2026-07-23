@@ -15,6 +15,8 @@ const ADMIN_EMAILS = process.env.ADMIN_NOTIFICATION_EMAILS?.split(',') || [
   'support@boostly.buzz',
 ];
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
