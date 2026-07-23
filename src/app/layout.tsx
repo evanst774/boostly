@@ -1,6 +1,6 @@
 // src/app/layout.tsx
 import type { Metadata, Viewport } from 'next';
-import Script from 'next/script';
+// import Script from 'next/script';
 import './globals.css';
 import ClientLayout from './ClientLayout';
 
@@ -9,7 +9,7 @@ import ClientLayout from './ClientLayout';
 // ============================================
 // Jivo live-chat widget ID, configurable per environment via .env.
 // Must be NEXT_PUBLIC_-prefixed since it's read on the client.
-const JIVO_WIDGET_ID = process.env.NEXT_PUBLIC_JIVO_WIDGET_ID;
+// const JIVO_WIDGET_ID = process.env.NEXT_PUBLIC_JIVO_WIDGET_ID;
 
 // ============================================
 // VIEWPORT CONFIGURATION (Mobile-first)
