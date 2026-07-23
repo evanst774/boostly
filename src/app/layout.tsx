@@ -1,7 +1,15 @@
 // src/app/layout.tsx
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import './globals.css';
 import ClientLayout from './ClientLayout';
+
+// ============================================
+// THIRD-PARTY WIDGETS
+// ============================================
+// Jivo live-chat widget ID, configurable per environment via .env.
+// Must be NEXT_PUBLIC_-prefixed since it's read on the client.
+const JIVO_WIDGET_ID = process.env.NEXT_PUBLIC_JIVO_WIDGET_ID;
 
 // ============================================
 // VIEWPORT CONFIGURATION (Mobile-first)
@@ -205,6 +213,14 @@ export default function RootLayout({
       </head>
       <body>
         <ClientLayout>{children}</ClientLayout>
+
+        {/* Jivo Live Chat Widget */}
+        {JIVO_WIDGET_ID && (
+          <Script
+            src={`https://code.jivosite.com/widget/${JIVO_WIDGET_ID}`}
+            strategy="lazyOnload"
+          />
+        )}
       </body>
     </html>
   );

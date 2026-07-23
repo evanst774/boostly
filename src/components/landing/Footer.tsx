@@ -41,52 +41,17 @@ function InstagramIcon({ className }: { className?: string }) {
   );
 }
 
-function TwitterIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C4 15.4 2.4 11.6 3 8c2 1.3 4.2 1.6 6.3.7C6.9 7.4 5.2 4.2 6.2 1.5c2.4 2.9 5.9 4.7 9.7 4.9-.6-2.9 2.3-5.6 5.2-4.3.9.4 1.6 1.1 2 2 1-.2 2-.7 2.9-1.3-.3 1-1 1.9-1.9 2.5.9-.1 1.8-.4 2.6-.8-.4.9-1.1 1.7-1.7 2.5Z" />
-    </svg>
-  );
-}
-
-function YoutubeIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M22.5 8.5a3 3 0 0 0-2.1-2.1c-1.9-.5-9.4-.5-9.4-.5s-7.5 0-9.4.5A3 3 0 0 0 1.5 8.5 31 31 0 0 0 1 14a31 31 0 0 0 .5 5.5 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 23 14a31 31 0 0 0-.5-5.5z" />
-      <polygon points="10 17 16 14 10 11" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
 const SOCIAL_LINKS = [
   {
     icon: FacebookIcon,
     href: 'https://facebook.com/boostly',
     label: 'Facebook',
   },
-  { icon: TwitterIcon, href: 'https://twitter.com/boostly', label: 'Twitter' },
   {
     icon: InstagramIcon,
     href: 'https://instagram.com/boostly',
     label: 'Instagram',
   },
-  { icon: YoutubeIcon, href: 'https://youtube.com/boostly', label: 'YouTube' },
 ];
 
 // Footer variants
@@ -225,7 +190,7 @@ export function Footer() {
             </ul>
           </motion.div>
 
-          {/* Earn */}
+          {/* Resources */}
           <motion.div
             variants={columnVariants}
             custom={2}
@@ -234,46 +199,11 @@ export function Footer() {
             viewport={{ once: true }}
           >
             <p className="text-white text-xs font-bold uppercase tracking-wide mb-3">
-              Earn
-            </p>
-            <ul className="space-y-2.5">
-              {[
-                { name: 'Watch Videos', href: '/earn/videos' },
-                { name: 'Play Games', href: '/games' },
-                { name: 'Complete Surveys', href: '/earn/surveys' },
-                { name: 'Refer Friends', href: '/referrals' },
-              ].map((link) => (
-                <motion.li
-                  key={link.name}
-                  variants={linkVariants}
-                  whileHover="hover"
-                >
-                  <Link
-                    href={link.href}
-                    className="text-white/40 hover:text-white text-xs transition-colors duration-200"
-                  >
-                    {link.name}
-                  </Link>
-                </motion.li>
-              ))}
-            </ul>
-          </motion.div>
-
-          {/* Company */}
-          <motion.div
-            variants={columnVariants}
-            custom={3}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-          >
-            <p className="text-white text-xs font-bold uppercase tracking-wide mb-3">
-              Company
+              Resources
             </p>
             <ul className="space-y-2.5">
               {[
                 { name: 'About Us', href: '/about' },
-                { name: 'Resources', href: '/resources' },
                 { name: 'Support', href: '/support' },
               ].map((link) => (
                 <motion.li
@@ -295,7 +225,7 @@ export function Footer() {
           {/* Legal */}
           <motion.div
             variants={columnVariants}
-            custom={4}
+            custom={3}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
@@ -308,6 +238,38 @@ export function Footer() {
                 { name: 'Terms of Service', href: '/terms' },
                 { name: 'Privacy Policy', href: '/privacy' },
                 { name: 'Cookie Policy', href: '/cookies' },
+              ].map((link) => (
+                <motion.li
+                  key={link.name}
+                  variants={linkVariants}
+                  whileHover="hover"
+                >
+                  <Link
+                    href={link.href}
+                    className="text-white/40 hover:text-white text-xs transition-colors duration-200"
+                  >
+                    {link.name}
+                  </Link>
+                </motion.li>
+              ))}
+            </ul>
+          </motion.div>
+
+          {/* Get Started */}
+          <motion.div
+            variants={columnVariants}
+            custom={4}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            <p className="text-white text-xs font-bold uppercase tracking-wide mb-3">
+              Get Started
+            </p>
+            <ul className="space-y-2.5">
+              {[
+                { name: 'Sign Up', href: '/register' },
+                { name: 'Log In', href: '/login' },
               ].map((link) => (
                 <motion.li
                   key={link.name}
@@ -348,11 +310,6 @@ export function Footer() {
             <Link href="/cookies" className="hover:text-white/60 transition">
               Cookies
             </Link>
-            <span className="text-white/20">|</span>
-            <span className="flex items-center gap-1.5">
-              <span className="text-pink-400">❤️</span>
-              Made with love
-            </span>
           </div>
         </motion.div>
       </div>

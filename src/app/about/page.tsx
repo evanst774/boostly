@@ -1,4 +1,5 @@
 // src/app/about/page.tsx
+
 'use client';
 
 import Link from 'next/link';
@@ -10,222 +11,251 @@ import {
   Target,
   Eye,
   Heart,
-  Lock,
-  Server,
   Globe,
   TrendingUp,
+  Users,
+  Sparkles,
 } from 'lucide-react';
-import { Footer } from '@/components/landing/Footer';
 
 const highlights = [
   {
-    icon: <Server className="w-5 h-5" />,
-    title: 'Built for Africa',
-    desc: 'Optimized for African business needs — multi-currency support, local payment methods, and offline-capable.',
-    color: 'text-blue-400',
-    bg: 'bg-blue-500/10 border-blue-500/20',
-  },
-  {
-    icon: <Lock className="w-5 h-5" />,
-    title: 'Enterprise Security',
-    desc: 'TLS/SSL encryption, Two-Factor Authentication, role-based access control, and regular security audits.',
-    color: 'text-green-400',
-    bg: 'bg-green-500/10 border-green-500/20',
+    icon: <Shield className="w-5 h-5" />,
+    title: 'Secure & Trusted',
+    desc: 'Bank-grade security with 2FA, encryption, and regular audits to protect your earnings.',
+    color: 'text-primary',
+    bg: 'bg-primary/5 border-primary/20',
   },
   {
     icon: <Zap className="w-5 h-5" />,
-    title: 'Lightning Fast',
-    desc: 'Built with modern technology stack for instant page loads and real-time data updates.',
-    color: 'text-yellow-400',
-    bg: 'bg-yellow-500/10 border-yellow-500/20',
+    title: 'Instant Payouts',
+    desc: 'Fast withdrawals to your wallet. No hidden fees, no delays, no complications.',
+    color: 'text-gold',
+    bg: 'bg-gold/5 border-gold/20',
   },
   {
     icon: <Globe className="w-5 h-5" />,
-    title: 'Rwandan Made',
-    desc: 'Proudly developed in Kigali, Rwanda. Supporting local talent and the East African tech ecosystem.',
+    title: 'Global Community',
+    desc: 'Join thousands of earners from around the world. Real people, real rewards.',
     color: 'text-purple-400',
-    bg: 'bg-purple-500/10 border-purple-500/20',
+    bg: 'bg-purple/5 border-purple/20',
+  },
+  {
+    icon: <Users className="w-5 h-5" />,
+    title: 'Built for Everyone',
+    desc: 'Designed for anyone to earn. No experience needed. Simple, fun, and rewarding.',
+    color: 'text-pink-400',
+    bg: 'bg-pink/5 border-pink/20',
   },
 ];
 
 const values = [
   {
-    icon: <Shield className="w-5 h-5" />,
+    icon: Shield,
     title: 'Trust & Security',
-    desc: 'Enterprise-grade encryption. Your business data is protected with the highest standards.',
+    desc: 'Your data and earnings are protected with enterprise-grade security measures.',
   },
   {
-    icon: <Zap className="w-5 h-5" />,
+    icon: Zap,
     title: 'Simplicity',
-    desc: 'Clean, intuitive interface. No training required — just log in and start managing your business.',
+    desc: 'Clean, intuitive interface. Start earning in minutes, no training required.',
   },
   {
-    icon: <Target className="w-5 h-5" />,
-    title: 'Accuracy',
-    desc: 'Precise tracking and real-time reporting for every transaction, sale, and inventory movement.',
+    icon: Target,
+    title: 'Real Rewards',
+    desc: 'Earn real cash, not just points. Every activity puts money in your pocket.',
   },
   {
-    icon: <Eye className="w-5 h-5" />,
+    icon: Eye,
     title: 'Transparency',
-    desc: 'Clear pricing with no hidden fees. Open documentation and honest communication always.',
+    desc: 'Clear earnings, instant notifications, and honest communication always.',
   },
   {
-    icon: <Heart className="w-5 h-5" />,
-    title: 'Customer First',
-    desc: 'We build features based on real feedback from businesses like yours.',
+    icon: Heart,
+    title: 'Community First',
+    desc: 'We build features based on real feedback from our growing community.',
   },
   {
-    icon: <TrendingUp className="w-5 h-5" />,
-    title: 'Continuous Improvement',
-    desc: 'Regular updates with new features, performance improvements, and security patches.',
+    icon: TrendingUp,
+    title: 'Continuous Growth',
+    desc: 'Regular updates with new earning opportunities and platform improvements.',
   },
 ];
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-background-primary safe-bottom">
-      {/* Hero */}
-      <section className="relative sm:pt-24 pb-8 sm:pb-12 overflow-hidden safe-top">
-        <div className="absolute inset-0 bg-hero-dark" />
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-gradient-to-r from-blue-600/15 to-cyan-600/15 blur-3xl rounded-full" />
-        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 text-center">
+    <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
+      {/* Header */}
+      <div className="border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white mb-4 sm:mb-6 touch-manipulation min-h-[44px] px-2"
+            className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" /> Back
+            <ArrowLeft className="w-4 h-4" />
+            Back to Boostly
           </Link>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs font-semibold bg-primary-500/10 border border-primary-500/20 text-primary-400 mb-4">
-              <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Our Story
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        {/* Hero Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="mb-12"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-gold" />
             </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4 font-space-grotesk">
-              About <span className="text-gradient-blue">MotoTrack</span>
-            </h1>
-            <p className="text-gray-400 max-w-2xl mx-auto text-xs sm:text-sm md:text-base leading-relaxed">
-              We build powerful, accessible ERP software for African businesses.
-              Our platform helps you manage inventory, track sales, handle
-              finances, and grow your business - all from one place.
-            </p>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Highlights Grid */}
-      <section className="py-4 sm:py-8">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            {highlights.map((item, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.08 }}
-                className={`rounded-xl border ${item.bg} p-4 sm:p-5 text-center hover:scale-[1.02] transition-all`}
-              >
-                <div
-                  className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3 ${item.color}`}
-                >
-                  {item.icon}
-                </div>
-                <h3 className="text-sm font-bold text-white mb-1.5">
-                  {item.title}
-                </h3>
-                <p className="text-[11px] sm:text-xs text-gray-500 leading-relaxed">
-                  {item.desc}
-                </p>
-              </motion.div>
-            ))}
+            <span className="text-xs font-medium text-gold uppercase tracking-wider">
+              About Us
+            </span>
           </div>
-        </div>
-      </section>
+          <h1 className="text-3xl sm:text-4xl font-bold text-navy dark:text-white mb-4">
+            About <span className="text-gold">Boostly</span>
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm max-w-2xl leading-relaxed">
+            Boostly is a modern rewards platform that empowers people to earn
+            real money through engaging activities. We believe everyone deserves
+            to be rewarded for their time and effort.
+          </p>
+        </motion.div>
 
-      {/* Mission */}
-      <section className="py-6 sm:py-10">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="bg-gradient-to-br from-primary-500/10 to-accent-500/5 rounded-2xl border border-primary-500/20 p-6 sm:p-10 text-center"
-          >
-            <Target className="w-8 h-8 sm:w-10 sm:h-10 text-primary-400 mx-auto mb-4" />
-            <h2 className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4 font-space-grotesk">
+        {/* Highlights Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
+          {highlights.map((item, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              className={`p-4 rounded-xl border ${item.bg} hover:shadow-md transition-shadow`}
+            >
+              <div
+                className={`w-10 h-10 rounded-lg ${item.bg} flex items-center justify-center mb-3 ${item.color}`}
+              >
+                {item.icon}
+              </div>
+              <h3 className="text-sm font-semibold text-navy dark:text-white mb-1">
+                {item.title}
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                {item.desc}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Mission Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mb-12 p-6 rounded-xl bg-gold/5 border border-gold/20"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <Target className="w-5 h-5 text-gold" />
+            <h2 className="text-lg font-bold text-navy dark:text-white">
               Our Mission
             </h2>
-            <p className="text-sm sm:text-base text-gray-400 leading-relaxed max-w-2xl mx-auto">
-              To provide powerful, affordable, and easy-to-use business
-              management software that helps African SMEs digitize their
-              operations, make data-driven decisions, and compete in the global
-              economy.
-            </p>
-          </motion.div>
-        </div>
-      </section>
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+            To create the most trusted and rewarding platform where anyone,
+            anywhere can earn real income by doing simple, fun, and valuable
+            activities online.
+          </p>
+        </motion.div>
 
-      {/* Values */}
-      <section className="py-6 sm:py-10">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <h2 className="text-xl sm:text-2xl font-bold text-white text-center mb-6 sm:mb-8 font-space-grotesk">
-            Our <span className="text-primary-400">Values</span>
+        {/* Values Section */}
+        <div className="mb-12">
+          <h2 className="text-lg font-bold text-navy dark:text-white mb-4">
+            Our <span className="text-gold">Values</span>
           </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {values.map((v, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.05 }}
-                className="bg-white/5 rounded-xl border border-white/10 p-4 sm:p-5 hover:border-primary-500/30 transition-all text-center sm:text-left"
-              >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary-500/10 border border-primary-500/20 flex items-center justify-center mx-auto sm:mx-0 mb-3 text-primary-400">
-                  {v.icon}
-                </div>
-                <h3 className="text-sm font-semibold text-white mb-1">
-                  {v.title}
-                </h3>
-                <p className="text-[11px] sm:text-xs text-gray-500 leading-relaxed">
-                  {v.desc}
-                </p>
-              </motion.div>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {values.map((v, idx) => {
+              const Icon = v.icon;
+              return (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className="p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-gold/30 transition-colors"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center flex-shrink-0">
+                      <Icon className="w-4 h-4 text-gold" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-navy dark:text-white mb-0.5">
+                        {v.title}
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                        {v.desc}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
-      </section>
 
-      {/* CTA */}
-      <section className="py-6 sm:py-10">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="bg-white/5 rounded-2xl border border-white/10 p-6 sm:p-8 text-center"
+        {/* CTA Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="p-6 rounded-xl bg-gold/5 border border-gold/20 text-center"
+        >
+          <h3 className="text-lg font-bold text-navy dark:text-white mb-2">
+            Ready to start earning?
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 max-w-md mx-auto">
+            Join thousands of users who are earning real rewards every day on
+            Boostly.
+          </p>
+          <Link
+            href="/register"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gold hover:bg-gold-hover text-navy font-semibold text-sm transition-all shadow-gold/20 hover:shadow-gold/30"
           >
-            <h3 className="text-lg sm:text-xl font-bold text-white mb-2">
-              Ready to get started?
-            </h3>
-            <p className="text-sm text-gray-400 mb-5 max-w-md mx-auto">
-              Join businesses across Africa using MotoTrack to manage their
-              operations.
-            </p>
-            <Link
-              href="/contact"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold text-sm hover:shadow-lg hover:shadow-primary-500/25 transition-all touch-manipulation min-h-[48px]"
-            >
-              Contact Us
-              <ArrowLeft className="w-4 h-4 rotate-180" />
-            </Link>
-          </motion.div>
-        </div>
-      </section>
+            Get Started
+            <ArrowLeft className="w-4 h-4 rotate-180" />
+          </Link>
+        </motion.div>
 
-      <Footer />
+        {/* Footer */}
+        <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500 dark:text-gray-500">
+            <p>© {new Date().getFullYear()} Boostly. All rights reserved.</p>
+            <div className="flex items-center gap-4">
+              <Link
+                href="/terms"
+                className="hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                Terms of Service
+              </Link>
+              <span className="text-gray-300 dark:text-gray-700">•</span>
+              <Link
+                href="/privacy"
+                className="hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                Privacy Policy
+              </Link>
+              <span className="text-gray-300 dark:text-gray-700">•</span>
+              <Link
+                href="/"
+                className="hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                Home
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
