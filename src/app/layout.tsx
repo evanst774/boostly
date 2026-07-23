@@ -215,12 +215,13 @@ export default function RootLayout({
         <ClientLayout>{children}</ClientLayout>
 
         {/* Jivo Live Chat Widget */}
-        {JIVO_WIDGET_ID && (
+        {/* {JIVO_WIDGET_ID && (
           <Script
             src={`https://code.jivosite.com/widget/${JIVO_WIDGET_ID}`}
             strategy="lazyOnload"
           />
-        )}
+        )} */}
+        <script src="//code.jivosite.com/widget/2Ir0MowhfA" async></script>
       </body>
     </html>
   );
