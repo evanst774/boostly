@@ -1,21 +1,26 @@
 // src/app/(auth)/forgot-password/page.tsx
+
 'use client';
 
-import { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Mail,
   ArrowLeft,
   Loader2,
   Lock,
   CheckCircle2,
-  ArrowRight,
+  AlertCircle,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import AuthShell from '@/components/auth/AuthShell';
 
-const STEP_LABELS = ['Email', 'Verify', 'Reset'];
+const STEP_LABELS = ['Email', 'Reset'];
+
+// ─── Step Indicator ──────────────────────────────────
 
 function StepIndicator({ step }: { step: number }) {
   return (
@@ -67,19 +72,136 @@ function StepIndicator({ step }: { step: number }) {
   );
 }
 
-const inputClass =
-  'w-full py-2.5 pl-10 pr-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all';
+// ─── Token Validator Component ──────────────────────
 
-export default function ForgotPasswordPage() {
+function TokenValidator({
+  token,
+  onValid,
+  onInvalid,
+  onEmailFound,
+}: {
+  token: string;
+  onValid: () => void;
+  onInvalid: () => void;
+  onEmailFound: (email: string) => void;
+}) {
+  const [isValidating, setIsValidating] = useState(true);
+  // ✅ FIX: React Strict Mode (dev only) intentionally mounts,
+  // fake-unmounts, and remounts every component once to surface
+  // effects that aren't safe to run twice. Without a guard, that
+  // meant validateToken() — and on failure, the toast.error() in
+  // onInvalid — fired twice for the same token. This ref persists
+  // across the fake unmount/remount (only effects re-run, not
+  // refs/state), so the second pass is a no-op.
+  const hasValidatedRef = useRef(false);
+
+  useEffect(() => {
+    if (hasValidatedRef.current) return;
+    hasValidatedRef.current = true;
+
+    async function validateToken() {
+      try {
+        const res = await fetch('/api/auth/validate-reset-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.valid) {
+          onValid();
+          if (data.email) {
+            onEmailFound(data.email);
+          }
+        } else {
+          onInvalid();
+        }
+      } catch {
+        onInvalid();
+      } finally {
+        setIsValidating(false);
+      }
+    }
+
+    validateToken();
+  }, [token, onValid, onInvalid, onEmailFound]);
+
+  if (isValidating) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8">
+        <Loader2 className="w-8 h-8 animate-spin text-[#2563EB]" />
+        <p className="text-sm text-white/50 mt-4">
+          Validating your reset link...
+        </p>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// ─── Main Component ──────────────────────────────────
+
+function ForgotPasswordContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tokenFromUrl = searchParams.get('token');
+
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState(['', '', '', '']);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const codeInputs = useRef<(HTMLInputElement | null)[]>([]);
+  const [isTokenValid, setIsTokenValid] = useState<boolean | null>(null);
+  const [validatedEmail, setValidatedEmail] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
 
+  // ─── Show/hide password toggles (Step 3) ────────
+  // ✅ NEW: independent visibility state per field, so
+  // toggling "new password" doesn't also reveal "confirm
+  // password" and vice-versa.
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // ─── Detect mobile ──────────────────────────────
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // ─── Check for token in URL ──────────────────────
+  useEffect(() => {
+    if (tokenFromUrl) {
+      setIsTokenValid(null);
+    }
+  }, [tokenFromUrl]);
+
+  // ✅ FIX: wrapped in useCallback so TokenValidator's effect
+  // deps stay stable across parent re-renders (see note above).
+  // ─── Handle token validation success ─────────────
+  const handleTokenValid = useCallback(() => {
+    setIsTokenValid(true);
+    setStep(3);
+  }, []);
+
+  // ─── Handle token validation failure ─────────────
+  const handleTokenInvalid = useCallback(() => {
+    setIsTokenValid(false);
+    toast.error('Invalid or expired reset link. Please request a new one.');
+  }, []);
+
+  // ─── Handle email found from token ──────────────
+  const handleEmailFound = useCallback((foundEmail: string) => {
+    setValidatedEmail(foundEmail);
+    setEmail(foundEmail);
+  }, []);
+
+  // ─── Handle sending reset link ──────────────────
   const handleSendReset = async () => {
     if (!email) {
       toast.error('Please enter your email address');
@@ -100,7 +222,7 @@ export default function ForgotPasswordPage() {
         throw new Error(data.message || 'Failed to send reset link');
       }
 
-      toast.success('Reset code sent to your email!');
+      toast.success('Reset link sent to your email!');
       setStep(2);
     } catch (err) {
       toast.error(
@@ -111,15 +233,7 @@ export default function ForgotPasswordPage() {
     }
   };
 
-  const handleVerifyCode = () => {
-    const fullCode = code.join('');
-    if (fullCode.length !== 4) {
-      toast.error('Please enter the 4-digit code');
-      return;
-    }
-    setStep(3);
-  };
-
+  // ─── Handle password reset ──────────────────────
   const handleResetPassword = async () => {
     if (newPassword.length < 8) {
       toast.error('Password must be at least 8 characters');
@@ -133,13 +247,13 @@ export default function ForgotPasswordPage() {
 
     setIsLoading(true);
     try {
+      const token = tokenFromUrl;
       const response = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email,
-          code: code.join(''),
-          newPassword,
+          token,
+          password: newPassword,
         }),
       });
 
@@ -160,12 +274,74 @@ export default function ForgotPasswordPage() {
     }
   };
 
+  // ─── Check if we have a token from URL ──────────
+  if (tokenFromUrl && isTokenValid === null) {
+    return (
+      <TokenValidator
+        token={tokenFromUrl}
+        onValid={handleTokenValid}
+        onInvalid={handleTokenInvalid}
+        onEmailFound={handleEmailFound}
+      />
+    );
+  }
+
+  // ─── Invalid token state ─────────────────────────
+  if (tokenFromUrl && isTokenValid === false) {
+    return (
+      <>
+        <div className="text-center mb-7">
+          <div className="w-16 h-16 rounded-full bg-red-500/10 border-2 border-red-500/30 flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-1.5">
+            Invalid or Expired Link
+          </h2>
+          <p className="text-[13.5px] text-white/45">
+            This password reset link is no longer valid. It may have expired or
+            already been used.
+          </p>
+        </div>
+        <button
+          onClick={() => router.push('/forgot-password')}
+          className="w-full py-3 bg-[#FBBF24] hover:bg-[#F59E0B] text-[#0F172A] font-semibold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#FBBF24]/20 hover:shadow-[#FBBF24]/40 min-h-[48px] text-sm"
+        >
+          Request New Reset Link
+        </button>
+        <p className="text-center text-xs text-white/30 mt-4">
+          Reset links expire after 1 hour for security reasons.
+        </p>
+      </>
+    );
+  }
+
+  // ─── Success step ────────────────────────────────
+  if (step === 4) {
+    return (
+      <div className="text-center py-4">
+        <div className="w-16 h-16 rounded-full bg-[#22C55E]/10 border-2 border-[#22C55E]/30 flex items-center justify-center mx-auto mb-5">
+          <CheckCircle2 className="w-8 h-8 text-[#4ADE80]" />
+        </div>
+        <h2 className="text-2xl font-bold text-white mb-1.5">
+          Password reset!
+        </h2>
+        <p className="text-[13.5px] text-white/45 mb-6">
+          Your password has been updated successfully.
+        </p>
+        <button
+          onClick={() => router.push('/login')}
+          className="w-full py-3 bg-[#FBBF24] hover:bg-[#F59E0B] text-[#0F172A] font-semibold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#FBBF24]/20 hover:shadow-[#FBBF24]/40 min-h-[48px] text-sm"
+        >
+          Back to Login
+        </button>
+      </div>
+    );
+  }
+
+  // ─── Render ────────────────────────────────────────
   return (
-    <AuthShell
-      bottomPrompt="Remembered it?"
-      bottomLinkText="Back to log in"
-      bottomLinkHref="/login"
-    >
+    <>
+      {/* Back button */}
       {step < 4 && (
         <button
           type="button"
@@ -181,7 +357,7 @@ export default function ForgotPasswordPage() {
 
       {step < 4 && <StepIndicator step={step} />}
 
-      {/* Step 1: email */}
+      {/* Step 1: Email */}
       {step === 1 && (
         <>
           <div className="text-center lg:text-left mb-7">
@@ -189,18 +365,23 @@ export default function ForgotPasswordPage() {
               Forgot password?
             </h2>
             <p className="text-[13.5px] text-white/45">
-              Enter your email and we&apos;ll send you a reset code.
+              Enter your email and we&apos;ll send you a reset link.
             </p>
           </div>
 
           <div className="relative mb-6">
-            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+            {!isMobile && (
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+            )}
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className={inputClass}
+              className={cn(
+                'w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all',
+                !isMobile ? 'pl-10 pr-3.5' : 'px-4',
+              )}
             />
           </div>
 
@@ -212,73 +393,48 @@ export default function ForgotPasswordPage() {
             {isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <>
-                Send Reset Code
-                <ArrowRight className="w-4 h-4" />
-              </>
+              'Send Reset Link'
             )}
           </button>
         </>
       )}
 
-      {/* Step 2: verify code */}
+      {/* Step 2: Check Email */}
       {step === 2 && (
         <>
-          <div className="text-center lg:text-left mb-7">
-            <h2 className="text-2xl sm:text-[26px] font-bold text-white mb-1.5">
+          <div className="text-center mb-7">
+            <div className="w-16 h-16 rounded-full bg-[#2563EB]/10 border-2 border-[#2563EB]/30 flex items-center justify-center mx-auto mb-4">
+              <Mail className="w-8 h-8 text-[#93C5FD]" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-1.5">
               Check your email
             </h2>
             <p className="text-[13.5px] text-white/45">
-              Enter the 4-digit code we sent to{' '}
+              We&apos;ve sent a password reset link to{' '}
               <span className="text-white/70 font-medium">{email}</span>.
+            </p>
+            <p className="text-xs text-white/30 mt-4">
+              Click the link in the email to reset your password. The link
+              expires in 1 hour.
             </p>
           </div>
 
-          <div className="flex gap-3 justify-center lg:justify-start mb-6">
-            {code.map((digit, index) => (
-              <input
-                key={index}
-                ref={(el) => {
-                  codeInputs.current[index] = el;
-                }}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, '').slice(0, 1);
-                  const newCode = [...code];
-                  newCode[index] = value;
-                  setCode(newCode);
-                  if (value && index < 3) {
-                    codeInputs.current[index + 1]?.focus();
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Backspace' && !code[index] && index > 0) {
-                    codeInputs.current[index - 1]?.focus();
-                  }
-                }}
-                className={cn(
-                  'w-14 h-16 text-center text-2xl font-bold bg-white/5 border-2 rounded-xl text-white focus:ring-2 focus:ring-[#2563EB]/20 transition-all',
-                  digit ? 'border-[#2563EB] text-[#93C5FD]' : 'border-white/10',
-                )}
-                autoFocus={index === 0}
-              />
-            ))}
-          </div>
-
           <button
-            onClick={handleVerifyCode}
+            onClick={() => setStep(1)}
             className="w-full py-3 bg-[#FBBF24] hover:bg-[#F59E0B] text-[#0F172A] font-semibold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#FBBF24]/20 hover:shadow-[#FBBF24]/40 min-h-[48px] text-sm"
           >
-            Verify Code
-            <ArrowRight className="w-4 h-4" />
+            Resend Link
+          </button>
+          <button
+            onClick={() => router.push('/login')}
+            className="w-full py-3 mt-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 rounded-xl flex items-center justify-center gap-2 transition-all min-h-[48px] text-sm"
+          >
+            Back to Login
           </button>
         </>
       )}
 
-      {/* Step 3: new password */}
+      {/* Step 3: New Password */}
       {step === 3 && (
         <>
           <div className="text-center lg:text-left mb-7">
@@ -286,30 +442,72 @@ export default function ForgotPasswordPage() {
               Set new password
             </h2>
             <p className="text-[13.5px] text-white/45">
-              Choose a strong password you haven&apos;t used before.
+              {tokenFromUrl
+                ? `Create a new password for ${validatedEmail || 'your account'}`
+                : "Choose a strong password you haven't used before."}
             </p>
           </div>
 
           <div className="space-y-4 mb-6">
             <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+              {!isMobile && (
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+              )}
               <input
-                type="password"
+                type={showNewPassword ? 'text' : 'password'}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Min. 8 characters"
-                className={inputClass}
+                className={cn(
+                  'w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all pr-11',
+                  !isMobile ? 'pl-10' : 'pl-4',
+                )}
               />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword((v) => !v)}
+                tabIndex={-1}
+                aria-label={
+                  showNewPassword ? 'Hide password' : 'Show password'
+                }
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+              >
+                {showNewPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
             </div>
             <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+              {!isMobile && (
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+              )}
               <input
-                type="password"
+                type={showConfirmPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Re-enter password"
-                className={inputClass}
+                className={cn(
+                  'w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all pr-11',
+                  !isMobile ? 'pl-10' : 'pl-4',
+                )}
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((v) => !v)}
+                tabIndex={-1}
+                aria-label={
+                  showConfirmPassword ? 'Hide password' : 'Show password'
+                }
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
             </div>
           </div>
 
@@ -326,27 +524,28 @@ export default function ForgotPasswordPage() {
           </button>
         </>
       )}
+    </>
+  );
+}
 
-      {/* Step 4: success */}
-      {step === 4 && (
-        <div className="text-center py-4">
-          <div className="w-16 h-16 rounded-full bg-[#22C55E]/10 border-2 border-[#22C55E]/30 flex items-center justify-center mx-auto mb-5">
-            <CheckCircle2 className="w-8 h-8 text-[#4ADE80]" />
+// ─── Main Page ──────────────────────────────────────
+
+export default function ForgotPasswordPage() {
+  return (
+    <AuthShell
+      bottomPrompt="Remembered it?"
+      bottomLinkText="Back to log in"
+      bottomLinkHref="/login"
+    >
+      <Suspense
+        fallback={
+          <div className="flex justify-center py-8">
+            <Loader2 className="w-8 h-8 animate-spin text-[#2563EB]" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-1.5">
-            Password reset!
-          </h2>
-          <p className="text-[13.5px] text-white/45 mb-6">
-            Your password has been updated successfully.
-          </p>
-          <button
-            onClick={() => router.push('/login')}
-            className="w-full py-3 bg-[#FBBF24] hover:bg-[#F59E0B] text-[#0F172A] font-semibold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#FBBF24]/20 hover:shadow-[#FBBF24]/40 min-h-[48px] text-sm"
-          >
-            Back to Login
-          </button>
-        </div>
-      )}
+        }
+      >
+        <ForgotPasswordContent />
+      </Suspense>
     </AuthShell>
   );
 }

@@ -217,11 +217,35 @@ async function resolveUser(
   });
 
   if (existing) {
-    // Both sides must have verified email
-    const bothSidesVerified =
-      profile.emailVerified && existing.emailVerifiedAt !== null;
-
-    if (!bothSidesVerified) {
+    // ============================================
+    // FIX: this used to require BOTH the OAuth
+    // provider's email AND the existing local account's
+    // email to already be verified:
+    //
+    //   const bothSidesVerified =
+    //     profile.emailVerified && existing.emailVerifiedAt !== null;
+    //
+    // That's stricter than it needs to be, and not how
+    // "Continue with Google" is supposed to behave. The
+    // whole point of the provider handshake is that Google
+    // is vouching for the email on the user's behalf — a
+    // verified Google account IS sufficient proof of
+    // ownership on its own. Requiring the *local* account to
+    // independently already be verified meant anyone who
+    // registered by password and hadn't yet clicked their
+    // verification email (a completely normal, common state)
+    // would be permanently unable to use "Continue with
+    // Google" on that same address, even though Google had
+    // just proven who they are.
+    //
+    // The actual security property worth keeping is
+    // narrower: don't silently attach a login to an existing
+    // account unless the OAuth provider itself confirms the
+    // email. That's `profile.emailVerified` alone — the local
+    // account's prior verification state doesn't need to gate
+    // this decision.
+    // ============================================
+    if (!profile.emailVerified) {
       return { outcome: 'NEEDS_PASSWORD_LOGIN' };
     }
 
@@ -236,6 +260,37 @@ async function resolveUser(
       providerAvatar: profile.avatar,
       lastUsedAt: new Date().toISOString(),
     });
+
+    // ============================================
+    // FIX: backfill emailVerifiedAt AND isActive if either
+    // isn't already set. Google just vouched for this email,
+    // so the account should come out of this link in the same
+    // state a brand-new OAuth signup gets (see
+    // createOAuthUser below — isActive: true immediately,
+    // emailVerifiedAt set immediately) rather than being left
+    // half-activated.
+    //
+    // isActive specifically matters here because
+    // users.isActive defaults to `false` in the schema
+    // (src/lib/db/schema/users.ts). Without this backfill, a
+    // user who registered by password but never verified
+    // would link successfully, get handed a valid session
+    // cookie, and start redirecting toward /dashboard — then
+    // get immediately bounced to /account-locked the moment
+    // /api/auth/me ran, because isActive was still false.
+    // Same underlying bug, one step later in the flow.
+    // ============================================
+    const needsBackfill = !existing.emailVerifiedAt || !existing.isActive;
+    if (needsBackfill) {
+      await db
+        .update(users)
+        .set({
+          emailVerifiedAt: existing.emailVerifiedAt ?? new Date().toISOString(),
+          isActive: true,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(users.id, existing.id));
+    }
 
     return {
       outcome: 'OK',

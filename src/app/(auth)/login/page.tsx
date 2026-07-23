@@ -54,6 +54,17 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // ─── Detect mobile ──────────────────────────────
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // ─── Load saved email ──────────────────────────────
   useEffect(() => {
@@ -107,9 +118,6 @@ export default function LoginPage() {
 
       // Check if email verification is needed
       if (result?.needsVerification) {
-        // NOTE: added `from=login` so /verify-email knows to auto-send the
-        // code (it only auto-sends when from === 'login' — previously this
-        // redirect omitted that param, so auto-send never fired here).
         router.push(
           `/verify-email?email=${encodeURIComponent(email)}&from=login`,
         );
@@ -196,7 +204,9 @@ export default function LoginPage() {
             Email Address
           </label>
           <div className="relative">
-            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+            {!isMobile && (
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+            )}
             <input
               id="email"
               type="email"
@@ -204,7 +214,10 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
-              className="w-full py-2.5 pl-10 pr-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all"
+              className={cn(
+                'w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all',
+                !isMobile ? 'pl-10 pr-3.5' : 'px-4',
+              )}
               placeholder="you@example.com"
             />
           </div>
@@ -227,7 +240,9 @@ export default function LoginPage() {
             </Link>
           </div>
           <div className="relative">
-            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+            {!isMobile && (
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+            )}
             <input
               id="password"
               type={showPassword ? 'text' : 'password'}
@@ -235,7 +250,10 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
-              className="w-full py-2.5 pl-10 pr-10 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all"
+              className={cn(
+                'w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all',
+                !isMobile ? 'pl-10 pr-10' : 'px-4 pr-10',
+              )}
               placeholder="Enter your password"
             />
             <button

@@ -8,6 +8,7 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useRef,
 } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -116,6 +117,36 @@ const PUBLIC_ROUTES = [
   '/splash',
   '/onboarding',
   '/ref',
+  // ✅ FIX: added for parity with middleware.ts's PUBLIC_ROUTES —
+  // this list was missing it, so client-side redirect logic could
+  // disagree with the middleware about whether this path is public.
+  '/auth/oauth',
+];
+
+const OAUTH_CALLBACK_PATHS = [
+  '/api/auth/oauth/google/callback',
+  '/api/auth/oauth/facebook/callback',
+];
+
+// ============================================
+// FIX: Pages that own the `token` query param for a
+// purpose unrelated to OAuth (password-reset links,
+// email-verification links). OAuth redirects also land
+// with `?token=...`, so without this list, opening e.g.
+// /forgot-password?token=<reset-token> made the
+// OAuth-callback-on-mount effect (below) mistake the
+// reset token for an OAuth JWT, send it to /api/auth/me
+// as a Bearer token (which fails since it isn't a JWT),
+// and redirect the user to /login — even though the
+// reset token itself was perfectly valid and the
+// dedicated TokenValidator on that page was handling it
+// correctly.
+// ============================================
+const TOKEN_PARAM_PAGES = [
+  '/forgot-password',
+  '/reset-password',
+  '/verify',
+  '/verify-email',
 ];
 
 const DASHBOARD_ROUTES = {
@@ -142,6 +173,66 @@ function isPublicPath(pathname: string): boolean {
 
 function isAuthPagePath(pathname: string): boolean {
   return AUTH_PAGES.some((p) => pathname === p || pathname.startsWith(p + '/'));
+}
+
+function isOAuthCallbackPath(pathname: string): boolean {
+  return OAUTH_CALLBACK_PATHS.some((p) => pathname.includes(p));
+}
+
+// ============================================
+// FIX: see TOKEN_PARAM_PAGES comment above.
+// ============================================
+function usesOwnTokenParam(pathname: string): boolean {
+  return TOKEN_PARAM_PAGES.some(
+    (p) => pathname === p || pathname.startsWith(p + '/'),
+  );
+}
+
+// ============================================
+// FIX: defense in depth alongside usesOwnTokenParam().
+// Even if this effect ever runs on a page not covered by
+// TOKEN_PARAM_PAGES (e.g. a future page someone forgets
+// to add to that list), don't treat a non-JWT value as an
+// OAuth token. OAuth tokens issued by our own callback
+// route are always JWTs (header.payload.signature — two
+// dots). Password-reset / email-verify tokens are opaque
+// hex strings with no dots. This means the two token
+// "shapes" can never be confused for each other regardless
+// of which page they show up on.
+// ============================================
+function looksLikeJWT(token: string): boolean {
+  return token.split('.').length === 3;
+}
+
+// ============================================
+// FIX: checkAuth() used to fire on every pathname
+// change with no gate beyond "not an OAuth callback" —
+// including on /forgot-password, /reset-password, and
+// every other public/auth page. For a logged-out user
+// (the normal case on these pages) that means an
+// unconditional /api/auth/me call that always 401s,
+// right in the middle of the password-reset flow.
+//
+// None of these pages actually need /api/auth/me:
+//   - Public pages don't gate on auth at all.
+//   - Auth pages (login, register, forgot/reset-password,
+//     2fa, verify, verify-email, account-locked) are for
+//     logged-out users by definition.
+//   - The one case that *does* care whether the user is
+//     already authenticated — bouncing a logged-in user
+//     away from /login — is already handled server-side
+//     by middleware's BOUNCE_IF_AUTHENTICATED_ROUTES
+//     check, before the page ever renders. The client
+//     doesn't need to re-check it.
+//
+// So: only call checkAuth() on routes that actually
+// require knowing who the user is.
+// ============================================
+function needsAuthCheck(pathname: string): boolean {
+  if (isOAuthCallbackPath(pathname)) return false;
+  if (isPublicPath(pathname)) return false;
+  if (isAuthPagePath(pathname)) return false;
+  return true;
 }
 
 // ============================================
@@ -176,13 +267,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
   const router = useRouter();
   const pathname = usePathname();
+  const authCheckRef = useRef(false);
+
+  // ============================================
+  // FIX: `checkAuth` used to close over `user` state
+  // directly and list it in its own useCallback deps.
+  // Every successful /api/auth/me fetch called
+  // setUser(newObjectRef) — even when the underlying
+  // user data was unchanged, this is a *new* object
+  // reference, which:
+  //   1. re-created the `checkAuth` function identity
+  //   2. which re-ran the `useEffect(() => checkAuth(), [pathname, checkAuth])`
+  //      mount effect
+  //   3. which called checkAuth() again → setUser again → back to (1)
+  // This produced a burst of concurrent /api/auth/me
+  // calls. `authCheckRef` mostly no-ops the overlapping
+  // calls, but the ones that DO complete can resolve
+  // out of order relative to `pathname` — e.g. a check
+  // that started before the router settled on
+  // /forgot-password?token=xxx can finish afterward and
+  // fire a stale redirect to /login.
+  //
+  // Fix: read `user` via a ref instead of a closure, and
+  // drop `user` from checkAuth's dependency array so its
+  // identity is stable across auth-state changes (it now
+  // only changes when `pathname` or `router` change).
+  // ============================================
+  const userRef = useRef<User | null>(null);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   // ============================================
   // CHECK AUTH
   // ============================================
 
   const checkAuth = useCallback(async (): Promise<User | null> => {
+    // Skip auth check on OAuth callbacks
+    if (pathname && isOAuthCallbackPath(pathname)) {
+      return userRef.current;
+    }
+
+    // Prevent multiple concurrent auth checks
+    if (authCheckRef.current) {
+      return userRef.current;
+    }
+
     try {
+      authCheckRef.current = true;
       const res = await fetch('/api/auth/me', { credentials: 'include' });
 
       if (res.ok) {
@@ -226,8 +358,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setIsAccountLocked(false);
 
+        // Only redirect to login if on a protected route and NOT on an OAuth callback
         const onProtectedRoute =
-          pathname && !isPublicPath(pathname) && !isAuthPagePath(pathname);
+          pathname &&
+          !isPublicPath(pathname) &&
+          !isAuthPagePath(pathname) &&
+          !isOAuthCallbackPath(pathname);
 
         if (onProtectedRoute) {
           await clearDeadSessionCookie();
@@ -243,8 +379,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return null;
     } finally {
       setIsLoading(false);
+      authCheckRef.current = false;
     }
-  }, [pathname, router]);
+  }, [pathname, router]); // ✅ FIX: `user` removed from deps — see note above
 
   // ============================================
   // REFRESH USER
@@ -296,7 +433,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const params = new URLSearchParams();
       params.set('returnTo', returnTo);
 
-      // Store return URL in session storage for recovery
       try {
         sessionStorage.setItem('oauth_return_to', returnTo);
       } catch {
@@ -330,7 +466,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (token) {
         try {
-          // Verify the token and fetch user
           const res = await fetch('/api/auth/me', {
             credentials: 'include',
             headers: {
@@ -386,43 +521,96 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ============================================
 
   // Handle OAuth callback on mount
+  //
+  // ✅ FIX: this effect used to look only at
+  // window.location.search for a `token` param, with no
+  // awareness that /forgot-password, /reset-password,
+  // /verify, and /verify-email all put their OWN unrelated
+  // token in that exact same query param. Opening a
+  // password-reset link (/forgot-password?token=<reset-token>)
+  // made this effect treat the reset token as an OAuth JWT,
+  // send it to /api/auth/me as `Authorization: Bearer
+  // <reset-token>` (which 401s, since it isn't a JWT), and
+  // then unconditionally redirect to /login on failure —
+  // even though the reset token itself was valid and the
+  // page's own TokenValidator was handling it correctly in
+  // parallel.
+  //
+  // Two independent guards now prevent this:
+  //   1. usesOwnTokenParam(pathname) — skip entirely on
+  //      pages known to own the `token` param themselves.
+  //   2. looksLikeJWT(token) — even outside those pages,
+  //      never treat a non-JWT-shaped value as an OAuth
+  //      token. Real OAuth tokens are always JWTs
+  //      (header.payload.signature); reset/verify tokens
+  //      are opaque hex strings with no dots.
+  // ============================================
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (pathname && usesOwnTokenParam(pathname)) return;
 
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
     const error = params.get('error');
 
-    if (token || error) {
+    if (error) {
+      handleOAuthCallback(params);
+      return;
+    }
+
+    if (token && looksLikeJWT(token)) {
       handleOAuthCallback(params);
     }
-  }, [handleOAuthCallback]);
+  }, [pathname, handleOAuthCallback]);
 
   // Check auth on mount and pathname change
   useEffect(() => {
+    if (!pathname) return;
+
+    // ✅ FIX: don't hit /api/auth/me on public/auth pages —
+    // see needsAuthCheck() for why. Deliberately does NOT
+    // clear `user` here: a logged-in user browsing to a
+    // public page (e.g. /about) should still read as logged
+    // in for shared UI (nav, etc.) — we're just skipping the
+    // redundant re-check, not the existing session state.
+    // isLoading still needs to flip to false here since
+    // checkAuth()'s own `finally` block — the thing that
+    // normally does that — never runs on these pages.
+    if (!needsAuthCheck(pathname)) {
+      setIsLoading(false);
+      return;
+    }
+
     checkAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [pathname, checkAuth]);
 
   // Handle redirects based on auth state
   useEffect(() => {
     if (isLoading) return;
     if (!pathname) return;
 
+    // Skip redirects on OAuth callbacks
+    if (isOAuthCallbackPath(pathname)) {
+      return;
+    }
+
+    // Account locked check
     if (isAccountLocked && pathname !== '/account-locked') {
       router.replace('/account-locked');
       return;
     }
 
+    // 2FA page - allow access
     if (pathname === '/2fa') return;
 
+    // Auth pages - if user is authenticated, redirect to dashboard
     if (user && isAuthPagePath(pathname)) {
       const dashboardPath = getRoleRedirectPath(user.role);
       window.location.href = dashboardPath;
       return;
     }
 
-    // Admin routing
+    // Admin routing - enforce admin access
     if (
       user &&
       isAdminRole(user.role) &&

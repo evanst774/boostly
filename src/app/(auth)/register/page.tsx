@@ -104,6 +104,17 @@ export default function RegisterPage() {
   const [referralValid, setReferralValid] = useState<boolean | null>(null);
   const [isCheckingReferral, setIsCheckingReferral] = useState(false);
   const referralTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // ─── Detect mobile ──────────────────────────────
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // ─── Password requirements ──────────────────────────
   const [passwordRequirements, setPasswordRequirements] = useState({
@@ -600,14 +611,20 @@ export default function RegisterPage() {
                 Full Name
               </label>
               <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                {/* Icon hidden on mobile */}
+                {!isMobile && (
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                )}
                 <input
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   required
                   autoComplete="name"
-                  className="w-full py-2.5 pl-10 pr-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all touch-manipulation"
+                  className={cn(
+                    'w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all touch-manipulation',
+                    !isMobile ? 'pl-10 pr-3.5' : 'px-4',
+                  )}
                   placeholder="John Doe"
                 />
               </div>
@@ -619,14 +636,19 @@ export default function RegisterPage() {
                 Email Address
               </label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                {!isMobile && (
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                )}
                 <input
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   required
                   autoComplete="email"
-                  className="w-full py-2.5 pl-10 pr-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all touch-manipulation"
+                  className={cn(
+                    'w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all touch-manipulation',
+                    !isMobile ? 'pl-10 pr-3.5' : 'px-4',
+                  )}
                   placeholder="you@example.com"
                 />
               </div>
@@ -639,7 +661,9 @@ export default function RegisterPage() {
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                  {!isMobile && (
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                  )}
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={form.password}
@@ -648,7 +672,10 @@ export default function RegisterPage() {
                     }
                     required
                     autoComplete="new-password"
-                    className="w-full py-2.5 pl-10 pr-10 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all touch-manipulation"
+                    className={cn(
+                      'w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all touch-manipulation',
+                      !isMobile ? 'pl-10 pr-10' : 'px-4 pr-10',
+                    )}
                     placeholder="Create a password"
                   />
                   <button
@@ -673,7 +700,9 @@ export default function RegisterPage() {
                   Confirm Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                  {!isMobile && (
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                  )}
                   <input
                     type={showConfirm ? 'text' : 'password'}
                     value={form.confirmPassword}
@@ -682,7 +711,10 @@ export default function RegisterPage() {
                     }
                     required
                     autoComplete="new-password"
-                    className="w-full py-2.5 pl-10 pr-10 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all touch-manipulation"
+                    className={cn(
+                      'w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all touch-manipulation',
+                      !isMobile ? 'pl-10 pr-10' : 'px-4 pr-10',
+                    )}
                     placeholder="Confirm your password"
                   />
                   <button
@@ -765,12 +797,17 @@ export default function RegisterPage() {
                 <span className="text-white/30 font-normal">(optional)</span>
               </label>
               <div className="relative">
-                <Gift className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                {!isMobile && (
+                  <Gift className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                )}
                 <input
                   type="text"
                   value={form.referralCode}
                   onChange={handleReferralChange}
-                  className="w-full py-2.5 pl-10 pr-10 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all uppercase touch-manipulation"
+                  className={cn(
+                    'w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all uppercase touch-manipulation',
+                    !isMobile ? 'pl-10 pr-10' : 'px-4 pr-10',
+                  )}
                   placeholder="e.g. BOOSTLY123"
                 />
                 {isCheckingReferral && (
