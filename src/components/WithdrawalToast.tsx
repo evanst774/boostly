@@ -231,7 +231,7 @@ export function WithdrawalToast({
   // ─── Loading state ──────────────────────────────
   if (isLoading || !currentToast) {
     return (
-      <div className="fixed bottom-4 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-50 max-w-full sm:max-w-sm">
+      <div className="fixed bottom-4 sm:bottom-6 left-4 sm:left-6 z-50 max-w-full sm:max-w-sm">
         <div className="bg-gradient-to-br from-[#0D1835] via-[#111C33] to-[#0D1835] rounded-2xl shadow-xl border border-white/10 p-4 animate-pulse">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-white/10" />
@@ -246,9 +246,10 @@ export function WithdrawalToast({
   }
 
   // ─── Mobile vs Desktop positioning ──────────────
+  // CHANGED: Both mobile and desktop now use left positioning
   const positionClasses = isMobile
     ? 'bottom-4 left-4 right-4 max-w-full'
-    : 'bottom-6 right-6 max-w-sm';
+    : 'bottom-6 left-6 max-w-sm';
 
   return (
     <div
