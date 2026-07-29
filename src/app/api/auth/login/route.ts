@@ -13,6 +13,7 @@ import {
 } from '@/lib/jwt';
 import { verifyTOTPCode } from '@/lib/totp';
 import { parseEnabledMethods } from '@/lib/utils';
+import { SystemRoles } from '@/modules/rbac/roles';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -32,7 +33,14 @@ async function getUserRoleNames(userId: string): Promise<string[]> {
 
 async function getPrimaryRoleForRedirect(userId: string): Promise<string> {
   const names = await getUserRoleNames(userId);
-  return names[0] || 'SALES_PERSON';
+  // ============================================
+  // FIX: was the string literal 'SALES_PERSON', which doesn't
+  // match SystemRoles.USER used everywhere else (auth-utils.ts,
+  // AuthContext.tsx, jwt.ts, api/auth/me/route.ts). A user with
+  // no assigned roles would get redirected to a different
+  // dashboard depending on which code path resolved them.
+  // ============================================
+  return names[0] || SystemRoles.USER;
 }
 
 async function cleanupExpiredOTPs() {
@@ -58,15 +66,43 @@ async function create2FASession(userId: string): Promise<string> {
   return id;
 }
 
-async function verify2FASession(sessionId: string): Promise<string | null> {
+// ============================================
+// FIX: this used to be a single verify2FASession() that deleted
+// the session row the moment it was looked up — before the OTP
+// or TOTP code was even checked. That meant a session was
+// consumed on the FIRST request that referenced it, regardless
+// of whether the code turned out to be right or wrong. One
+// mistyped digit and the next attempt (even with the correct
+// code) failed with "Session expired. Please login again.",
+// forcing the user to re-enter their password from scratch.
+//
+// Split into a read (peek) and a separate consume, so the
+// session survives failed attempts and is only deleted once
+// verification actually succeeds — see the call sites below.
+// ============================================
+async function get2FASessionUserId(sessionId: string): Promise<string | null> {
   const [s] = await db
     .select()
     .from(twoFASessions)
     .where(eq(twoFASessions.id, sessionId))
     .limit(1);
   if (!s || new Date(s.expiresAt) < new Date()) return null;
-  await db.delete(twoFASessions).where(eq(twoFASessions.id, sessionId));
   return s.userId;
+}
+
+async function consume2FASession(sessionId: string): Promise<void> {
+  await db.delete(twoFASessions).where(eq(twoFASessions.id, sessionId));
+}
+
+// ============================================
+// FIX: crypto.randomInt, not Math.random — same reasoning
+// applied elsewhere in this codebase (register/route.ts,
+// verify-email/request/route.ts): an OTP from a predictable
+// PRNG is guessable. This one is actually more sensitive than
+// the email-verification codes, since it's a login 2FA code.
+// ============================================
+function generate2FAOTP(): string {
+  return crypto.randomInt(100_000, 1_000_000).toString();
 }
 
 async function sendEmailOTP(
@@ -74,7 +110,7 @@ async function sendEmailOTP(
   email: string,
   name: string | null,
 ): Promise<void> {
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otp = generate2FAOTP();
   await db
     .delete(otpVerifications)
     .where(
@@ -95,7 +131,9 @@ async function sendEmailOTP(
   const { sendEmail, build2FAOTPEmailHTML } = await import('@/lib/mail');
   await sendEmail({
     to: email,
-    subject: 'Your 2FA Verification Code - MotoTrack',
+    // ✅ FIX: was "Your 2FA Verification Code - MotoTrack" —
+    // leftover branding from a different project.
+    subject: 'Your 2FA Verification Code - Boostly',
     html: build2FAOTPEmailHTML(name || 'User', otp),
     type: 'VERIFICATION',
   });
@@ -136,6 +174,78 @@ function audit(overrides: AuditEntry, req: NextRequest, userId?: string) {
       'unknown',
     userAgent: req.headers.get('user-agent') || 'unknown',
   });
+}
+
+// ============================================
+// FIX: extracted from what used to be inline code that ran
+// UNCONDITIONALLY right after the user was fetched by email —
+// before password verification. That meant submitting a target
+// email with ANY wrong password would reveal, with no
+// authentication at all, whether the account was locked,
+// unverified, or deactivated. Those are now only checked AFTER
+// a correct password is confirmed (for the password step) — see
+// the call sites below. For the 2FA step this runs right after
+// a valid session is confirmed, which is fine: reaching that
+// point already required a correct password in step 1.
+// ============================================
+async function checkAccountGates(
+  userData: typeof users.$inferSelect,
+  isSuper: boolean,
+  email: string,
+  request: NextRequest,
+): Promise<NextResponse | null> {
+  if (
+    userData.accountLockedUntil &&
+    new Date(userData.accountLockedUntil) > new Date()
+  ) {
+    const mins = Math.ceil(
+      (new Date(userData.accountLockedUntil).getTime() - Date.now()) / 60000,
+    );
+    await audit(
+      {
+        action: 'LOGIN_FAILED',
+        entityType: 'user',
+        entityId: userData.id,
+        newData: { email, reason: 'Account locked' },
+      },
+      request,
+      userData.id,
+    );
+    return NextResponse.json(
+      { message: `Account locked. Try again in ${mins} minutes.` },
+      { status: 401 },
+    );
+  }
+
+  if (!userData.emailVerifiedAt && !isSuper) {
+    return NextResponse.json(
+      {
+        message: 'Please verify your email before logging in',
+        needsVerification: true,
+        email: userData.email,
+      },
+      { status: 401 },
+    );
+  }
+
+  if (!userData.isActive && !isSuper) {
+    await audit(
+      {
+        action: 'LOGIN_FAILED',
+        entityType: 'user',
+        entityId: userData.id,
+        newData: { email, reason: 'Account deactivated' },
+      },
+      request,
+      userData.id,
+    );
+    return NextResponse.json(
+      { message: 'Account deactivated. Contact support.' },
+      { status: 401 },
+    );
+  }
+
+  return null;
 }
 
 // ─── POST ───────────────────────────────────────────────────
@@ -191,66 +301,18 @@ export async function POST(request: NextRequest) {
     const roleNames = await getUserRoleNames(userData.id);
     const isSuper = roleNames.includes('SUPER_ADMIN');
 
-    // ── locked? ────────────────────────────────────
-    if (
-      userData.accountLockedUntil &&
-      new Date(userData.accountLockedUntil) > new Date()
-    ) {
-      const mins = Math.ceil(
-        (new Date(userData.accountLockedUntil).getTime() - Date.now()) / 60000,
-      );
-      await audit(
-        {
-          action: 'LOGIN_FAILED',
-          entityType: 'user',
-          entityId: userData.id,
-          newData: { email, reason: 'Account locked' },
-        },
-        request,
-        userData.id,
-      );
-      return NextResponse.json(
-        { message: `Account locked. Try again in ${mins} minutes.` },
-        { status: 401 },
-      );
-    }
-
-    // ── email verified? ────────────────────────────
-    if (!userData.emailVerifiedAt && !isSuper) {
-      return NextResponse.json(
-        {
-          message: 'Please verify your email before logging in',
-          needsVerification: true,
-          email: userData.email,
-        },
-        { status: 401 },
-      );
-    }
-
-    // ── active? ────────────────────────────────────
-    if (!userData.isActive && !isSuper) {
-      await audit(
-        {
-          action: 'LOGIN_FAILED',
-          entityType: 'user',
-          entityId: userData.id,
-          newData: { email, reason: 'Account deactivated' },
-        },
-        request,
-        userData.id,
-      );
-      return NextResponse.json(
-        { message: 'Account deactivated. Contact support.' },
-        { status: 401 },
-      );
-    }
-
     await cleanupExpiredOTPs();
 
     // ════════════════════════════════════════════════
     // STEP 2 — 2FA verification
     // ════════════════════════════════════════════════
     if (is2FAStep) {
+      // Safe here: reaching this step already required a correct
+      // password in step 1, so revealing lock/verify/active state
+      // isn't a new information leak.
+      const gate = await checkAccountGates(userData, isSuper, email, request);
+      if (gate) return gate;
+
       if (!sessionId || !otpCode) {
         return NextResponse.json(
           {
@@ -262,7 +324,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const verifiedUserId = await verify2FASession(sessionId);
+      const verifiedUserId = await get2FASessionUserId(sessionId);
       if (!verifiedUserId || verifiedUserId !== userData.id) {
         return NextResponse.json(
           { message: 'Session expired. Please login again.' },
@@ -384,6 +446,9 @@ export async function POST(request: NextRequest) {
           request,
           userData.id,
         );
+        // ✅ FIX: session is NOT deleted here — the row stays
+        // alive (until its own expiry) so the user can try again
+        // instead of being bounced back to the password screen.
         return NextResponse.json(
           { message: 'Invalid verification code.' },
           { status: 400 },
@@ -391,6 +456,9 @@ export async function POST(request: NextRequest) {
       }
 
       // ── success ────────────────────────────────
+      // ✅ FIX: session consumed only now, on confirmed success.
+      await consume2FASession(sessionId);
+
       await db
         .update(users)
         .set({
@@ -444,9 +512,28 @@ export async function POST(request: NextRequest) {
     // ════════════════════════════════════════════════
     // STEP 1 — password check
     // ════════════════════════════════════════════════
+    // ============================================
+    // FIX: password is now verified BEFORE any account-state
+    // (locked / unverified / deactivated) is revealed. Previously
+    // those checks ran unconditionally right after the user was
+    // looked up by email, which meant anyone submitting a target
+    // email with an arbitrary wrong password learned the
+    // account's status without ever proving they held the
+    // credentials — a straightforward account-enumeration
+    // oracle. Now that information is only returned once the
+    // password has actually been confirmed correct.
+    //
+    // Side benefit: verifying the password unconditionally (even
+    // for accounts that turn out to be locked) also removes a
+    // timing side-channel that could otherwise hint at account
+    // state before the bcrypt compare even runs.
+    // ============================================
     if (!userData.passwordHash) {
       return NextResponse.json(
-        { error: 'This account signs in with a social provider. Please use that instead.' },
+        {
+          error:
+            'This account signs in with a social provider. Please use that instead.',
+        },
         { status: 400 },
       );
     }
@@ -481,6 +568,11 @@ export async function POST(request: NextRequest) {
         { status: 401 },
       );
     }
+
+    // Password confirmed — safe to reveal locked / unverified /
+    // deactivated state now.
+    const gate = await checkAccountGates(userData, isSuper, email, request);
+    if (gate) return gate;
 
     // ════════════════════════════════════════════════
     // 2FA required?
