@@ -1,7 +1,13 @@
 // src/app/api/content/videos/[id]/watch/route.ts
+//
+// One endpoint, three actions:
+//   { action: 'start' }                              -> start token + today's status
+//   { action: 'progress', watchPercent, watchDuration } -> save progress (never pays)
+//   { action: 'complete', startToken, watchDuration }   -> pay today's reward once
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session.server';
 import { videosService } from '@/modules/content';
+import { VideoTaskError } from '@/modules/content/services/videos/videos.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,36 +21,45 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { watchPercent, watchDuration, deviceType, browserInfo } = body;
+    const body = await request.json().catch(() => ({}));
+    const action = body?.action ?? 'progress';
 
-    if (watchPercent === undefined || watchDuration === undefined) {
+    if (action === 'start') {
+      return NextResponse.json(await videosService.startWatch(params.id));
+    }
+
+    if (action === 'complete') {
       return NextResponse.json(
-        { error: 'watchPercent and watchDuration are required' },
-        { status: 400 },
+        await videosService.completeWatch(
+          params.id,
+          typeof body.startToken === 'string' ? body.startToken : undefined,
+          Number(body.watchDuration) || 0,
+        ),
       );
     }
 
-    // FIX: videosService.watchVideo() accepts deviceType/browserInfo as its
-    // 4th/5th params, but this route never forwarded them, so every watch
-    // row was stamped 'unknown'/'unknown' regardless of what the client
-    // sent. Falls back to the User-Agent header when the client doesn't
-    // send an explicit browserInfo.
-    const result = await videosService.watchVideo(
-      params.id,
-      watchPercent,
-      watchDuration,
-      typeof deviceType === 'string' ? deviceType : undefined,
-      typeof browserInfo === 'string'
-        ? browserInfo
-        : request.headers.get('user-agent') || undefined,
+    return NextResponse.json(
+      await videosService.reportProgress(
+        params.id,
+        Number(body.watchPercent) || 0,
+        Number(body.watchDuration) || 0,
+        typeof body.deviceType === 'string' ? body.deviceType : undefined,
+        typeof body.browserInfo === 'string'
+          ? body.browserInfo
+          : request.headers.get('user-agent') || undefined,
+      ),
     );
-
-    return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof VideoTaskError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: error.status },
+      );
+    }
     console.error('Video watch error:', error);
-    const message =
-      error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Something went wrong. Please try again.' },
+      { status: 500 },
+    );
   }
 }

@@ -1,7 +1,9 @@
 // src/app/api/content/surveys/[id]/submit/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getCurrentUser } from '@/lib/auth/session.server';
 import { surveysService } from '@/modules/content';
+import { SurveyTaskError } from '@/modules/content/services/surveys/surveys.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,26 +17,38 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { answers } = body;
-
-    if (!answers || !Array.isArray(answers) || answers.length === 0) {
+    const body = await request.json().catch(() => ({}));
+    if (!Array.isArray(body?.answers) || body.answers.length === 0) {
       return NextResponse.json(
-        { error: 'answers array is required' },
+        { error: 'Please answer the questions before submitting.', code: 'INVALID_ANSWER' },
         { status: 400 },
       );
     }
 
     const result = await surveysService.submitSurvey({
       surveyId: params.id,
-      answers,
+      answers: body.answers,
+      startToken: body.startToken,
     });
 
     return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof SurveyTaskError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: error.status },
+      );
+    }
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Some answers are invalid. Please try again.', code: 'INVALID_ANSWER' },
+        { status: 400 },
+      );
+    }
     console.error('Survey submit error:', error);
-    const message =
-      error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Could not submit your survey. Please try again.' },
+      { status: 500 },
+    );
   }
 }

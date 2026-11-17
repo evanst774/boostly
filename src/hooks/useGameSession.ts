@@ -34,7 +34,12 @@ export type CompletionResult =
       status: 'NO_REWARD';
       rewardEarned: 0;
       verifiedSeconds: number;
-      reason: 'TOO_SHORT' | 'FLAGGED' | 'CAP_REACHED' | 'ALREADY_CLAIMED';
+      reason:
+        | 'TOO_SHORT'
+        | 'FLAGGED'
+        | 'CAP_REACHED'
+        | 'PLAN_LIMIT'
+        | 'ALREADY_CLAIMED';
       minPlaySeconds: number;
     };
 
@@ -68,6 +73,9 @@ export function useGameSession(): UseGameSessionReturn {
   const [error, setError] = useState<string | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // When the last beat was sent, so a beat on tab-return doesn't land too
+  // soon after a timed one.
+  const lastBeatAtRef = useRef(0);
   const sessionIdRef = useRef<string | null>(null);
   const completedRef = useRef(false);
 
@@ -83,6 +91,7 @@ export function useGameSession(): UseGameSessionReturn {
     if (!sessionId || completedRef.current) return;
     if (typeof document !== 'undefined' && document.hidden) return;
 
+    lastBeatAtRef.current = Date.now();
     try {
       const response = await fetch(
         `/api/content/games/sessions/${sessionId}/heartbeat`,
@@ -211,7 +220,12 @@ export function useGameSession(): UseGameSessionReturn {
   // penalised a full interval for switching away briefly.
   useEffect(() => {
     const onVisibilityChange = () => {
-      if (!document.hidden && sessionIdRef.current && !completedRef.current) {
+      if (
+        !document.hidden &&
+        sessionIdRef.current &&
+        !completedRef.current &&
+        Date.now() - lastBeatAtRef.current >= 10_000
+      ) {
         void sendHeartbeat();
       }
     };

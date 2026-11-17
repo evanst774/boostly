@@ -288,9 +288,9 @@ export const gamePlaysRelations = relations(gamePlays, ({ one }) => ({
 // HELPERS
 // ============================================
 
-/** YYYY-MM-DD in UTC. Used for every daily cap in the games module. */
+/** YYYY-MM-DD in Kigali (UTC+2). Used for every daily cap in the games module. */
 export function currentPeriodDate(now: Date = new Date()): string {
-  return now.toISOString().slice(0, 10);
+  return new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
 /**

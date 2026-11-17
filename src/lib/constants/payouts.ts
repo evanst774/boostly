@@ -43,6 +43,14 @@ export function kigaliDateKey(at: Date = new Date()): string {
     .slice(0, 10);
 }
 
+/** UTC ISO instant of today's 00:00 in Kigali. Daily task quotas reset here. */
+export function kigaliDayStartIso(at: Date = new Date()): string {
+  const midnightUtc =
+    Date.parse(`${kigaliDateKey(at)}T00:00:00.000Z`) -
+    KIGALI_UTC_OFFSET_HOURS * HOUR;
+  return new Date(midnightUtc).toISOString();
+}
+
 /**
  * The next 3:00 PM Kigali payout run. A request made before 3:00 PM is paid
  * the same day; after that, it joins tomorrow's run.

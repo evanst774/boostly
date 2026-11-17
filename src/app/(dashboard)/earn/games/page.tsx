@@ -31,6 +31,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { useGames } from '@/hooks/useGames';
 import { useGameSession, type CompletionResult } from '@/hooks/useGameSession';
+import { useEarnToday } from '@/hooks/useEarnToday';
+import { canGrantGameStorage, gameSandbox } from '@/lib/games/embed-policy';
 import { useSystemCurrency } from '@/hooks/useSystemCurrency';
 import { cn } from '@/lib/utils';
 import {
@@ -244,10 +246,15 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
   }, [session]);
 
   const handleFinish = useCallback(async () => {
+    // No session yet (still loading / failed to start): just leave.
+    if (!session) {
+      onClose();
+      return;
+    }
     const outcome = await complete({ score: liveScore });
+    // On failure the hook sets `error`, which is shown in place of the game.
     if (outcome) setResult(outcome);
-    else onClose();
-  }, [complete, liveScore, onClose]);
+  }, [complete, liveScore, onClose, session]);
 
   const toggleFullscreen = useCallback(() => {
     if (!containerRef.current) return;
@@ -286,7 +293,7 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
 
         <div className="flex items-center gap-4 sm:gap-6">
           <div className="text-center">
-            <p className="text-[8px] sm:text-[10px] text-white/50 uppercase tracking-wider">
+            <p className="text-[10px] sm:text-[10px] text-white/50 uppercase tracking-wider">
               Played
             </p>
             <p className="text-lg sm:text-xl font-extrabold text-white tabular-nums">
@@ -294,7 +301,7 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
             </p>
           </div>
           <div className="text-center">
-            <p className="text-[8px] sm:text-[10px] text-white/50 uppercase tracking-wider">
+            <p className="text-[10px] sm:text-[10px] text-white/50 uppercase tracking-wider">
               Earning
             </p>
             <p
@@ -374,7 +381,7 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
           <div className="text-center px-6 max-w-sm">
             <div className="text-5xl mb-3">🎮</div>
             <p className="text-white font-semibold mb-1">
-              Can&apos;t start this game
+              {session ? 'Couldn\'t save your session' : 'Can\'t start this game'}
             </p>
             <p className="text-white/60 text-sm">{error}</p>
             <button
@@ -391,8 +398,11 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
             src={session.embedUrl}
             title={game.name}
             className="w-full h-full rounded-xl border border-white/5 bg-black"
-            /* No allow-same-origin: the frame gets no access to our cookies or DOM. */
-            sandbox="allow-scripts allow-pointer-lock allow-popups-to-escape-sandbox"
+            /* allow-same-origin only for HTTPS games on another origin: they get
+               their own storage, never ours (see lib/games/embed-policy.ts). */
+            sandbox={gameSandbox(
+              canGrantGameStorage(session.embedOrigin, window.location.origin),
+            )}
             allow="autoplay; fullscreen; gamepad; accelerometer; gyroscope"
             referrerPolicy="no-referrer"
           />
@@ -432,6 +442,7 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
                 <h2 className="text-xl font-extrabold text-white">
                   {result.reason === 'TOO_SHORT' && 'A bit too short'}
                   {result.reason === 'CAP_REACHED' && 'Daily limit reached'}
+                  {result.reason === 'PLAN_LIMIT' && "Today's games are used up"}
                   {result.reason === 'FLAGGED' && 'Session not counted'}
                   {result.reason === 'ALREADY_CLAIMED' && 'Already claimed'}
                 </h2>
@@ -440,6 +451,8 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
                     `Play at least ${formatClock(result.minPlaySeconds)} to earn a reward. You played ${formatClock(result.verifiedSeconds)}.`}
                   {result.reason === 'CAP_REACHED' &&
                     "You've earned everything available from this game today. Come back tomorrow."}
+                  {result.reason === 'PLAN_LIMIT' &&
+                    "You've reached your plan's rewarded games for today. Come back tomorrow or upgrade for more."}
                   {result.reason === 'FLAGGED' &&
                     "We couldn't verify this play session. Try playing again normally."}
                   {result.reason === 'ALREADY_CLAIMED' &&
@@ -481,7 +494,11 @@ export default function GamesPage() {
   const schemaCategory =
     selectedCategory === 'all' ? undefined : categoryMap[selectedCategory];
 
-  const { data, isLoading, refetch } = useGames({
+  // Today's rewarded-games quota for the user's plan.
+  const { data: today, refetch: refetchToday } = useEarnToday();
+  const gamesQuota = today?.tasks.find((t) => t.key === 'games');
+
+  const { data, isLoading, error: listError, refetch } = useGames({
     category: schemaCategory,
     search: searchQuery,
     page,
@@ -518,6 +535,7 @@ export default function GamesPage() {
   const handleCloseGame = () => {
     setSelectedGame(null);
     void refetch();
+    void refetchToday();
   };
 
   const featured = allGames[0];
@@ -554,6 +572,13 @@ export default function GamesPage() {
               {total} games
             </span>
           </div>
+          {gamesQuota && (
+            <div className="flex items-center gap-1.5 bg-[#F0FDF4] dark:bg-[#22C55E]/20 px-3 py-1.5 rounded-full flex-shrink-0">
+              <span className="text-xs font-bold text-[#16A34A] dark:text-[#4ADE80] whitespace-nowrap">
+                {gamesQuota.remaining}/{gamesQuota.limit} rewarded left today
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -571,6 +596,24 @@ export default function GamesPage() {
           onChange={handleSearch}
         />
       </div>
+
+      {gamesQuota && gamesQuota.remaining === 0 && (
+        <div className="rounded-xl border border-[#FDE68A] bg-[#FFFBEB] dark:bg-[#F59E0B]/10 dark:border-[#F59E0B]/30 p-3 text-sm text-[#92400E] dark:text-[#FBBF24]">
+          You&apos;ve used today&apos;s {gamesQuota.limit} rewarded games. Come back
+          tomorrow, or <a href="/plans" className="font-bold underline">upgrade</a> for more.
+        </div>
+      )}
+
+      {listError && games.length === 0 && (
+        <div className="text-center py-8 bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155]">
+          <p className="text-sm text-[#64748B] dark:text-[#94A3B8]">
+            Couldn&apos;t load games. Check your connection.
+          </p>
+          <button onClick={() => refetch()} className="mt-3 text-sm font-semibold text-[#2563EB]">
+            Try again
+          </button>
+        </div>
+      )}
 
       {/* Categories */}
       <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -676,7 +719,7 @@ export default function GamesPage() {
                   </span>
                 )}
                 {game.isSponsored && (
-                  <div className="absolute top-2 left-2 bg-gradient-to-r from-[#F59E0B] to-[#FBBF24] text-[#0F172A] text-[7px] sm:text-[8px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow-lg z-10">
+                  <div className="absolute top-2 left-2 bg-gradient-to-r from-[#F59E0B] to-[#FBBF24] text-[#0F172A] text-[10px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow-lg z-10">
                     <Star size={8} className="fill-current" />
                     Sponsored
                   </div>

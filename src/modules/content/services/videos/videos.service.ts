@@ -25,6 +25,19 @@ import type {
 import { rewardsService } from '@/modules/rewards/service';
 import { RewardTypeEnum } from '@/lib/db/schema/rewards';
 import { getUserDailyLimits } from '@/modules/rewards/plan-limits';
+import { kigaliDateKey } from '@/lib/constants/payouts';
+import { issueTaskToken, elapsedSinceTaskStart } from '@/lib/task-token';
+
+/** A user-facing video problem, mapped to an HTTP status by the route. */
+export class VideoTaskError extends Error {
+  constructor(
+    public status: number,
+    public code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
 
 export class VideosService {
   async createVideo(input: CreateVideoInput) {
@@ -99,6 +112,62 @@ export class VideosService {
 
   async getSponsoredVideos() {
     return await videosRepository.getSponsoredVideos();
+  }
+
+  /**
+   * Earn page list: ACTIVE videos only, with this user's progress, whether the
+   * video already paid today, and quota stats.
+   */
+  async listForUser(filters: {
+    category?: VideoCategory;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Unauthorized');
+
+    const page = Math.max(1, filters.page ?? 1);
+    const limit = Math.min(Math.max(1, filters.limit ?? 20), 50);
+
+    const [result, watches, limits, doneToday, paidToday, earnings] =
+      await Promise.all([
+        videosRepository.getVideos({
+          category: filters.category,
+          search: filters.search,
+          status: VideoStatusEnum.ACTIVE,
+          page,
+          limit,
+        }),
+        videoWatchesRepository.getUserWatches(user.id),
+        getUserDailyLimits(user.id),
+        rewardsService.getTodayRewardCount(user.id, RewardTypeEnum.VIDEO),
+        rewardsService.getTodaySourceIds(user.id, RewardTypeEnum.VIDEO),
+        rewardsService.getEarningsByType(user.id),
+      ]);
+
+    const progress = new Map(watches.map((w) => [w.videoId, w]));
+    const videos = result.videos.map((v) => ({
+      ...v,
+      watchProgress: progress.get(v.id)?.watchPercent ?? 0,
+      isWatched: progress.get(v.id)?.completed ?? false,
+      earnedToday: paidToday.has(v.id),
+    }));
+
+    return {
+      videos,
+      total: result.total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(result.total / limit)),
+      stats: {
+        totalEarned:
+          earnings.find((e) => e.type === RewardTypeEnum.VIDEO)?.total ?? 0,
+        watched: doneToday,
+        available: Math.max(0, limits.maxDailyVideos - doneToday),
+        dailyLimit: limits.maxDailyVideos,
+      },
+    };
   }
 
   async getVideos(filters: {
@@ -266,92 +335,139 @@ export class VideosService {
    * still script around it — but it stops the trivial "one fetch call"
    * exploit.
    */
-  async watchVideo(
-    videoId: string,
-    watchPercent: number,
-    watchDuration: number,
-    deviceType?: string,
-    browserInfo?: string,
-  ) {
+  /**
+   * Called when a user opens a video. Returns a signed start token (the server
+   * clock is the source of truth for watch time) and today's reward status.
+   */
+  async startWatch(videoId: string) {
     const user = await getCurrentUser();
     if (!user) throw new Error('Unauthorized');
 
     const video = await videosRepository.getById(videoId);
-    if (!video) throw new Error('Video not found');
-    if (video.status !== VideoStatusEnum.ACTIVE)
-      throw new Error('Video not available');
+    if (!video || video.status !== VideoStatusEnum.ACTIVE) {
+      throw new VideoTaskError(404, 'NOT_AVAILABLE', 'This video is no longer available.');
+    }
 
-    const clampedPercent = Math.max(0, Math.min(100, watchPercent));
-    const safeDuration = Math.max(0, watchDuration);
+    const [watch, limits, doneToday, earnedToday] = await Promise.all([
+      videoWatchesRepository.getByUserAndVideo(user.id, videoId),
+      getUserDailyLimits(user.id),
+      rewardsService.getTodayRewardCount(user.id, RewardTypeEnum.VIDEO),
+      rewardsService.hasReward(user.id, RewardTypeEnum.VIDEO, video.id, kigaliDateKey()),
+    ]);
 
-    // Plausibility guard: don't accept a "completed" claim unless the
-    // reported watch time is at least in the right ballpark for the
-    // video's real length.
-    const durationIsPlausible =
-      !video.duration ||
-      video.duration <= 0 ||
-      safeDuration >= video.duration * 0.6;
-    const isCompleted = clampedPercent >= 80 && durationIsPlausible;
+    return {
+      startToken: issueTaskToken(user.id, 'video', videoId),
+      watchPercent: watch?.watchPercent ?? 0,
+      alreadyEarnedToday: earnedToday,
+      remainingToday: Math.max(0, limits.maxDailyVideos - doneToday),
+      dailyLimit: limits.maxDailyVideos,
+    };
+  }
 
-    let watch = await videoWatchesRepository.getByUserAndVideo(
-      user.id,
-      videoId,
-    );
+  /**
+   * Progress ping (5% steps). Only ever moves progress forward and never pays;
+   * payment happens in completeWatch().
+   */
+  async reportProgress(videoId: string, watchPercent: number, watchDuration: number, deviceType?: string, browserInfo?: string) {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Unauthorized');
 
+    const video = await videosRepository.getById(videoId);
+    if (!video || video.status !== VideoStatusEnum.ACTIVE) {
+      throw new VideoTaskError(404, 'NOT_AVAILABLE', 'This video is no longer available.');
+    }
+
+    const pct = Math.max(0, Math.min(100, Number(watchPercent) || 0));
+    const secs = Math.max(0, Number(watchDuration) || 0);
+    const existing = await videoWatchesRepository.getByUserAndVideo(user.id, videoId);
+
+    if (!existing) {
+      await videoWatchesRepository.create({
+        videoId,
+        userId: user.id,
+        watchPercent: pct,
+        watchDuration: secs,
+        completed: false,
+        deviceType: deviceType || 'unknown',
+        browserInfo: browserInfo || 'unknown',
+        lastPosition: Math.floor((pct / 100) * (video.duration || 0)),
+      });
+    } else if (pct > existing.watchPercent) {
+      await videoWatchesRepository.updateProgress(existing.id, {
+        watchPercent: pct,
+        watchDuration: Math.max(existing.watchDuration ?? 0, secs),
+        lastPosition: Math.floor((pct / 100) * (video.duration || 0)),
+      });
+      await videosRepository.incrementWatchTime(videoId, Math.max(0, secs - (existing.watchDuration ?? 0)));
+    }
+    return { ok: true };
+  }
+
+  /**
+   * The video ended. Pays today's reward once, provided enough real time has
+   * passed since the server issued the start token.
+   */
+  async completeWatch(videoId: string, startToken: string | undefined, watchDuration: number) {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Unauthorized');
+
+    const video = await videosRepository.getById(videoId);
+    if (!video || video.status !== VideoStatusEnum.ACTIVE) {
+      throw new VideoTaskError(404, 'NOT_AVAILABLE', 'This video is no longer available.');
+    }
+
+    const elapsed = elapsedSinceTaskStart(startToken, user.id, 'video', videoId);
+    if (elapsed === null) {
+      throw new VideoTaskError(400, 'RESTART', 'Your viewing session expired. Please reopen the video.');
+    }
+    const minMs = video.duration && video.duration > 0 ? video.duration * 0.6 * 1000 : 15_000;
+    if (elapsed < minMs) {
+      throw new VideoTaskError(400, 'TOO_FAST', 'Watch the video to the end to earn the reward.');
+    }
+
+    const secs = Math.max(0, Number(watchDuration) || 0);
+    const now = new Date().toISOString();
+    let watch = await videoWatchesRepository.getByUserAndVideo(user.id, videoId);
     if (!watch) {
       watch = await videoWatchesRepository.create({
         videoId,
         userId: user.id,
-        watchPercent: clampedPercent,
-        watchDuration: safeDuration,
-        completed: isCompleted,
-        deviceType: deviceType || 'unknown',
-        browserInfo: browserInfo || 'unknown',
-        lastPosition: 0,
+        watchPercent: 100,
+        watchDuration: secs,
+        completed: true,
+        completedAt: now,
+        deviceType: 'unknown',
+        browserInfo: 'unknown',
+        lastPosition: video.duration || 0,
       });
     } else {
-      watch = await videoWatchesRepository.updateProgress(watch.id, {
-        watchPercent: clampedPercent,
-        watchDuration: safeDuration,
-        // Once completed, stays completed — this field is a lifetime
-        // "has this user ever finished this video" marker, unrelated to
-        // the daily reward gate below.
-        completed: isCompleted || watch.completed,
-        completedAt: isCompleted ? new Date().toISOString() : watch.completedAt,
-        lastPosition: Math.floor(
-          (clampedPercent / 100) * (video.duration || 0),
-        ),
-      });
+      watch = (await videoWatchesRepository.updateProgress(watch.id, {
+        watchPercent: 100,
+        watchDuration: Math.max(watch.watchDuration ?? 0, secs),
+        completed: true,
+        completedAt: now,
+        lastPosition: video.duration || 0,
+      })) ?? watch;
     }
 
-    await videosRepository.incrementWatchTime(videoId, safeDuration);
-
-    if (!watch || !isCompleted) {
-      return { rewardEarned: 0, watch };
-    }
-
-    // Per-plan daily cap on how many DIFFERENT videos can earn a reward.
-    // Checked before crediting so a FREE-tier user can still watch past the
-    // cap, they just stop earning — never a hard block on the content itself.
+    // Per-plan daily cap on how many different videos can earn a reward.
     const limits = await getUserDailyLimits(user.id);
-    const todayVideoRewards = await rewardsService.getTodayRewardCount(
-      user.id,
-      RewardTypeEnum.VIDEO,
-    );
+    const todayVideoRewards = await rewardsService.getTodayRewardCount(user.id, RewardTypeEnum.VIDEO);
+    const alreadyEarned = await rewardsService.hasReward(user.id, RewardTypeEnum.VIDEO, video.id, kigaliDateKey());
+    if (alreadyEarned) {
+      return {
+        rewardEarned: 0,
+        code: 'ALREADY_CREDITED',
+        message: "You've already earned this video's reward today. Try another video!",
+      };
+    }
     if (todayVideoRewards >= limits.maxDailyVideos) {
       return {
         rewardEarned: 0,
-        watch,
         code: 'DAILY_LIMIT_REACHED',
-        message: `You've reached your plan's daily video limit (${limits.maxDailyVideos}). Upgrade your plan to earn from more videos per day.`,
+        message: `You've used today's ${limits.maxDailyVideos} rewarded videos. Come back tomorrow or upgrade your plan for more.`,
       };
     }
-
-    // Daily-repeatable reward. Idempotency is enforced by the unique
-    // (userId, dedupeKey) index inside rewardsService — this call is safe
-    // to make every time a completion comes in; it will simply report
-    // ALREADY_CREDITED if today's reward for this video was already paid.
-    const scope = new Date().toISOString().slice(0, 10);
 
     const credit = await rewardsService.createReward({
       userId: user.id,
@@ -360,19 +476,21 @@ export class VideosService {
       description: `Video reward: ${video.title}`,
       sourceId: video.id,
       sourceType: 'video',
-      scope,
+      scope: kigaliDateKey(), // once per video per day
       metadata: { watchId: watch.id },
+      dailyCap: limits.maxDailyVideos,
     });
 
     if (!credit.credited) {
       return {
         rewardEarned: 0,
-        watch,
         code: credit.reason,
         message:
           credit.reason === 'ALREADY_CREDITED'
-            ? "You've already earned the reward for this video today. Come back tomorrow!"
-            : undefined,
+            ? "You've already earned this video's reward today. Try another video!"
+            : credit.reason === 'DAILY_LIMIT'
+              ? `You've used today's ${limits.maxDailyVideos} rewarded videos. Come back tomorrow or upgrade your plan for more.`
+              : 'This video has no reward.',
       };
     }
 
@@ -380,11 +498,10 @@ export class VideosService {
       rewardClaimed: true,
       rewardAmount: credit.amount,
     });
-
     await videosRepository.incrementViews(videoId);
     await videosRepository.updateCompletionRate(videoId);
 
-    return { rewardEarned: credit.amount, watch };
+    return { rewardEarned: credit.amount, newBalance: credit.newBalance };
   }
 
   async getVideoStats() {

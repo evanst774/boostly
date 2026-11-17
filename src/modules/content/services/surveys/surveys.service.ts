@@ -25,9 +25,56 @@ import {
 import { rewardsService } from '@/modules/rewards/service';
 import { RewardTypeEnum } from '@/lib/db/schema/rewards';
 import { getUserDailyLimits } from '@/modules/rewards/plan-limits';
-import { db } from '@/lib/db';
-import { surveyResponses } from '@/lib/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { issueTaskToken, elapsedSinceTaskStart } from '@/lib/task-token';
+
+
+/** A user-facing survey problem, mapped to an HTTP status by the routes. */
+export class SurveyTaskError extends Error {
+  constructor(
+    public status: number,
+    public code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/** At least 3 seconds per question, minimum 8 seconds. */
+function minSurveySeconds(questionCount: number) {
+  return Math.max(8, questionCount * 3);
+}
+
+/** Returns a problem description, or null when the answer is acceptable. */
+function validateAnswer(
+  q: Pick<SurveyQuestion, 'type' | 'options' | 'required'>,
+  answer: string | string[] | undefined,
+): string | null {
+  const empty =
+    answer === undefined ||
+    (Array.isArray(answer) ? answer.length === 0 : answer.trim() === '');
+  if (empty) return q.required ? 'Please answer every question' : null;
+
+  const options = q.options ?? [];
+  switch (q.type) {
+    case 'rating': {
+      const n = Number(answer);
+      return Number.isInteger(n) && n >= 1 && n <= 10 ? null : 'Pick a rating from 1 to 10';
+    }
+    case 'text': {
+      const text = Array.isArray(answer) ? answer.join(' ') : answer;
+      return text.trim().length >= 2 && text.length <= 1000 ? null : 'Write a short answer';
+    }
+    case 'multiple_choice': {
+      const picks = Array.isArray(answer) ? answer : [answer];
+      return options.length === 0 || picks.every((p) => options.includes(p))
+        ? null
+        : 'Choose from the listed options';
+    }
+    default: // single_choice, likert
+      if (Array.isArray(answer)) return 'Choose one option';
+      return options.length === 0 || options.includes(answer) ? null : 'Choose from the listed options';
+  }
+}
 
 export class SurveysService {
   async createSurvey(input: CreateSurveyInput) {
@@ -190,120 +237,151 @@ export class SurveysService {
     });
   }
 
-  // Check if user already completed this survey today
-  private async hasUserCompletedToday(
-    surveyId: string,
-    userId: string,
-  ): Promise<boolean> {
-    const today = new Date().toISOString().split('T')[0];
-    const result = await db.query.surveyResponses.findFirst({
-      where: and(
-        eq(surveyResponses.surveyId, surveyId),
-        eq(surveyResponses.userId, userId),
-        sql`date(${surveyResponses.createdAt}) = ${today}`,
-      ),
-    });
-    return !!result;
+  // ============================================
+  // USER-FACING: list, start, submit
+  // ============================================
+
+  /**
+   * Active surveys for the current user, each flagged `completed` when they
+   * have already answered it (surveys pay once per user), plus quota stats.
+   */
+  async listForUser(filters: { category?: string; search?: string } = {}) {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Unauthorized');
+
+    const [active, responses, limits, doneToday, earnings] = await Promise.all([
+      surveysRepository.getActiveSurveys(),
+      surveyResponsesRepository.getUserResponses(user.id),
+      getUserDailyLimits(user.id),
+      rewardsService.getTodayRewardCount(user.id, RewardTypeEnum.SURVEY),
+      rewardsService.getEarningsByType(user.id),
+    ]);
+
+    const completedIds = new Set(responses.map((r) => r.surveyId));
+    const search = filters.search?.trim().toLowerCase();
+    const category = filters.category?.trim().toUpperCase();
+
+    const surveys = active
+      .filter((sv) => !category || (sv.category ?? '').toUpperCase() === category)
+      .filter(
+        (sv) =>
+          !search ||
+          sv.title.toLowerCase().includes(search) ||
+          (sv.brand ?? '').toLowerCase().includes(search),
+      )
+      .map((sv) => ({ ...sv, completed: completedIds.has(sv.id) }));
+
+    const totalEarned =
+      earnings.find((e) => e.type === RewardTypeEnum.SURVEY)?.total ?? 0;
+
+    return {
+      surveys,
+      totalPages: 1,
+      stats: {
+        totalEarned,
+        completed: completedIds.size,
+        available: surveys.filter((sv) => !sv.completed).length,
+        doneToday,
+        dailyLimit: limits.maxDailySurveys,
+        remainingToday: Math.max(0, limits.maxDailySurveys - doneToday),
+      },
+    };
   }
 
-  async submitSurvey(input: SubmitSurveyInput) {
+  /**
+   * Questions for a survey the user is about to take, plus a signed start
+   * token so the server can enforce a minimum answering time on submit.
+   */
+  async startSurvey(surveyId: string) {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Unauthorized');
+
+    const survey = await surveysRepository.getById(surveyId);
+    if (!survey || survey.status !== SurveyStatusEnum.ACTIVE) {
+      throw new SurveyTaskError(404, 'NOT_AVAILABLE', 'This survey is no longer available.');
+    }
+    if (survey.endsAt && survey.endsAt <= new Date().toISOString()) {
+      throw new SurveyTaskError(404, 'NOT_AVAILABLE', 'This survey has ended.');
+    }
+    if (await surveyResponsesRepository.getByUserAndSurvey(user.id, surveyId)) {
+      throw new SurveyTaskError(409, 'ALREADY_COMPLETED', 'You have already completed this survey.');
+    }
+
+    const questions = await surveyQuestionsRepository.getBySurveyId(surveyId);
+    if (questions.length === 0) {
+      throw new SurveyTaskError(404, 'NOT_AVAILABLE', 'This survey has no questions yet.');
+    }
+
+    return {
+      questions: questions.map((q) => ({
+        id: q.id,
+        question: q.question,
+        description: q.description,
+        type: q.type,
+        options: q.options ?? [],
+        required: q.required,
+        order: q.order,
+      })),
+      startToken: issueTaskToken(user.id, 'survey', surveyId),
+      minSeconds: minSurveySeconds(questions.length),
+    };
+  }
+
+  async submitSurvey(input: SubmitSurveyInput & { startToken?: string }) {
     const user = await getCurrentUser();
     if (!user) throw new Error('Unauthorized');
 
     const validated = submitSurveySchema.parse(input);
 
     const survey = await surveysRepository.getById(validated.surveyId);
-    if (!survey) throw new Error('Survey not found');
-    if (survey.status !== SurveyStatusEnum.ACTIVE)
-      throw new Error('Survey not available');
-
-    // Check if user already completed today
-    const alreadyCompleted = await this.hasUserCompletedToday(
-      validated.surveyId,
-      user.id,
-    );
-    if (alreadyCompleted) {
-      return {
-        response: null,
-        rewardEarned: 0,
-        message:
-          'You have already completed this survey today. Come back tomorrow!',
-        code: 'DAILY_LIMIT_REACHED',
-      };
+    if (!survey || survey.status !== SurveyStatusEnum.ACTIVE) {
+      throw new SurveyTaskError(404, 'NOT_AVAILABLE', 'This survey is no longer available.');
     }
 
-    // FLAGGED, NOT CHANGED: this check looks for ANY prior response ever
-    // (no date filter), and throws a hard error if one exists. That directly
-    // contradicts hasUserCompletedToday()/DAILY_LIMIT_REACHED above, which
-    // imply this survey is daily-repeatable. As written, only ONE response
-    // to a given survey can ever exist per user — after the first
-    // submission, every future attempt hits this block, on any day,
-    // forever, and the "come back tomorrow" branch above is effectively
-    // dead code from day two onward.
-    //
-    // I'm leaving this exactly as-is rather than guessing which behavior is
-    // intended, since surveyResponsesRepository / the surveyResponses
-    // schema aren't visible to me here — if surveyResponses has a unique
-    // (userId, surveyId) constraint at the DB level (mirroring video_watches'
-    // pattern), then "one response ever" is the real intended design and
-    // the daily-repeat framing above is leftover copy-paste from
-    // videos.service.ts that should probably be removed instead. Worth a
-    // deliberate decision, not a silent guess: either (a) surveys are
-    // one-time-ever, and hasUserCompletedToday/DAILY_LIMIT_REACHED should
-    // come out, or (b) surveys are meant to be daily-repeatable like videos,
-    // and this block needs to become an update-in-place (like video_watches)
-    // scoped to today rather than an unconditional block on any history.
-    const existing = await surveyResponsesRepository.getByUserAndSurvey(
-      user.id,
-      validated.surveyId,
-    );
-    if (existing) throw new Error('You have already completed this survey');
+    // Surveys pay once per user (unique index on userId + surveyId).
+    if (await surveyResponsesRepository.getByUserAndSurvey(user.id, validated.surveyId)) {
+      throw new SurveyTaskError(409, 'ALREADY_COMPLETED', 'You have already completed this survey.');
+    }
 
-    // Per-plan cap on how many DIFFERENT surveys can earn a reward per day.
+    const questions = await surveyQuestionsRepository.getBySurveyId(validated.surveyId);
+
+    // Anti-cheat: time measured from when the server handed out the questions.
+    const elapsed = elapsedSinceTaskStart(input.startToken, user.id, 'survey', survey.id);
+    if (elapsed === null) {
+      throw new SurveyTaskError(400, 'RESTART', 'Your survey session expired. Please start the survey again.');
+    }
+    const minSeconds = minSurveySeconds(questions.length);
+    if (elapsed < minSeconds * 1000) {
+      throw new SurveyTaskError(400, 'TOO_FAST', 'Please take a moment to read and answer each question.');
+    }
+
+    // Validate every answer against its question.
+    const byId = new Map(validated.answers.map((a) => [a.questionId, a.answer]));
+    const formattedAnswers: { questionId: string; answer: string | string[] }[] = [];
+    for (const q of questions) {
+      const answer = byId.get(q.id);
+      const problem = validateAnswer(q, answer);
+      if (problem) {
+        throw new SurveyTaskError(400, 'INVALID_ANSWER', `${problem} (“${q.question}”)`);
+      }
+      if (answer !== undefined) formattedAnswers.push({ questionId: q.id, answer });
+    }
+
+    // Per-plan cap on rewarded surveys per day. Checked before recording so a
+    // capped user can come back tomorrow and still earn for this survey.
     const limits = await getUserDailyLimits(user.id);
-    const todaySurveyRewards = await rewardsService.getTodayRewardCount(
-      user.id,
-      RewardTypeEnum.SURVEY,
-    );
+    const todaySurveyRewards = await rewardsService.getTodayRewardCount(user.id, RewardTypeEnum.SURVEY);
     if (todaySurveyRewards >= limits.maxDailySurveys) {
-      return {
-        response: null,
-        rewardEarned: 0,
-        message: `You've reached your plan's daily survey limit (${limits.maxDailySurveys}). Upgrade your plan to complete more surveys per day.`,
-        code: 'DAILY_LIMIT_REACHED',
-      };
+      throw new SurveyTaskError(
+        429,
+        'DAILY_LIMIT_REACHED',
+        `You've reached today's survey limit (${limits.maxDailySurveys}). Come back tomorrow or upgrade your plan for more.`,
+      );
     }
 
-    const questions = await surveyQuestionsRepository.getBySurveyId(
-      validated.surveyId,
-    );
-    if (validated.answers.length !== questions.length) {
-      throw new Error('Invalid number of answers');
-    }
-
-    // Format answers with questionId
-    const formattedAnswers = validated.answers.map((answer, index) => ({
-      questionId: questions[index].id,
-      answer: answer.answer,
-    }));
-
-    const response = await surveyResponsesRepository.create({
-      surveyId: validated.surveyId,
-      userId: user.id,
-      answers: formattedAnswers,
-      completed: true,
-      completedAt: new Date().toISOString(),
-    });
-
-    await surveysRepository.incrementParticipants(validated.surveyId);
-
-    // FIX: `amount` -> `baseAmount`, plus a required `scope`. This call
-    // previously didn't compile against CreateRewardInput at all. Scope is
-    // `'once'` to match the EFFECTIVE current behavior above (the hard
-    // `existing` check means a given user can only ever submit this survey
-    // one time) — see the flagged comment above if that turns out not to be
-    // the intended design; if surveys become genuinely daily-repeatable,
-    // this scope should change to today's date, matching videos.service.ts.
+    // Pay first, atomically capped by the plan's daily quota. If the cap is
+    // hit, nothing is recorded, so the user can still take this survey (and
+    // get paid) tomorrow. Scope 'once' makes a double submit pay only once.
     const credit = await rewardsService.createReward({
       userId: user.id,
       type: RewardTypeEnum.SURVEY,
@@ -312,30 +390,41 @@ export class SurveysService {
       sourceId: survey.id,
       sourceType: 'survey',
       scope: 'once',
-      metadata: { responseId: response.id },
+      dailyCap: limits.maxDailySurveys,
     });
 
-    if (!credit.credited) {
-      // Response was recorded, but this exact reward was already paid out
-      // (e.g. a retried request). Don't mark rewardClaimed again or report
-      // an amount that wasn't actually credited.
-      return {
-        response,
-        rewardEarned: 0,
-        message: 'Response recorded, but this survey was already rewarded.',
-        code: 'ALREADY_CREDITED',
-      };
+    if (!credit.credited && credit.reason === 'DAILY_LIMIT') {
+      throw new SurveyTaskError(
+        429,
+        'DAILY_LIMIT_REACHED',
+        `You've reached today's survey limit (${limits.maxDailySurveys}). Come back tomorrow or upgrade your plan for more.`,
+      );
     }
 
-    await surveyResponsesRepository.update(response.id, {
-      rewardClaimed: true,
-      // Store what was ACTUALLY credited (post-multiplier), not the raw
-      // survey.rewardAmount — these can diverge once badge/subscription
-      // boosts are wired up in rewardsService.getEarningsMultiplier().
-      rewardAmount: credit.amount,
-    });
+    let response;
+    try {
+      response = await surveyResponsesRepository.create({
+        surveyId: validated.surveyId,
+        userId: user.id,
+        answers: formattedAnswers,
+        completed: true,
+        completedAt: new Date().toISOString(),
+        rewardClaimed: credit.credited,
+        rewardAmount: credit.credited ? credit.amount : 0,
+      });
+    } catch {
+      // Lost a double-submit race: the other request recorded the response
+      // (and the 'once' reward key guarantees it was paid only once).
+      throw new SurveyTaskError(409, 'ALREADY_COMPLETED', 'You have already completed this survey.');
+    }
 
-    return { response, rewardEarned: credit.amount };
+    await surveysRepository.incrementParticipants(validated.surveyId);
+
+    if (!credit.credited) {
+      return { response, rewardEarned: 0, code: credit.reason };
+    }
+
+    return { response, rewardEarned: credit.amount, newBalance: credit.newBalance };
   }
 
   async getSurveyStats() {

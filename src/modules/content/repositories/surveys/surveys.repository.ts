@@ -33,7 +33,7 @@ export class SurveysRepository {
     return await db.query.surveys.findMany({
       where: and(
         eq(surveys.status, SurveyStatusEnum.ACTIVE),
-        sql`${surveys.endsAt} IS NULL OR ${surveys.endsAt} > ${now}`,
+        sql`(${surveys.endsAt} IS NULL OR ${surveys.endsAt} > ${now})`,
       ),
       orderBy: [desc(surveys.createdAt)],
     });

@@ -28,6 +28,7 @@ import {
   userSubscriptionsRepository,
 } from '@/modules/badges/repository';
 import { getUserDailyLimits } from '@/modules/rewards/plan-limits';
+import { kigaliDayStartIso } from '@/lib/constants/payouts';
 
 // ============================================
 // TYPES
@@ -49,6 +50,12 @@ export interface CreateRewardInput {
    */
   scope: string;
   metadata?: Record<string, unknown>;
+  /**
+   * Max rewards of this `type` the user may receive today (plan quota).
+   * Enforced atomically in the same INSERT that records the reward, so two
+   * simultaneous requests can never both slip under the cap.
+   */
+  dailyCap?: number;
 }
 
 export type CreateRewardResult =
@@ -62,7 +69,7 @@ export type CreateRewardResult =
     }
   | {
       credited: false;
-      reason: 'ALREADY_CREDITED' | 'ZERO_AMOUNT';
+      reason: 'ALREADY_CREDITED' | 'ZERO_AMOUNT' | 'DAILY_LIMIT';
       amount: 0;
     };
 
@@ -80,6 +87,8 @@ export interface EarningsMultiplier {
 const ROUNDING_STEP = 5;
 
 function roundReward(amount: number): number {
+  // Small rewards (< one step) are paid as whole RWF instead of rounding to 0.
+  if (amount > 0 && amount < ROUNDING_STEP) return Math.max(1, Math.round(amount));
   return Math.round(amount / ROUNDING_STEP) * ROUNDING_STEP;
 }
 
@@ -121,67 +130,88 @@ export class RewardsService {
     const now = new Date().toISOString();
 
     try {
-      return await db.transaction(async (tx) => {
-        const [reward] = await tx
-          .insert(rewards)
-          .values({
-            userId: input.userId,
-            type: input.type,
-            amount,
-            baseAmount: input.baseAmount,
-            multiplier: multiplier.total,
-            description: input.description,
-            sourceId: input.sourceId,
-            sourceType: input.sourceType,
-            dedupeKey,
-            status: RewardStatusEnum.CLAIMED,
-            claimedAt: now,
-            metadata: {
-              ...input.metadata,
-              badgeBoost: multiplier.badgeBoost,
-              planBoost: multiplier.planBoost,
-            },
-          })
-          .returning();
-
-        // Ledger entry. unified-wallet.service reads THIS for earnings stats,
-        // which is why a reward row alone was never enough.
-        await tx.insert(transactions).values({
-          walletId: wallet.id,
-          userId: input.userId,
-          type: TransactionTypeEnum.CREDIT,
-          amount,
-          currency: wallet.defaultCurrency,
-          amountInBase: amount,
-          description: input.description,
-          referenceId: reward.id,
-          referenceType: 'reward',
-          status: TransactionStatusEnum.COMPLETED,
-          completedAt: now,
-        });
-
-        // Relative update, never read-modify-write, so concurrent credits from
-        // two tabs can't clobber each other.
-        const [updatedWallet] = await tx
-          .update(wallets)
-          .set({
-            balance: sql`${wallets.balance} + ${amount}`,
-            totalEarned: sql`${wallets.totalEarned} + ${amount}`,
-            lastActivityAt: now,
-            updatedAt: sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`,
-          })
-          .where(eq(wallets.id, wallet.id))
-          .returning();
-
-        return {
-          credited: true as const,
-          reward,
-          amount,
-          baseAmount: input.baseAmount,
-          multiplier: multiplier.total,
-          newBalance: updatedWallet.balance,
-        };
+      // One libSQL batch = one atomic transaction sent in a single request.
+      // Unlike an interactive transaction it holds no lock between network
+      // round trips, so concurrent payouts don't hit SQLITE_BUSY.
+      //   1. reward row  - only if under today's plan cap (atomic check)
+      //   2. ledger row  - only if (1) inserted
+      //   3. wallet      - only if (1) inserted
+      // A duplicate dedupeKey fails (1) with a unique violation and the whole
+      // batch rolls back, which is reported as ALREADY_CREDITED below.
+      const rewardId = crypto.randomUUID();
+      const rewardInserted = sql`EXISTS (SELECT 1 FROM ${rewards} WHERE ${rewards.id} = ${rewardId})`;
+      const meta = JSON.stringify({
+        ...input.metadata,
+        badgeBoost: multiplier.badgeBoost,
+        planBoost: multiplier.planBoost,
       });
+      const capCondition =
+        input.dailyCap === undefined
+          ? sql`1 = 1`
+          : sql`(
+              SELECT count(*) FROM ${rewards}
+              WHERE ${rewards.userId} = ${input.userId}
+                AND ${rewards.type} = ${input.type}
+                AND ${rewards.status} = ${RewardStatusEnum.CLAIMED}
+                AND ${rewards.createdAt} >= ${kigaliDayStartIso()}
+            ) < ${input.dailyCap}`;
+
+      const [insertResult] = await db.batch([
+        db.run(sql`
+          INSERT INTO ${rewards} (
+            "id", "userId", "type", "amount", "baseAmount", "multiplier",
+            "description", "sourceId", "sourceType", "dedupeKey", "status",
+            "claimedAt", "metadata"
+          )
+          SELECT
+            ${rewardId}, ${input.userId}, ${input.type}, ${amount},
+            ${input.baseAmount}, ${multiplier.total}, ${input.description},
+            ${input.sourceId}, ${input.sourceType}, ${dedupeKey},
+            ${RewardStatusEnum.CLAIMED}, ${now}, ${meta}
+          WHERE ${capCondition}
+        `),
+        // Ledger entry. unified-wallet.service reads THIS for earnings stats.
+        db.run(sql`
+          INSERT INTO ${transactions} (
+            "id", "walletId", "userId", "type", "amount", "currency",
+            "amountInBase", "description", "referenceId", "referenceType",
+            "status", "completedAt"
+          )
+          SELECT
+            ${crypto.randomUUID()}, ${wallet.id}, ${input.userId},
+            ${TransactionTypeEnum.CREDIT}, ${amount}, ${wallet.defaultCurrency},
+            ${amount}, ${input.description}, ${rewardId}, 'reward',
+            ${TransactionStatusEnum.COMPLETED}, ${now}
+          WHERE ${rewardInserted}
+        `),
+        // Relative update, never read-modify-write.
+        db.run(sql`
+          UPDATE ${wallets}
+          SET "balance" = "balance" + ${amount},
+              "totalEarned" = "totalEarned" + ${amount},
+              "lastActivityAt" = ${now},
+              "updatedAt" = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+          WHERE ${wallets.id} = ${wallet.id} AND ${rewardInserted}
+        `),
+      ]);
+
+      if (!insertResult.rowsAffected) {
+        return { credited: false, reason: 'DAILY_LIMIT', amount: 0 };
+      }
+
+      const [reward, updatedWallet] = await Promise.all([
+        db.query.rewards.findFirst({ where: eq(rewards.id, rewardId) }),
+        db.query.wallets.findFirst({ where: eq(wallets.id, wallet.id) }),
+      ]);
+
+      return {
+        credited: true,
+        reward: reward!,
+        amount,
+        baseAmount: input.baseAmount,
+        multiplier: multiplier.total,
+        newBalance: updatedWallet?.balance ?? 0,
+      };
     } catch (err) {
       if (isUniqueViolation(err)) {
         // Already paid for this exact event. Expected, not exceptional.
@@ -253,7 +283,7 @@ export class RewardsService {
 
   /** Total credited today, in the wallet's currency. */
   async getTodayEarnings(userId: string): Promise<number> {
-    const startOfDay = `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`;
+    const startOfDay = kigaliDayStartIso();
 
     const result = await db
       .select({ sum: sql<number>`sum(${rewards.amount})` })
@@ -269,9 +299,42 @@ export class RewardsService {
     return Number(result[0]?.sum ?? 0);
   }
 
+  /** Source ids (e.g. video ids) of rewards of this type paid today. */
+  async getTodaySourceIds(userId: string, type: RewardType): Promise<Set<string>> {
+    const rows = await db
+      .select({ sourceId: rewards.sourceId })
+      .from(rewards)
+      .where(
+        and(
+          eq(rewards.userId, userId),
+          eq(rewards.type, type),
+          eq(rewards.status, RewardStatusEnum.CLAIMED),
+          gte(rewards.createdAt, kigaliDayStartIso()),
+        ),
+      );
+    return new Set(rows.map((r) => r.sourceId).filter((x): x is string => !!x));
+  }
+
+  /** Whether this exact reward (type + source + scope) was already paid. */
+  async hasReward(
+    userId: string,
+    type: RewardType,
+    sourceId: string,
+    scope: string,
+  ): Promise<boolean> {
+    const row = await db.query.rewards.findFirst({
+      where: and(
+        eq(rewards.userId, userId),
+        eq(rewards.dedupeKey, `${type}:${sourceId}:${scope}`),
+      ),
+      columns: { id: true },
+    });
+    return !!row;
+  }
+
   /** How many rewards of a given type the user has earned today. Backs per-plan daily quotas. */
   async getTodayRewardCount(userId: string, type: RewardType): Promise<number> {
-    const startOfDay = `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`;
+    const startOfDay = kigaliDayStartIso();
 
     const result = await db
       .select({ count: sql<number>`count(*)` })
@@ -312,7 +375,7 @@ export class RewardsService {
     averageReward: number;
     byType: Array<{ type: RewardType; total: number; count: number }>;
   }> {
-    const startOfToday = `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`;
+    const startOfToday = kigaliDayStartIso();
     const startOfMonth = `${new Date().toISOString().slice(0, 7)}-01T00:00:00.000Z`;
 
     const claimed = eq(rewards.status, RewardStatusEnum.CLAIMED);
@@ -375,7 +438,7 @@ export class RewardsService {
     month: number;
     total: number;
   }> {
-    const startOfDay = `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`;
+    const startOfDay = kigaliDayStartIso();
     const startOfWeek = new Date(
       Date.now() - 7 * 24 * 60 * 60 * 1000,
     ).toISOString();
@@ -592,13 +655,23 @@ export class RewardsService {
  * libSQL surfaces constraint failures as plain errors with driver-specific text,
  * so this matches on message rather than a typed error class.
  */
-function isUniqueViolation(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : String(err);
-  return (
-    message.includes('UNIQUE constraint failed') ||
-    message.includes('SQLITE_CONSTRAINT_UNIQUE') ||
-    message.includes('SQLITE_CONSTRAINT')
-  );
+export function isUniqueViolation(err: unknown): boolean {
+  // Drizzle wraps driver errors (DrizzleQueryError "Failed query: …") and keeps
+  // the SQLite error in `.cause`, so walk the whole cause chain.
+  let current: unknown = err;
+  for (let depth = 0; current && depth < 5; depth++) {
+    const e = current as { message?: unknown; code?: unknown; cause?: unknown };
+    const text = `${String(e.message ?? current)} ${String(e.code ?? '')}`;
+    if (
+      text.includes('UNIQUE constraint failed') ||
+      text.includes('SQLITE_CONSTRAINT_UNIQUE') ||
+      text.includes('SQLITE_CONSTRAINT')
+    ) {
+      return true;
+    }
+    current = e.cause;
+  }
+  return false;
 }
 
 export const rewardsService = new RewardsService();

@@ -48,6 +48,13 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
+    // Earn page: active videos with the user's own progress and quota.
+    if (searchParams.get('scope') === 'earn') {
+      return NextResponse.json(
+        await videosService.listForUser({ category, search, page, limit }),
+      );
+    }
+
     // If active only, no permission check needed (public)
     if (activeOnly) {
       const videos = await videosService.getActiveVideos();

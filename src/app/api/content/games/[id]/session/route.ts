@@ -1,7 +1,10 @@
 // src/app/api/content/games/[id]/session/route.ts
 import { NextResponse } from 'next/server';
 
-import { gamesService } from '@/modules/content/services/games/games.service';
+import {
+  gamesService,
+  GameTaskError,
+} from '@/modules/content/services/games/games.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +16,12 @@ export async function POST(
     const session = await gamesService.startSession(params.id);
     return NextResponse.json(session);
   } catch (error) {
+    if (error instanceof GameTaskError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: error.status },
+      );
+    }
     const message =
       error instanceof Error ? error.message : 'Failed to start session';
 

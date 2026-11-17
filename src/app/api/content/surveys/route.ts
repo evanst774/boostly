@@ -66,10 +66,13 @@ export async function GET(request: NextRequest) {
 
     // Fast-path only applies when there's no additional filtering requested —
     // category/brand/search need the full query, not the lightweight one.
+    // Users (earn page): active surveys only, with their completion state and
+    // quota stats. Filtering happens in memory, so no admin permission needed.
     const wantsActiveOnly = activeOnly || status === SurveyStatusEnum.ACTIVE;
-    if (wantsActiveOnly && !category && !brand && !search) {
-      const surveys = await surveysService.getActiveSurveys();
-      return NextResponse.json({ surveys });
+    if (wantsActiveOnly && !brand) {
+      return NextResponse.json(
+        await surveysService.listForUser({ category, search }),
+      );
     }
 
     await requirePermission(ContentPermissions.SURVEYS_READ);

@@ -15,6 +15,8 @@ export type { Video, VideoCategory, VideoStatus, VideoWatch };
 export interface VideoWithProgress extends Video {
   watchProgress?: number;
   isWatched?: boolean;
+  /** Already paid its reward today (videos pay once per day). */
+  earnedToday?: boolean;
   engagementStats?: {
     likes: number;
     dislikes: number;
@@ -31,8 +33,11 @@ export interface VideoWithProgress extends Video {
 
 interface VideosStats {
   totalEarned: number;
+  /** Rewarded videos today. */
   watched: number;
+  /** Rewarded videos still available today. */
   available: number;
+  dailyLimit?: number;
 }
 
 interface VideosResponse {
@@ -83,6 +88,7 @@ export function useVideos({
 
     try {
       const params = new URLSearchParams();
+      params.append('scope', 'earn');
       if (category) params.append('category', category);
       if (status) params.append('status', status);
       if (search) params.append('search', search);

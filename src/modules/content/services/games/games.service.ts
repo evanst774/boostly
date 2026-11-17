@@ -22,6 +22,7 @@ import {
 import { rewardsService } from '@/modules/rewards/service';
 import { RewardTypeEnum } from '@/lib/db/schema/rewards';
 import { getUserDailyLimits } from '@/modules/rewards/plan-limits';
+import { appOriginsFromEnv, gameUrlProblem } from '@/lib/games/embed-policy';
 
 // ============================================
 // CONSTANTS
@@ -41,12 +42,39 @@ export const HEARTBEAT_TOLERANCE_SECONDS = 5;
 const MIN_HEARTBEAT_GAP_SECONDS =
   HEARTBEAT_INTERVAL_SECONDS - HEARTBEAT_TOLERANCE_SECONDS;
 
+/**
+ * Early beats tolerated per session before it's treated as scripted. Kept in
+ * memory: a restart just resets the count, which errs on the user's side.
+ */
+const MAX_EARLY_BEATS = 20;
+const earlyBeatCounts = new Map<string, number>();
+
 /** Sessions with no beat for this long are dead. */
 const SESSION_STALE_AFTER_SECONDS = 120;
 
 // ============================================
 // TYPES
 // ============================================
+
+/** Rejects game URLs that can't be framed safely (see embed-policy.ts). */
+function assertEmbeddableGameUrl(gameUrl: string | null | undefined) {
+  if (!gameUrl) return; // a game can be saved as a draft without a URL
+  const problem = gameUrlProblem(gameUrl, appOriginsFromEnv(), {
+    allowInsecureLocal: process.env.NODE_ENV !== 'production',
+  });
+  if (problem) throw new Error(problem);
+}
+
+/** A user-facing game problem, mapped to an HTTP status by the routes. */
+export class GameTaskError extends Error {
+  constructor(
+    public status: number,
+    public code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
 
 export interface StartSessionResult {
   sessionId: string;
@@ -78,7 +106,12 @@ export type CompleteSessionResult =
       status: 'NO_REWARD';
       rewardEarned: 0;
       verifiedSeconds: number;
-      reason: 'TOO_SHORT' | 'FLAGGED' | 'CAP_REACHED' | 'ALREADY_CLAIMED';
+      reason:
+        | 'TOO_SHORT'
+        | 'FLAGGED'
+        | 'CAP_REACHED'
+        | 'PLAN_LIMIT'
+        | 'ALREADY_CLAIMED';
       minPlaySeconds: number;
     };
 
@@ -97,6 +130,7 @@ export class GamesService {
     if (!user) throw new Error('Unauthorized');
 
     const validated = createGameSchema.parse(input);
+    assertEmbeddableGameUrl(validated.gameUrl);
     const game = await gamesRepository.create({
       ...validated,
       createdBy: user.id,
@@ -131,6 +165,7 @@ export class GamesService {
     if (!existing) throw new Error('Game not found');
 
     const validated = updateGameSchema.parse(input);
+    if (validated.gameUrl !== undefined) assertEmbeddableGameUrl(validated.gameUrl);
     const updated = await gamesRepository.update(id, {
       ...validated,
       updatedBy: user.id,
@@ -291,8 +326,10 @@ export class GamesService {
     }
 
     const embedOrigin = getGameEmbedOrigin(game.gameUrl);
-    if (!game.gameUrl || !embedOrigin) {
-      throw new Error('Game has no playable URL');
+    if (!game.gameUrl || !embedOrigin || gameUrlProblem(game.gameUrl, appOriginsFromEnv(), {
+      allowInsecureLocal: process.env.NODE_ENV !== 'production',
+    })) {
+      throw new GameTaskError(404, 'NOT_AVAILABLE', 'This game is not available right now.');
     }
 
     const periodDate = currentPeriodDate();
@@ -307,8 +344,10 @@ export class GamesService {
     ]);
 
     if (playsToday >= game.maxPlaysPerDay) {
-      throw new Error(
-        `Daily play limit reached for this game (${game.maxPlaysPerDay})`,
+      throw new GameTaskError(
+        429,
+        'GAME_LIMIT',
+        `You've played this game ${game.maxPlaysPerDay} time${game.maxPlaysPerDay === 1 ? '' : 's'} today. Try another game or come back tomorrow.`,
       );
     }
 
@@ -320,8 +359,10 @@ export class GamesService {
       RewardTypeEnum.GAME,
     );
     if (todayGameRewards >= limits.maxDailyGames) {
-      throw new Error(
-        `You've reached your plan's daily game limit (${limits.maxDailyGames}). Upgrade your plan to earn from more games per day.`,
+      throw new GameTaskError(
+        429,
+        'DAILY_LIMIT_REACHED',
+        `You've used today's ${limits.maxDailyGames} rewarded games. Come back tomorrow or upgrade your plan for more.`,
       );
     }
 
@@ -332,12 +373,15 @@ export class GamesService {
 
     // Reuse an already-open session rather than stacking ACTIVE rows when the
     // user backs out and taps play again.
+    // Close sessions the client never finished, so yesterday's half-played
+    // session can't be reused (or block today's caps).
+    await this.abandonStaleSessions();
     const existing = await gamePlaysRepository.getActiveSession(
       user.id,
       gameId,
     );
     const session =
-      existing ??
+      (existing && existing.periodDate === periodDate ? existing : undefined) ??
       (await gamePlaysRepository.create({
         gameId,
         userId: user.id,
@@ -390,14 +434,35 @@ export class GamesService {
       (now.getTime() - previous.getTime()) / 1000,
     );
 
-    // Too fast to be real play. Flag rather than silently drop, so abuse is
-    // visible in the data instead of invisible.
+    // Early beat (e.g. the tab came back to the foreground right after a
+    // timed beat). Credit is measured from the last *accepted* beat and is
+    // clamped per beat, so ignoring it is safe and costs honest players
+    // nothing. Only a flood of early beats is treated as scripting.
     if (
       session.heartbeatCount > 0 &&
       elapsedSeconds < MIN_HEARTBEAT_GAP_SECONDS
     ) {
-      await gamePlaysRepository.flagSession(sessionId);
-      return this.deadHeartbeat(session.verifiedSeconds, 'FLAGGED');
+      const earlyBeats = (earlyBeatCounts.get(sessionId) ?? 0) + 1;
+      earlyBeatCounts.set(sessionId, earlyBeats);
+      if (earlyBeats > MAX_EARLY_BEATS) {
+        await gamePlaysRepository.flagSession(sessionId);
+        earlyBeatCounts.delete(sessionId);
+        return this.deadHeartbeat(session.verifiedSeconds, 'FLAGGED');
+      }
+      const rewardedSoFar = await gamePlaysRepository.getRewardedSecondsToday(
+        user.id,
+        session.gameId,
+        session.periodDate,
+      );
+      const remaining = Math.max(0, game.maxRewardedSecondsPerDay - rewardedSoFar);
+      const eligible = Math.min(session.verifiedSeconds, remaining);
+      return {
+        ok: true,
+        verifiedSeconds: session.verifiedSeconds,
+        qualified: eligible >= game.minPlayDuration,
+        projectedReward: this.computeReward(game, eligible),
+        remainingDailySeconds: remaining,
+      };
     }
 
     const creditedSeconds = Math.min(
@@ -509,6 +574,23 @@ export class GamesService {
         completedAt: new Date().toISOString(),
       });
 
+    // Re-check the plan cap here too: several games opened in parallel all
+    // passed startSession() before any of them paid.
+    const [limits, todayGameRewards] = await Promise.all([
+      getUserDailyLimits(user.id),
+      rewardsService.getTodayRewardCount(user.id, RewardTypeEnum.GAME),
+    ]);
+    if (todayGameRewards >= limits.maxDailyGames) {
+      await closeSession(false, 0);
+      return {
+        status: 'NO_REWARD',
+        rewardEarned: 0,
+        verifiedSeconds: session.verifiedSeconds,
+        reason: 'PLAN_LIMIT',
+        minPlaySeconds: game.minPlayDuration,
+      };
+    }
+
     if (remainingDailySeconds <= 0) {
       await closeSession(false, 0);
       return {
@@ -549,15 +631,16 @@ export class GamesService {
         heartbeatCount: session.heartbeatCount,
         score,
       },
+      dailyCap: limits.maxDailyGames,
     });
 
     if (!credit.credited) {
-      await closeSession(true, 0);
+      await closeSession(credit.reason !== 'DAILY_LIMIT', 0);
       return {
         status: 'NO_REWARD',
         rewardEarned: 0,
         verifiedSeconds: session.verifiedSeconds,
-        reason: 'ALREADY_CLAIMED',
+        reason: credit.reason === 'DAILY_LIMIT' ? 'PLAN_LIMIT' : 'ALREADY_CLAIMED',
         minPlaySeconds: game.minPlayDuration,
       };
     }

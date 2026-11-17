@@ -24,11 +24,15 @@ import {
   User,
   Calendar,
 } from 'lucide-react';
-import { useSurveys, type SurveySummary } from '@/hooks/useSurveys';
+import {
+  useSurveys,
+  type SurveySummary,
+  type SurveyQuestionItem as SurveyQuestionRow,
+} from '@/hooks/useSurveys';
 import { useSystemCurrency } from '@/hooks/useSystemCurrency';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { SurveyQuestion as SurveyQuestionRow } from '@/lib/db/schema';
+
 
 // UI category types
 type UICategory =
@@ -374,10 +378,10 @@ function SurveyComplete({
       </div>
       <div className="bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7] dark:from-[#22C55E]/20 dark:to-[#16A34A]/10 rounded-2xl px-8 py-4 border border-[#BBF7D0] dark:border-[#22C55E]/30">
         <p className="text-sm text-[#64748B] dark:text-[#94A3B8]">
-          Reward Earned
+          {reward > 0 ? 'Added to your balance' : 'Response recorded'}
         </p>
         <p className="text-3xl font-extrabold text-[#22C55E]">
-          {formatAmount(reward)}
+          {reward > 0 ? `+${formatAmount(reward)}` : 'Thank you!'}
         </p>
       </div>
       <button
@@ -409,12 +413,16 @@ export default function SurveysPage() {
   const [allSurveys, setAllSurveys] = useState<SurveySummary[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [questions, setQuestions] = useState<SurveyQuestionRow[]>([]);
+  const [startToken, setStartToken] = useState<string | null>(null);
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
+  const [surveyError, setSurveyError] = useState<string | null>(null);
 
   // Convert UI category to schema category (simplified for now)
   const schemaCategory =
     selectedCategory === 'all' ? undefined : selectedCategory;
 
-  const { data, isLoading, refetch } = useSurveys({
+  const { data, isLoading, error: listError, refetch } = useSurveys({
     category: schemaCategory,
     search: searchQuery,
     page,
@@ -424,7 +432,15 @@ export default function SurveysPage() {
   // Memoize surveys to prevent unnecessary re-renders
   const surveys = useMemo(() => data?.surveys || [], [data?.surveys]);
   const totalPages = data?.totalPages || 1;
-  const stats = data?.stats || { totalEarned: 0, completed: 0, available: 0 };
+  const stats = data?.stats || {
+    totalEarned: 0,
+    completed: 0,
+    available: 0,
+    doneToday: 0,
+    dailyLimit: 0,
+    remainingToday: 0,
+  };
+  const limitReached = !!data && stats.remainingToday === 0;
 
   // Create a stable reference for surveys using useMemo
   const stableSurveys = useMemo(() => surveys, [surveys]);
@@ -440,7 +456,8 @@ export default function SurveysPage() {
     setIsLoadingMore(false);
   }, [stableSurveys, page, totalPages]);
 
-  const handleStartSurvey = (survey: SurveySummary) => {
+  const handleStartSurvey = async (survey: SurveySummary) => {
+    if (survey.completed || limitReached) return;
     setSelectedSurvey(survey);
     setCurrentQuestion(0);
     setAnswers([]);
@@ -448,6 +465,23 @@ export default function SurveysPage() {
     setIsTakingSurvey(true);
     setIsCompleted(false);
     setRewardEarned(0);
+    setQuestions([]);
+    setStartToken(null);
+    setSurveyError(null);
+    setIsLoadingQuestions(true);
+    try {
+      const res = await fetch(`/api/content/surveys/${survey.id}/questions`, {
+        cache: 'no-store',
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Could not open this survey.');
+      setQuestions(json.questions || []);
+      setStartToken(json.startToken || null);
+    } catch (e) {
+      setSurveyError(e instanceof Error ? e.message : 'Could not open this survey.');
+    } finally {
+      setIsLoadingQuestions(false);
+    }
   };
 
   const handleCloseSurvey = () => {
@@ -457,6 +491,9 @@ export default function SurveysPage() {
     setAnswers([]);
     setSelectedOption(null);
     setIsCompleted(false);
+    setQuestions([]);
+    setStartToken(null);
+    setSurveyError(null);
   };
 
   const handleSelectOption = (option: string) => {
@@ -469,12 +506,13 @@ export default function SurveysPage() {
     const newAnswers = [...answers];
     newAnswers[currentQuestion] = selectedOption;
     setAnswers(newAnswers);
-    setSelectedOption(null);
 
-    if (currentQuestion < (selectedSurvey?.questions?.length || 0) - 1) {
+    if (currentQuestion < questions.length - 1) {
+      setSelectedOption(newAnswers[currentQuestion + 1] ?? null);
       setCurrentQuestion(currentQuestion + 1);
     } else {
-      handleSubmitSurvey();
+      // Submit the array we just built: `answers` state isn't updated yet.
+      handleSubmitSurvey(newAnswers);
     }
   };
 
@@ -485,9 +523,10 @@ export default function SurveysPage() {
     }
   };
 
-  const handleSubmitSurvey = async () => {
+  const handleSubmitSurvey = async (finalAnswers: string[]) => {
     if (!selectedSurvey) return;
     setIsSubmitting(true);
+    setSurveyError(null);
     try {
       const response = await fetch(
         `/api/content/surveys/${selectedSurvey.id}/submit`,
@@ -495,30 +534,28 @@ export default function SurveysPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            answers: answers.map((answer, index) => ({
-              questionId: selectedSurvey.questions?.[index]?.id,
-              answer,
+            startToken,
+            answers: questions.map((q, index) => ({
+              questionId: q.id,
+              answer: finalAnswers[index] ?? '',
             })),
           }),
         },
       );
+      const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to submit survey');
+        // Keep the user on the last question so they can retry (e.g. TOO_FAST).
+        setSelectedOption(finalAnswers[currentQuestion] ?? null);
+        throw new Error(result.error || 'Failed to submit survey. Please try again.');
       }
 
-      const result = await response.json();
-      setRewardEarned(result.rewardEarned);
+      setRewardEarned(result.rewardEarned || 0);
       setIsCompleted(true);
-
-      // Refetch surveys to update stats
       refetch();
     } catch (error) {
-      alert(
-        error instanceof Error
-          ? error.message
-          : 'Failed to submit survey. Please try again.',
+      setSurveyError(
+        error instanceof Error ? error.message : 'Failed to submit survey. Please try again.',
       );
     } finally {
       setIsSubmitting(false);
@@ -568,7 +605,6 @@ export default function SurveysPage() {
     return emojis[brand] || '📋';
   };
 
-  const questions = selectedSurvey?.questions || [];
 
   return (
     <div className="space-y-5 pb-20 lg:pb-0 font-outfit max-w-7xl mx-auto px-3 sm:px-4">
@@ -599,7 +635,7 @@ export default function SurveysPage() {
           <div className="flex items-center gap-1.5 bg-[#FFFBEB] dark:bg-[#F59E0B]/20 px-3 py-1.5 rounded-full flex-shrink-0">
             <Award size={14} className="text-[#F59E0B] dark:text-[#FBBF24]" />
             <span className="text-xs font-bold text-[#F59E0B] dark:text-[#FBBF24] whitespace-nowrap">
-              Up to 500 RWF
+              {data ? `${stats.remainingToday}/${stats.dailyLimit} left today` : '…'}
             </span>
           </div>
           <div className="flex items-center gap-1.5 bg-[#F0FDF4] dark:bg-[#22C55E]/20 px-3 py-1.5 rounded-full flex-shrink-0">
@@ -624,7 +660,8 @@ export default function SurveysPage() {
             Your Opinion Pays! 💰
           </h2>
           <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] mt-1">
-            Complete surveys from top brands and earn up to 500 RWF per survey.
+            Answer short surveys from brands. Each survey pays once and the reward
+            goes straight to your balance.
           </p>
           <div className="flex gap-6 mt-3">
             <div>
@@ -683,12 +720,27 @@ export default function SurveysPage() {
         ))}
       </div>
 
+      {limitReached && (
+        <div className="rounded-xl border border-[#FDE68A] bg-[#FFFBEB] dark:bg-[#F59E0B]/10 dark:border-[#F59E0B]/30 p-3 text-sm text-[#92400E] dark:text-[#FBBF24]">
+          You&apos;ve used today&apos;s {stats.dailyLimit} survey
+          {stats.dailyLimit === 1 ? '' : 's'}. Come back tomorrow, or{' '}
+          <a href="/plans" className="font-bold underline">upgrade</a> for more.
+        </div>
+      )}
+
       {/* Survey List */}
       {isLoading && page === 1 ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <SurveyCardSkeleton key={i} />
           ))}
+        </div>
+      ) : listError && allSurveys.length === 0 ? (
+        <div className="text-center py-10 bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155]">
+          <p className="text-sm text-[#64748B] dark:text-[#94A3B8]">{listError.message}</p>
+          <button onClick={refetch} className="mt-3 text-sm font-semibold text-[#2563EB]">
+            Try again
+          </button>
         </div>
       ) : allSurveys.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155]">
@@ -707,7 +759,12 @@ export default function SurveysPage() {
               key={survey.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155] shadow-sm p-4 sm:p-5 hover:shadow-md transition-all group cursor-pointer"
+              className={cn(
+                'bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155] shadow-sm p-4 sm:p-5 transition-all group',
+                survey.completed || limitReached
+                  ? 'opacity-70'
+                  : 'hover:shadow-md cursor-pointer',
+              )}
               onClick={() => handleStartSurvey(survey)}
             >
               <div className="flex items-start gap-4">
@@ -732,7 +789,7 @@ export default function SurveysPage() {
                       </p>
                     </div>
                     <span className="text-[10px] sm:text-xs font-bold text-[#22C55E] bg-[#F0FDF4] dark:bg-[#22C55E]/20 px-2 py-0.5 rounded-full flex items-center gap-0.5 flex-shrink-0">
-                      <Award size={12} />+{survey.rewardAmount} RWF
+                      <Award size={12} />+{formatAmount(survey.rewardAmount)}
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-2">
@@ -751,15 +808,22 @@ export default function SurveysPage() {
                     )}
                   </div>
                 </div>
-                <button
-                  className="px-4 py-2 bg-[#2563EB] text-white text-xs font-bold rounded-xl hover:bg-[#1D4ED8] transition-colors flex-shrink-0 touch-min-target"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleStartSurvey(survey);
-                  }}
-                >
-                  Start Survey
-                </button>
+                {survey.completed ? (
+                  <span className="px-3 py-2 text-xs font-bold rounded-xl flex-shrink-0 flex items-center gap-1 text-[#15803D] bg-[#F0FDF4] dark:bg-[#22C55E]/15 dark:text-[#4ADE80]">
+                    <CheckCircle2 size={14} /> Done
+                  </span>
+                ) : (
+                  <button
+                    disabled={limitReached}
+                    className="px-4 py-2 bg-[#2563EB] text-white text-xs font-bold rounded-xl hover:bg-[#1D4ED8] transition-colors flex-shrink-0 touch-min-target disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStartSurvey(survey);
+                    }}
+                  >
+                    {limitReached ? 'Limit reached' : 'Start'}
+                  </button>
+                )}
               </div>
             </motion.div>
           ))}
@@ -819,12 +883,12 @@ export default function SurveysPage() {
                   </div>
                 </div>
                 <span className="text-xs font-bold text-[#F59E0B] bg-[#FFFBEB] dark:bg-[#F59E0B]/20 px-3 py-1 rounded-full flex-shrink-0">
-                  +{selectedSurvey.rewardAmount} RWF
+                  +{formatAmount(selectedSurvey.rewardAmount)}
                 </span>
               </div>
 
               {/* Progress */}
-              {!isCompleted && (
+              {!isCompleted && questions.length > 0 && (
                 <div className="px-4 sm:px-6 py-3 border-b border-[#F1F5F9] dark:border-[#334155] flex-shrink-0">
                   <SurveyProgress
                     current={currentQuestion}
@@ -835,7 +899,25 @@ export default function SurveysPage() {
 
               {/* Content */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-                {isCompleted ? (
+                {surveyError && (
+                  <div className="mb-4 rounded-xl border border-[#FECACA] bg-[#FEF2F2] dark:bg-[#EF4444]/10 dark:border-[#EF4444]/30 p-3 text-sm text-[#B91C1C] dark:text-[#F87171]">
+                    {surveyError}
+                  </div>
+                )}
+                {isLoadingQuestions ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 size={28} className="animate-spin text-[#2563EB]" />
+                  </div>
+                ) : questions.length === 0 ? (
+                  <div className="text-center py-6">
+                    <button
+                      onClick={handleCloseSurvey}
+                      className="px-5 py-2.5 rounded-xl bg-[#2563EB] text-white text-sm font-bold"
+                    >
+                      Close
+                    </button>
+                  </div>
+                ) : isCompleted ? (
                   <SurveyComplete
                     reward={rewardEarned}
                     onClose={handleCloseSurvey}

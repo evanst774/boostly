@@ -43,10 +43,26 @@ export class WalletRepository {
     });
   }
 
+  /**
+   * Race-safe: concurrent first requests for a new user (e.g. several rewards
+   * at once) all converge on the single wallet row instead of failing on the
+   * unique userId.
+   */
   async getOrCreate(userId: string): Promise<Wallet> {
     const existing = await this.getByUserId(userId);
     if (existing) return existing;
-    return await this.create(userId);
+    await db
+      .insert(wallets)
+      .values({
+        id: crypto.randomUUID(),
+        userId,
+        balance: 0,
+        totalEarned: 0,
+        totalWithdrawn: 0,
+        pendingWithdrawal: 0,
+      })
+      .onConflictDoNothing({ target: wallets.userId });
+    return (await this.getByUserId(userId))!;
   }
 
   async updateBalance(
