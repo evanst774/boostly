@@ -72,6 +72,13 @@ export default function SettingsPage() {
     useSettings();
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+
+  // Deep links: /settings?tab=security etc.
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    const valid: SettingsTab[] = ['profile', 'security', 'preferences', 'payment', 'support'];
+    if (tab && valid.includes(tab as SettingsTab)) setActiveTab(tab as SettingsTab);
+  }, []);
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [show2FA, setShow2FA] = useState(false);
@@ -241,7 +248,7 @@ export default function SettingsPage() {
       confirmVariant: 'danger',
       onConfirm: async () => {
         await logout();
-        router.push('/auth/login');
+        router.push('/login');
       },
     });
   };
@@ -256,7 +263,7 @@ export default function SettingsPage() {
       confirmVariant: 'danger',
       onConfirm: async () => {
         await logout();
-        router.push('/auth/login');
+        router.push('/login');
       },
     });
   };
@@ -598,7 +605,10 @@ export default function SettingsPage() {
               {
                 icon: <Crown size={18} />,
                 title: 'My Plan',
-                subtitle: user?.plan ? `${user.plan}` : 'Free — upgrade to withdraw daily',
+                subtitle:
+                  !user?.plan || user.plan === 'Free'
+                    ? 'Free — upgrade to withdraw daily'
+                    : `${user.plan} plan · withdraw every day`,
                 badge: undefined as string | undefined,
                 badgeColor: undefined as string | undefined,
                 onClick: () => router.push('/plans'),
@@ -606,7 +616,7 @@ export default function SettingsPage() {
               {
                 icon: <Users size={18} />,
                 title: 'Referrals',
-                subtitle: '23 friends invited',
+                subtitle: 'Invite friends and earn together',
                 onClick: () => router.push('/referrals'),
               },
             ].map((item, index) => (

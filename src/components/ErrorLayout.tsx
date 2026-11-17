@@ -22,9 +22,9 @@ export default function ErrorLayout({
   onReset,
 }: ErrorLayoutProps) {
   const navItems = [
-    { name: 'Home', href: '/home' },
-    { name: 'Earn', href: '/earn' },
-    { name: 'Games', href: '/games' },
+    { name: 'Home', href: '/' },
+    { name: 'Earn', href: '/earn/videos' },
+    { name: 'Games', href: '/earn/games' },
     { name: 'Wallet', href: '/wallet' },
     { name: 'Referrals', href: '/referrals' },
     { name: 'Settings', href: '/settings' },
@@ -74,7 +74,7 @@ export default function ErrorLayout({
             className="flex flex-col sm:flex-row gap-4 justify-center mt-8 mb-16"
           >
             <Link
-              href="/home"
+              href="/"
               className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gold text-navy font-bold text-sm hover:bg-gold-hover transition-all duration-200 shadow-gold"
             >
               <Home className="w-4 h-4" />
@@ -92,7 +92,7 @@ export default function ErrorLayout({
             )}
 
             <Link
-              href="/contact"
+              href="/support"
               className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 text-white font-medium text-sm hover:bg-white/10 hover:border-primary/30 transition-all duration-200"
             >
               <Mail className="w-4 h-4" />
@@ -132,7 +132,7 @@ export default function ErrorLayout({
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
-                href="/contact"
+                href="/support"
                 className="text-sm text-gold hover:text-gold-hover transition-colors"
               >
                 Contact Support →

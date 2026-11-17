@@ -23,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEarnToday, type TaskProgress } from '@/hooks/useEarnToday';
 import { PayoutCountdown } from '@/components/earn/PayoutCountdown';
 import { LedgerRow } from '@/components/earn/LedgerRow';
+import { DailyBonusCard } from '@/components/earn/DailyBonusCard';
 import { PAYOUT_TIME_LABEL } from '@/lib/constants/payouts';
 import { cn } from '@/lib/utils';
 
@@ -281,6 +282,10 @@ export default function DashboardPage() {
           </p>
         )}
       </section>
+
+      {data.dailyBonus && (
+        <DailyBonusCard bonus={data.dailyBonus} onClaimed={refetch} />
+      )}
 
       {showGuide && <EarnGuide onClose={closeGuide} />}
 

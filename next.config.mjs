@@ -255,6 +255,20 @@ const nextConfig = {
   // ============================================
   // Rewrites (Legal Pages)
   // ============================================
+  // Old/alternate paths that are linked from around the app or bookmarked.
+  async redirects() {
+    return [
+      { source: '/settings/profile', destination: '/settings?tab=profile', permanent: false },
+      { source: '/settings/security', destination: '/settings?tab=security', permanent: false },
+      { source: '/settings/notifications', destination: '/settings?tab=preferences', permanent: false },
+      { source: '/admin/settings', destination: '/admin/settings/general', permanent: false },
+      { source: '/admin/settings/profile', destination: '/settings?tab=profile', permanent: false },
+      { source: '/auth/login', destination: '/login', permanent: true },
+      { source: '/contact', destination: '/support', permanent: true },
+      { source: '/daily-bonus', destination: '/dashboard', permanent: false },
+    ];
+  },
+
   async rewrites() {
     return [
       {

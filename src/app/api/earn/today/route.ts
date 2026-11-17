@@ -32,6 +32,7 @@ export async function GET() {
       eligibility,
       streak,
       recent,
+      todayBonus,
     ] = await Promise.all([
       getUserPlan(user.id),
       db.query.wallets.findFirst({ where: eq(wallets.userId, user.id) }),
@@ -48,6 +49,7 @@ export async function GET() {
         .where(eq(transactions.userId, user.id))
         .orderBy(desc(transactions.createdAt))
         .limit(6),
+      dailyBonusesService.getOrCreateTodayBonus(user.id).catch(() => null),
     ]);
 
     const tierMeta = TIERS[plan.tier]?.metadata ?? TIERS.FREE.metadata;
@@ -101,6 +103,13 @@ export async function GET() {
         current: streak?.currentStreak ?? 0,
         nextMilestone: streak?.nextMilestone ?? null,
       },
+      dailyBonus: todayBonus
+        ? {
+            amount: todayBonus.bonusAmount,
+            claimed: todayBonus.claimed,
+            streakDay: todayBonus.streakDay,
+          }
+        : null,
       withdrawal: eligibility,
       recentTransactions: recent,
     });

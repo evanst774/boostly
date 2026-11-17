@@ -1,151 +1,116 @@
 // src/components/admin/tabs/WithdrawalsTab.tsx
+//
+// Dashboard summary of today's payout run. Paying and rejecting happen on the
+// dedicated /admin/withdrawals page, so there is a single place to act.
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { ArrowRight, Clock, Loader2 } from 'lucide-react';
+import { PayoutCountdown } from '@/components/earn/PayoutCountdown';
 import {
-  Clock,
-  Loader2,
-  RefreshCw,
-} from 'lucide-react';
-import { formatCurrency, formatDate } from '@/lib/utils';
+  MOBILE_MONEY_PROVIDERS,
+  PAYOUT_TIME_LABEL,
+  formatRwandaPhone,
+  type MobileMoneyProvider,
+} from '@/lib/constants/payouts';
 
-interface PendingWithdrawal {
+interface PendingRow {
   id: string;
   userName: string;
-  method: string;
-  date: string;
   amount: number;
+  phoneNumber: string | null;
+  provider: MobileMoneyProvider | null;
 }
 
+const rwf = (n: number) => `${Math.round(n).toLocaleString('en-US')} RWF`;
+
 export function WithdrawalsTab() {
-  const [withdrawals, setWithdrawals] = useState<PendingWithdrawal[]>([]);
+  const [rows, setRows] = useState<PendingRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchWithdrawals();
+    fetch('/api/admin/withdrawals?status=PENDING&limit=500', { cache: 'no-store' })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load');
+        setRows(data.withdrawals || []);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .finally(() => setIsLoading(false));
   }, []);
-
-  const fetchWithdrawals = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/admin/withdrawals');
-      const data = await response.json();
-      setWithdrawals(data.withdrawals || []);
-    } catch (error) {
-      console.error('Failed to fetch withdrawals:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleApprove = async (id: string) => {
-    try {
-      await fetch(`/api/admin/withdrawals/${id}/approve`, { method: 'POST' });
-      fetchWithdrawals();
-    } catch {
-      alert('Failed to approve withdrawal');
-    }
-  };
-
-  const handleReject = async (id: string) => {
-    const reason = prompt('Reason for rejection:');
-    if (!reason) return;
-    try {
-      await fetch(`/api/admin/withdrawals/${id}/reject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason }),
-      });
-      fetchWithdrawals();
-    } catch {
-      alert('Failed to reject withdrawal');
-    }
-  };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[300px]">
-        <Loader2 size={32} className="animate-spin text-[#2563EB]" />
+      <div className="flex justify-center py-12">
+        <Loader2 size={28} className="animate-spin text-[#2563EB]" />
       </div>
     );
   }
 
+  const total = rows.reduce((s, r) => s + r.amount, 0);
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-[#0F172A] dark:text-white">
-          Pending Withdrawals
-        </h3>
-        <button
-          onClick={fetchWithdrawals}
-          className="text-sm font-semibold text-[#2563EB] dark:text-[#60A5FA] hover:underline flex items-center gap-1"
+      <div className="bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155] p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#64748B] dark:text-[#94A3B8]">
+            To pay at {PAYOUT_TIME_LABEL}
+          </p>
+          <p className="text-3xl font-extrabold text-[#0F172A] dark:text-white tabular-nums mt-1">
+            {rwf(total)}
+          </p>
+          <p className="text-sm text-[#64748B] dark:text-[#94A3B8]">
+            {rows.length} pending request{rows.length === 1 ? '' : 's'}
+          </p>
+          <PayoutCountdown className="mt-2" />
+        </div>
+        <Link
+          href="/admin/withdrawals"
+          className="px-4 py-2.5 rounded-xl bg-[#2563EB] text-white text-sm font-bold inline-flex items-center gap-2"
         >
-          <RefreshCw size={14} /> Refresh
-        </button>
+          Open payout run <ArrowRight size={16} />
+        </Link>
       </div>
 
-      {withdrawals.length === 0 ? (
-        <div className="bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155] shadow-sm p-8 text-center">
-          <div className="text-6xl mb-4">✅</div>
-          <p className="text-[#64748B] dark:text-[#94A3B8] font-medium">
-            No pending withdrawals
-          </p>
-          <p className="text-sm text-[#94A3B8] dark:text-[#64748B] mt-1">
-            All withdrawal requests have been processed
+      {error && (
+        <p className="text-sm text-[#B91C1C] dark:text-[#F87171]">{error}</p>
+      )}
+
+      {rows.length === 0 && !error ? (
+        <div className="bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155] p-8 text-center">
+          <Clock size={24} className="mx-auto text-[#94A3B8] mb-2" />
+          <p className="text-sm text-[#64748B] dark:text-[#94A3B8]">
+            No pending withdrawals.
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {withdrawals.map((withdrawal) => (
-            <div
-              key={withdrawal.id}
-              className="bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155] shadow-sm p-5 hover:border-[#2563EB] dark:hover:border-[#60A5FA] transition-colors"
-            >
-              <div className="flex flex-wrap items-start gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#60A5FA] to-[#2563EB] flex items-center justify-center text-white text-sm font-bold">
-                      {withdrawal.userName?.charAt(0) || 'U'}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-[#0F172A] dark:text-white">
-                        {withdrawal.userName}
-                      </p>
-                      <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-                        {withdrawal.method}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-[#64748B] dark:text-[#94A3B8] mt-2">
-                    🕐 {formatDate(withdrawal.date)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-extrabold text-[#2563EB] dark:text-[#60A5FA]">
-                    {formatCurrency(withdrawal.amount)}
-                  </p>
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold bg-[#FFFBEB] dark:bg-[#F59E0B]/20 text-[#F59E0B] dark:text-[#FBBF24] px-3 py-1 rounded-full">
-                    <Clock size={12} /> Pending
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <button
-                    className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-[#22C55E] text-white text-sm font-bold hover:bg-[#16A34A] transition-colors"
-                    onClick={() => handleApprove(withdrawal.id)}
-                  >
-                    Approve
-                  </button>
-                  <button
-                    className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-[#EF4444] text-white text-sm font-bold hover:bg-[#DC2626] transition-colors"
-                    onClick={() => handleReject(withdrawal.id)}
-                  >
-                    Reject
-                  </button>
-                </div>
+        <ul className="bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155] divide-y divide-[#F1F5F9] dark:divide-[#334155]">
+          {rows.slice(0, 8).map((w) => (
+            <li key={w.id} className="flex items-center justify-between gap-3 px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#0F172A] dark:text-white tabular-nums">
+                  {formatRwandaPhone(w.phoneNumber) || '—'}
+                  {w.provider && (
+                    <span className="ml-2 text-[10px] font-bold text-[#64748B]">
+                      {MOBILE_MONEY_PROVIDERS[w.provider]?.label}
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] truncate">{w.userName}</p>
               </div>
-            </div>
+              <p className="text-sm font-bold tabular-nums text-[#0F172A] dark:text-white">
+                {rwf(w.amount)}
+              </p>
+            </li>
           ))}
-        </div>
+          {rows.length > 8 && (
+            <li className="px-4 py-3 text-xs text-[#64748B]">
+              +{rows.length - 8} more on the payout run page
+            </li>
+          )}
+        </ul>
       )}
     </div>
   );

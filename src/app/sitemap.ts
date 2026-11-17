@@ -1,64 +1,30 @@
 // src/app/sitemap.ts
 import { MetadataRoute } from 'next';
 
+const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://boostly.buzz').replace(/\/$/, '');
+
+/** Public, indexable pages only (app and admin screens need a login). */
+const PAGES: { path: string; priority: number; changeFrequency: 'daily' | 'weekly' | 'monthly' | 'yearly' }[] = [
+  { path: '', priority: 1, changeFrequency: 'weekly' },
+  { path: '/register', priority: 0.9, changeFrequency: 'monthly' },
+  { path: '/login', priority: 0.6, changeFrequency: 'monthly' },
+  { path: '/about', priority: 0.6, changeFrequency: 'monthly' },
+  { path: '/help', priority: 0.7, changeFrequency: 'monthly' },
+  { path: '/resources', priority: 0.5, changeFrequency: 'monthly' },
+  { path: '/resources/faq', priority: 0.7, changeFrequency: 'monthly' },
+  { path: '/support', priority: 0.5, changeFrequency: 'monthly' },
+  { path: '/blog', priority: 0.5, changeFrequency: 'weekly' },
+  { path: '/terms', priority: 0.3, changeFrequency: 'yearly' },
+  { path: '/privacy', priority: 0.3, changeFrequency: 'yearly' },
+  { path: '/cookies', priority: 0.2, changeFrequency: 'yearly' },
+];
+
 export default function sitemap(): MetadataRoute.Sitemap {
-    const baseUrl = 'https://schoolhub.rw';
-    const currentDate = new Date().toISOString();
-
-    // All pages from footer and mega menu
-    const pages = [
-        // Main pages
-        '', '/features', '/solutions', '/pricing', '/about', '/contact', '/blog', '/demo', '/login',
-
-        // Features
-        '/features/student-management',
-        '/features/guardians',
-        '/features/attendance',
-        '/features/academic',
-        '/features/finance',
-        '/features/clearance',
-        '/features/billing',
-        '/features/final-clearance',
-        '/features/student-affairs',
-        '/features/staff',
-        '/features/library',
-        '/features/communication',
-
-        // Solutions
-        '/solutions/primary',
-        '/solutions/secondary',
-        '/solutions/tvet',
-        '/solutions/multi-school',
-        '/solutions/multi-campus',
-        '/solutions/parent-portal',
-        '/solutions/mobile-payments',
-
-        // Resources
-        '/docs',
-        '/api-docs',
-        '/integrations',
-        '/help',
-        '/status',
-        '/security',
-
-        // Company
-        '/story',
-        '/careers',
-        '/press',
-
-        // Legal
-        '/privacy',
-        '/terms',
-        '/dpa',
-        '/gdpr',
-        '/cookies',
-        '/security-policy',
-    ];
-
-    return pages.map(route => ({
-        url: `${baseUrl}${route}`,
-        lastModified: currentDate,
-        changeFrequency: route === '' ? 'daily' : 'weekly',
-        priority: route === '' ? 1.0 : 0.8,
-    }));
+  const lastModified = new Date().toISOString();
+  return PAGES.map((p) => ({
+    url: `${baseUrl}${p.path}`,
+    lastModified,
+    changeFrequency: p.changeFrequency,
+    priority: p.priority,
+  }));
 }

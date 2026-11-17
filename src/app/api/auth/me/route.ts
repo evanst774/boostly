@@ -7,6 +7,8 @@ import { userRoles, roles } from '@/lib/db/schema/rbac';
 import { eq } from 'drizzle-orm';
 import { verifyJWT, JWT_COOKIE_NAME } from '@/lib/jwt';
 import { SystemRoles } from '@/modules/rbac/roles';
+import { getUserPlan } from '@/modules/rewards/plan-limits';
+import { userBadgesRepository } from '@/modules/badges/repository';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,6 +95,13 @@ export async function GET(request: NextRequest) {
     // getSession()/getSessionFromRequest()).
     const primaryRole = payload.role || rolesList[0] || SystemRoles.USER;
 
+    // Current plan and badge, so the UI shows what the user actually has.
+    // Never fail the session check over these.
+    const [plan, activeBadge] = await Promise.all([
+      getUserPlan(user.id).catch(() => null),
+      userBadgesRepository.getActiveByUserId(user.id).catch(() => undefined),
+    ]);
+
     // Return FULL user object with all fields
     return NextResponse.json({
       user: {
@@ -106,6 +115,9 @@ export async function GET(request: NextRequest) {
         avatar: user.avatar,
         avatarKey: user.avatarKey,
         phone: user.phone,
+        plan: plan ? plan.name.replace(/ Plan$/, '') : 'Free',
+        planTier: plan?.tier ?? 'FREE',
+        badge: activeBadge?.badge?.name ?? null,
       },
     });
   } catch (error) {

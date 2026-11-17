@@ -34,14 +34,29 @@ export default function AdminRewardsPage() {
   const fetchRewards = async () => {
     setIsLoading(true);
     try {
-      const [rewardsRes, statsRes] = await Promise.all([
-        fetch('/api/admin/rewards'),
-        fetch('/api/admin/rewards/stats'),
-      ]);
-      const rewardsData = await rewardsRes.json();
-      const statsData = await statsRes.json();
-      setRewards(rewardsData.rewards || []);
-      setStats(statsData);
+      // The list route also returns the stats, so one request is enough.
+      const res = await fetch('/api/admin/rewards?limit=100');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load rewards');
+      setRewards(
+        (data.rewards || []).map(
+          (r: {
+            id: string;
+            description: string | null;
+            type: string;
+            amount: number;
+            status: string;
+            user?: { name?: string | null } | null;
+          }) => ({
+            id: r.id,
+            title: `${r.description || r.type}${r.user?.name ? ` · ${r.user.name}` : ''}`,
+            type: r.type,
+            amount: r.amount,
+            claimed: r.status === 'CLAIMED',
+          }),
+        ),
+      );
+      if (data.stats) setStats(data.stats);
     } catch (error) {
       console.error('Failed to fetch rewards:', error);
     } finally {

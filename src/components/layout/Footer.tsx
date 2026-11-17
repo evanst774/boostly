@@ -63,8 +63,8 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2">
               {[
-                { label: 'Documentation', href: '/resources/documentation' },
-                { label: 'User Guides', href: '/resources/guides' },
+                { label: 'Help Center', href: '/help' },
+                { label: 'How It Works', href: '/#how-it-works' },
                 { label: 'FAQ', href: '/resources/faq' },
                 { label: 'API Reference', href: '/resources/api' },
                 { label: 'Changelog', href: '/resources/changelog' },

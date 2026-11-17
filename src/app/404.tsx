@@ -212,7 +212,7 @@ export default function Custom404() {
                 <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
               </motion.button>
             </Link>
-            <Link href="/contact">
+            <Link href="/support">
               <motion.button
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.98 }}

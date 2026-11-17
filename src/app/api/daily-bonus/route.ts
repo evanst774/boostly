@@ -1,7 +1,10 @@
 // src/app/api/daily-bonus/route.ts
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session.server';
-import { dailyBonusesService } from '@/modules/rewards/service';
+import {
+  dailyBonusesService,
+  DailyBonusClaimedError,
+} from '@/modules/rewards/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +37,9 @@ export async function POST() {
 
     return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof DailyBonusClaimedError) {
+      return NextResponse.json({ error: error.message, code: 'ALREADY_CLAIMED' }, { status: 409 });
+    }
     console.error('Daily bonus claim error:', error);
     const message =
       error instanceof Error ? error.message : 'Internal server error';

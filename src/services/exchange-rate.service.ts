@@ -293,6 +293,39 @@ export class ExchangeRateService {
   }
 
   /**
+   * Admin override for one rate against the current base currency.
+   * The next automatic refresh replaces it with the live rate.
+   */
+  async setManualRate(
+    targetCurrency: FiatCurrencyType,
+    rate: number,
+  ): Promise<void> {
+    if (!(rate > 0) || !Number.isFinite(rate)) throw new Error('Rate must be a positive number');
+    const base = await this.getBaseCurrency();
+    const now = new Date().toISOString();
+    const existing = await db.query.exchangeRates.findFirst({
+      where: and(
+        eq(exchangeRates.baseCurrency, base),
+        eq(exchangeRates.targetCurrency, targetCurrency),
+      ),
+    });
+    if (existing) {
+      await db
+        .update(exchangeRates)
+        .set({ rate, lastUpdated: now, updatedAt: now })
+        .where(eq(exchangeRates.id, existing.id));
+    } else {
+      await db.insert(exchangeRates).values({
+        baseCurrency: base,
+        targetCurrency,
+        rate,
+        lastUpdated: now,
+      });
+    }
+    ratesCache = null;
+  }
+
+  /**
    * Get cached exchange rates
    */
   async getRates(baseCurrency?: FiatCurrencyType): Promise<{

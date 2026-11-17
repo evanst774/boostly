@@ -31,6 +31,7 @@ interface User {
   avatarKey?: string | null;
   phone?: string | null;
   plan?: string | null;
+  planTier?: string | null;
   badge?: string | null;
   streak?: number;
   totalEarned?: number;

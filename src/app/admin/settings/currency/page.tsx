@@ -125,8 +125,9 @@ export default function AdminCurrencySettings() {
     setRefreshing(true);
     setMessage(null);
     try {
-      const response = await fetch('/api/admin/settings/currency/refresh', {
-        method: 'POST',
+      // PUT on the main currency route force-refreshes live rates.
+      const response = await fetch('/api/admin/settings/currency', {
+        method: 'PUT',
       });
 
       const data = await response.json();

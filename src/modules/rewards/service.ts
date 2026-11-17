@@ -753,6 +753,12 @@ export const adWatchesService = new AdWatchesService();
 // ============================================
 
 const DAILY_BONUS_BASE = 100;
+
+export class DailyBonusClaimedError extends Error {
+  constructor() {
+    super("You've already claimed today's bonus. Come back tomorrow!");
+  }
+}
 const STREAK_MILESTONES: Record<number, number> = {
   7: 500,
   14: 1000,
@@ -768,13 +774,22 @@ export class DailyBonusesService {
     const streak = (await dailyBonusesRepository.getStreakCount(userId)) + 1;
     const today = new Date().toISOString().slice(0, 10);
 
-    return dailyBonusesRepository.create({
-      userId,
-      streakDay: streak,
-      bonusAmount: DAILY_BONUS_BASE + (STREAK_MILESTONES[streak] ?? 0),
-      date: today,
-      claimed: false,
-    });
+    try {
+      return await dailyBonusesRepository.create({
+        userId,
+        streakDay: streak,
+        bonusAmount: DAILY_BONUS_BASE + (STREAK_MILESTONES[streak] ?? 0),
+        date: today,
+        claimed: false,
+      });
+    } catch (err) {
+      // Two first visits at once: the unique (userId, date) index let the
+      // other request create today's row. Use it.
+      if (!isUniqueViolation(err)) throw err;
+      const row = await dailyBonusesRepository.getTodayBonus(userId);
+      if (!row) throw err;
+      return row;
+    }
   }
 
   /**
@@ -786,7 +801,7 @@ export class DailyBonusesService {
   ): Promise<{ bonus: DailyBonus; result: CreateRewardResult }> {
     const bonus = await this.getOrCreateTodayBonus(userId);
     if (bonus.claimed) {
-      throw new Error('Daily bonus already claimed today');
+      throw new DailyBonusClaimedError();
     }
 
     const result = await rewardsService.createReward({
@@ -799,9 +814,11 @@ export class DailyBonusesService {
       scope: bonus.date,
     });
 
-    if (result.credited) {
+    // ALREADY_CREDITED means a parallel request paid it; mark it claimed too.
+    if (result.credited || result.reason === 'ALREADY_CREDITED') {
       await dailyBonusesRepository.claimBonus(bonus.id);
     }
+    if (!result.credited) throw new DailyBonusClaimedError();
 
     return { bonus, result };
   }

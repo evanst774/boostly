@@ -55,6 +55,7 @@ export interface EarnToday {
   earnings: { today: number; week: number; month: number; total: number };
   streak: { current: number; nextMilestone: { day: number; bonus: number } | null };
   withdrawal: WithdrawalEligibility;
+  dailyBonus: { amount: number; claimed: boolean; streakDay: number } | null;
   recentTransactions: LedgerEntry[];
 }
 

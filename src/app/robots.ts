@@ -1,6 +1,8 @@
 // src/app/robots.ts
 import { MetadataRoute } from 'next';
 
+const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://boostly.buzz').replace(/\/$/, '');
+
 export default function robots(): MetadataRoute.Robots {
     return {
         rules: {
@@ -9,12 +11,16 @@ export default function robots(): MetadataRoute.Robots {
             disallow: [
                 '/api/',
                 '/admin/',
-                '/dashboard/',
+                '/dashboard',
+                '/earn/',
+                '/wallet',
+                '/plans',
+                '/settings',
                 '/_next/',
                 '/*.json$',
             ],
         },
-        sitemap: 'https://schoolhub.rw/sitemap.xml',
-        host: 'https://schoolhub.rw',
+        sitemap: `${baseUrl}/sitemap.xml`,
+        host: baseUrl,
     };
 }
