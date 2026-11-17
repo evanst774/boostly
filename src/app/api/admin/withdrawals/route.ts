@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     const url = new URL(request.url);
     const status = url.searchParams.get('status') || 'PENDING';
-    const limit = parseInt(url.searchParams.get('limit') || '20');
+    const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 500);
     const offset = parseInt(url.searchParams.get('offset') || '0');
 
     const whereClause =
@@ -79,7 +79,12 @@ export async function GET(request: NextRequest) {
       status: w.status,
       date: w.requestedAt,
       phoneNumber: w.phoneNumber,
-      bankAccount: w.bankAccount,
+      accountName: w.accountName,
+      provider: (w.metadata as { provider?: string } | null)?.provider ?? null,
+      userEmail: w.user?.email ?? null,
+      failureReason: w.failureReason,
+      completedAt: w.completedAt,
+      reference: w.reference,
     }));
 
     return NextResponse.json({

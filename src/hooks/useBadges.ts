@@ -23,6 +23,7 @@ export interface UserSubscriptionWithPlan extends Omit<
   'planId'
 > {
   plan: SubscriptionPlan;
+  daysRemaining?: number | null;
 }
 
 interface BadgesData {
@@ -54,17 +55,22 @@ export function useBadges() {
           user ? fetch('/api/subscriptions/my') : Promise.resolve(null),
         ]);
 
-      // Parse all badges (always available)
-      const allBadges = badgesRes.ok ? await badgesRes.json() : [];
+      // Each endpoint wraps its payload: { badges }, { plans },
+      // { badges, active }, { subscription }.
+      const badgesJson = badgesRes.ok ? await badgesRes.json() : null;
+      const allBadges: Badge[] = Array.isArray(badgesJson)
+        ? badgesJson
+        : (badgesJson?.badges ?? []);
 
-      // Parse all plans (always available)
-      const allPlans = plansRes.ok ? await plansRes.json() : [];
+      const plansJson = plansRes.ok ? await plansRes.json() : null;
+      const allPlans: SubscriptionPlan[] = (
+        Array.isArray(plansJson) ? plansJson : (plansJson?.plans ?? [])
+      ).filter((p: SubscriptionPlan) => p.isActive !== false);
 
       let userBadges: UserBadgeWithBadge[] = [];
       let activeBadge: UserBadgeWithBadge | null = null;
       let subscription: UserSubscriptionWithPlan | null = null;
 
-      // Parse user-specific data if logged in
       if (user && userBadgesRes?.ok) {
         const userBadgesData = await userBadgesRes.json();
         userBadges = userBadgesData.badges || [];
@@ -72,7 +78,8 @@ export function useBadges() {
       }
 
       if (user && subscriptionRes?.ok) {
-        subscription = await subscriptionRes.json();
+        const subscriptionData = await subscriptionRes.json();
+        subscription = subscriptionData?.subscription ?? null;
       }
 
       setData({

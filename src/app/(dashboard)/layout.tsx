@@ -15,13 +15,9 @@ import {
   Users,
   Search,
   X,
-  User,
   Sun,
   Moon,
-  Gift,
-  TrendingUp,
   HelpCircle,
-  Zap,
   ChevronDown,
   Crown,
   PanelLeftClose,
@@ -30,7 +26,7 @@ import {
   PlayCircle,
   Trophy,
   ClipboardCheck,
-  LineChart,
+  Smartphone,
   BadgeCheck,
   UserCircle,
   LogOut as LogOutIcon,
@@ -53,23 +49,21 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
-    name: 'Dashboard',
+    name: 'Home',
     href: '/dashboard',
     icon: <LayoutDashboard size={18} />,
     section: 'main',
     match: ['/dashboard'],
   },
   {
-    name: 'Watch Videos',
+    name: 'Sponsored Videos',
     href: '/earn/videos',
     icon: <PlayCircle size={18} />,
-    badge: 5,
-    badgeColor: 'green',
     section: 'main',
     match: ['/earn/videos'],
   },
   {
-    name: 'Play Games',
+    name: 'Games',
     href: '/earn/games',
     icon: <Trophy size={18} />,
     section: 'main',
@@ -83,26 +77,28 @@ const navItems: NavItem[] = [
     match: ['/earn/surveys'],
   },
   {
+    name: 'Withdraw',
+    href: '/wallet/withdraw',
+    icon: <Smartphone size={18} />,
+    section: 'finance',
+    match: ['/wallet/withdraw'],
+  },
+  {
     name: 'Wallet',
     href: '/wallet',
     icon: <Wallet size={18} />,
     section: 'finance',
-    match: [
-      '/wallet',
-      '/wallet/withdraw',
-      '/wallet/history',
-      '/wallet/earnings',
-    ],
+    match: ['/wallet'],
   },
   {
-    name: 'Analytics',
-    href: '/analytics',
-    icon: <LineChart size={18} />,
-    section: 'finance',
-    match: ['/analytics'],
+    name: 'Plans',
+    href: '/plans',
+    icon: <Crown size={18} />,
+    section: 'account',
+    match: ['/plans'],
   },
   {
-    name: 'My Badges',
+    name: 'Badges',
     href: '/badges',
     icon: <BadgeCheck size={18} />,
     section: 'account',
@@ -120,28 +116,23 @@ const navItems: NavItem[] = [
     href: '/settings',
     icon: <Settings size={18} />,
     section: 'account',
-    match: ['/settings', '/settings/profile', '/settings/security'],
+    match: ['/settings', '/notifications'],
   },
 ];
 
 // Mobile bottom nav items
 const bottomNavItems = [
   { name: 'Home', href: '/dashboard', icon: Home },
-  { name: 'Earn', href: '/earn/videos', icon: Zap },
+  { name: 'Videos', href: '/earn/videos', icon: PlayCircle },
   { name: 'Games', href: '/earn/games', icon: Gamepad2 },
+  { name: 'Withdraw', href: '/wallet/withdraw', icon: Smartphone },
   { name: 'Wallet', href: '/wallet', icon: Wallet },
-  { name: 'Profile', href: '/settings/profile', icon: User },
 ];
 
 // Quick actions
 const quickActions = [
-  { icon: <Gift size={14} />, label: 'Daily Bonus', href: '/daily-bonus' },
-  {
-    icon: <TrendingUp size={14} />,
-    label: 'Earnings',
-    href: '/wallet/earnings',
-  },
-  { icon: <Zap size={14} />, label: 'Quick Earn', href: '/earn/videos' },
+  { icon: <Smartphone size={14} />, label: 'Withdraw', href: '/wallet/withdraw' },
+  { icon: <Crown size={14} />, label: 'Plans', href: '/plans' },
 ];
 
 export default function DashboardLayout({
@@ -222,12 +213,14 @@ export default function DashboardLayout({
   }, []);
 
   // ─── Get page title ──────────────────────────────────
-  const getPageTitle = () => {
-    const item = navItems.find((i) =>
-      i.match?.some((m) => pathname?.startsWith(m)),
-    );
-    return item?.name || 'Dashboard';
-  };
+  // Most specific match wins, so /wallet/withdraw highlights "Withdraw" only.
+  const activeNavItem = navItems
+    .flatMap((i) =>
+      (i.match ?? []).filter((m) => pathname?.startsWith(m)).map((m) => ({ i, len: m.length })),
+    )
+    .sort((a, b) => b.len - a.len)[0]?.i;
+
+  const getPageTitle = () => activeNavItem?.name || 'Dashboard';
 
   const getInitials = (name: string) =>
     name
@@ -255,11 +248,14 @@ export default function DashboardLayout({
     if (href === '/earn/games')
       return pathname?.startsWith('/earn/games') ?? false;
     if (href === '/earn/videos')
+      return pathname?.startsWith('/earn/videos') ?? false;
+    if (href === '/wallet/withdraw')
+      return pathname?.startsWith('/wallet/withdraw') ?? false;
+    if (href === '/wallet')
       return (
-        (pathname?.startsWith('/earn') ?? false) &&
-        !pathname?.startsWith('/earn/games')
+        (pathname?.startsWith('/wallet') ?? false) &&
+        !pathname?.startsWith('/wallet/withdraw')
       );
-    if (href === '/wallet') return pathname?.startsWith('/wallet') ?? false;
     if (href === '/settings/profile')
       return pathname?.startsWith('/settings') ?? false;
     return pathname === href;
@@ -370,8 +366,8 @@ export default function DashboardLayout({
                     isCollapsed && 'lg:hidden',
                   )}
                 >
-                  {section === 'main' && 'Main Menu'}
-                  {section === 'finance' && 'Finance'}
+                  {section === 'main' && 'Earn'}
+                  {section === 'finance' && 'Money'}
                   {section === 'account' && 'Account'}
                 </span>
                 {isCollapsed && (
@@ -381,9 +377,7 @@ export default function DashboardLayout({
               {navItems
                 .filter((item) => item.section === section)
                 .map((item) => {
-                  const isActive = item.match?.some((m) =>
-                    pathname?.startsWith(m),
-                  );
+                  const isActive = activeNavItem === item;
                   return (
                     <Link
                       key={item.name}
@@ -480,12 +474,7 @@ export default function DashboardLayout({
               <div className="text-xs text-[#64748B] dark:text-[#94A3B8] flex items-center gap-1.5">
                 <span className="inline-flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E]" />
-                  {user?.plan || 'Starter'}
-                </span>
-                <span className="w-1 h-1 rounded-full bg-[#CBD5E1]" />
-                <span className="inline-flex items-center gap-1">
-                  <Crown size={10} className="text-[#F59E0B]" />
-                  {user?.badge || 'No Badge'}
+                  {user?.plan || 'Free'}
                 </span>
               </div>
             </div>

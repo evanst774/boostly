@@ -2,422 +2,381 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
-  Video,
-  Gamepad2,
-  Gift,
-  Users,
-  TrendingUp,
+  CheckCircle2,
   ChevronRight,
-  ArrowUpRight,
-  Flame,
-  Coins,
-  Calendar,
+  ClipboardCheck,
+  Crown,
   Eye,
   EyeOff,
+  Flame,
+  Gamepad2,
+  PlayCircle,
+  RefreshCw,
+  Smartphone,
   Sparkles,
-  Zap,
-  Crown,
-  Rocket,
-  Award,
+  Wallet,
+  X,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useDashboardData } from '@/hooks/useDashboardData';
-import { useSystemCurrency } from '@/hooks/useSystemCurrency';
+import { useEarnToday, type TaskProgress } from '@/hooks/useEarnToday';
+import { PayoutCountdown } from '@/components/earn/PayoutCountdown';
+import { LedgerRow } from '@/components/earn/LedgerRow';
+import { PAYOUT_TIME_LABEL } from '@/lib/constants/payouts';
+import { cn } from '@/lib/utils';
 
-// Components
-import { StatsCard } from '@/components/dashboard/StatsCard';
-import { QuickAction } from '@/components/dashboard/QuickAction';
-import { TransactionList } from '@/components/dashboard/TransactionList';
-import { StreakCard } from '@/components/dashboard/StreakCard';
-import { EarningsChart } from '@/components/dashboard/EarningsChart';
+const rwf = (n: number) =>
+  `${Math.round(n).toLocaleString('en-US')} RWF`;
 
-const quickActions = [
-  {
-    icon: <Video size={18} />,
-    label: 'Watch Videos',
-    color: 'from-[#2563EB] to-[#1D4ED8]',
-    href: '/earn/videos',
+const TASK_STYLE: Record<
+  TaskProgress['key'],
+  { icon: typeof PlayCircle; tint: string; bar: string }
+> = {
+  videos: {
+    icon: PlayCircle,
+    tint: 'bg-[#EFF6FF] text-[#2563EB] dark:bg-[#2563EB]/15 dark:text-[#60A5FA]',
+    bar: 'bg-[#2563EB]',
   },
-  {
-    icon: <Gamepad2 size={18} />,
-    label: 'Play Games',
-    color: 'from-[#22C55E] to-[#16A34A]',
-    href: '/earn/games',
+  games: {
+    icon: Gamepad2,
+    tint: 'bg-[#F0FDF4] text-[#16A34A] dark:bg-[#22C55E]/15 dark:text-[#4ADE80]',
+    bar: 'bg-[#22C55E]',
   },
-  {
-    icon: <Gift size={18} />,
-    label: 'Daily Bonus',
-    color: 'from-[#F59E0B] to-[#D97706]',
-    href: '/daily-bonus',
+  surveys: {
+    icon: ClipboardCheck,
+    tint: 'bg-[#F5F3FF] text-[#7C3AED] dark:bg-[#8B5CF6]/15 dark:text-[#A78BFA]',
+    bar: 'bg-[#8B5CF6]',
   },
-  {
-    icon: <Users size={18} />,
-    label: 'Refer Friends',
-    color: 'from-[#8B5CF6] to-[#7C3AED]',
-    href: '/referrals',
-  },
-];
+};
 
-// ─── Skeleton primitives ──────────────────────────────────────────
-function SkeletonBlock({ className = '' }: { className?: string }) {
+const card =
+  'bg-white dark:bg-[#1E293B] rounded-2xl border border-[#E2E8F0] dark:border-[#334155]';
+
+// ─── Skeleton ─────────────────────────────────────────────────────
+function Skeleton() {
+  const b = 'animate-pulse rounded-2xl bg-[#F1F5F9] dark:bg-[#1E293B]';
   return (
-    <div
-      className={`animate-pulse rounded-lg bg-[#F1F5F9] dark:bg-[#1E293B] ${className}`}
-    />
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <div className="space-y-5 pb-6 lg:pb-0 font-outfit touch-manipulation">
-      <div className="flex items-center justify-between gap-4">
-        <div className="space-y-2 flex-1 min-w-0">
-          <SkeletonBlock className="h-3 w-24" />
-          <SkeletonBlock className="h-6 w-40" />
-        </div>
-        <SkeletonBlock className="hidden sm:block h-10 w-28" />
-      </div>
-      <SkeletonBlock className="h-[140px] sm:h-[120px] w-full rounded-xl" />
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <SkeletonBlock key={i} className="h-20 w-full rounded-xl" />
-        ))}
-      </div>
-      <div className="grid grid-cols-4 gap-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <SkeletonBlock key={i} className="h-16 w-full rounded-xl" />
-        ))}
-      </div>
-      <SkeletonBlock className="h-20 w-full rounded-xl" />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <SkeletonBlock className="h-60 w-full rounded-xl" />
-        <div className="grid grid-cols-2 gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <SkeletonBlock key={i} className="h-28 w-full rounded-xl" />
-          ))}
-        </div>
-      </div>
-      <SkeletonBlock className="h-56 w-full rounded-xl" />
+    <div className="space-y-4 font-outfit">
+      <div className={`${b} h-10 w-48`} />
+      <div className={`${b} h-44`} />
+      <div className={`${b} h-56`} />
+      <div className={`${b} h-40`} />
     </div>
   );
 }
 
-// ✅ PWA-ready formatted currency with proper spacing
-function formatCurrencyWithSpace(
-  amount: number,
-  formatAmount: (amount: number) => string,
-): string {
-  const formatted = formatAmount(amount);
-  // Add a non-breaking space between number and currency symbol
-  return formatted.replace(/([0-9,.])([A-Za-z])/, '$1\u00A0$2');
-}
+// ─── How it works (dismissable) ───────────────────────────────────
+const GUIDE_KEY = 'boostly:guide-dismissed';
 
-export default function DashboardPage() {
-  const router = useRouter();
-  const { user } = useAuth();
-  const { data, isLoading } = useDashboardData();
-  const { formatAmount } = useSystemCurrency();
-
-  const [greeting, setGreeting] = useState('Good morning');
-  const [balanceHidden, setBalanceHidden] = useState(false);
-
-  useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) setGreeting('Good morning');
-    else if (hour < 17) setGreeting('Good afternoon');
-    else setGreeting('Good evening');
-  }, []);
-
-  if (isLoading) {
-    return <DashboardSkeleton />;
-  }
-
-  const stats = data?.stats || {
-    balance: 0,
-    todayEarnings: 0,
-    monthlyEarnings: 0,
-    totalEarnings: 0,
-    streak: 0,
-    videoEarnings: 0,
-    gameEarnings: 0,
-    bonusEarnings: 0,
-    referralEarnings: 0,
-  };
-
-  const recentTransactions = data?.transactions || [];
-
+function EarnGuide({ onClose }: { onClose: () => void }) {
+  const steps = [
+    { title: 'Do your daily tasks', body: 'Watch sponsored videos, play games and answer surveys.' },
+    { title: 'Your balance grows', body: 'Each completed task adds RWF to your balance instantly.' },
+    { title: 'Request a withdrawal', body: 'Choose the mobile money number to be paid on.' },
+    { title: `Get paid at ${PAYOUT_TIME_LABEL}`, body: 'All withdrawals are sent to MTN MoMo / Airtel Money daily.' },
+  ];
   return (
-    <div className="space-y-5 pb-2 lg:pb-0 font-outfit touch-manipulation safe-top">
-      {/* Greeting with Boostly theme */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-xs font-medium text-[#64748B] dark:text-[#94A3B8]">
-              {greeting}
-            </p>
-            <span className="text-sm">👋</span>
-          </div>
-          <h1 className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-white truncate">
-            Hello, {user?.name || 'User'}
-          </h1>
-          <p className="text-xs text-[#64748B] dark:text-[#94A3B8] mt-0.5 hidden sm:block">
-            Complete tasks and earn real rewards today.
+    <section className={cn(card, 'p-4 sm:p-5')}>
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">
+            How you earn on Boostly
+          </h2>
+          <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
+            Four steps from task to mobile money.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          {/* Boostly Badge */}
-          <div className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white px-3 py-1.5 rounded-full shadow-lg shadow-blue-500/25 touch-min-target">
-            <Sparkles size={14} className="text-[#FBBF24]" />
-            <span className="text-xs font-bold">Boostly Pro</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => router.push('/settings/profile')}
-            className="hidden sm:flex items-center gap-2 bg-white dark:bg-[#1E293B] border border-[#F1F5F9] dark:border-[#334155] rounded-lg px-3 py-1.5 hover:border-[#2563EB] transition-colors flex-shrink-0 shadow-sm touch-min-target"
-          >
-            <div className="text-left">
-              <p className="text-[9px] font-medium text-[#94A3B8] dark:text-[#64748B] uppercase tracking-wider">
-                Plan
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Hide guide"
+          className="p-1.5 rounded-lg text-[#94A3B8] hover:bg-[#F1F5F9] dark:hover:bg-[#334155]"
+        >
+          <X size={16} />
+        </button>
+      </div>
+      <ol className="grid gap-3 sm:grid-cols-4">
+        {steps.map((s, i) => (
+          <li key={s.title} className="flex sm:flex-col gap-3 sm:gap-2">
+            <span className="w-7 h-7 shrink-0 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center">
+              {i + 1}
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-[#0F172A] dark:text-white">
+                {s.title}
               </p>
-              <p className="text-xs font-bold text-[#0F172A] dark:text-white flex items-center gap-1">
-                <Crown size={12} className="text-[#F59E0B]" />
-                {user?.plan || 'Starter'}
+              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] mt-0.5">
+                {s.body}
               </p>
             </div>
-            <ChevronRight
-              size={14}
-              className="text-[#94A3B8] dark:text-[#64748B]"
-            />
-          </button>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+// ─── Task row ─────────────────────────────────────────────────────
+function TaskRow({ task }: { task: TaskProgress }) {
+  const style = TASK_STYLE[task.key];
+  const Icon = style.icon;
+  const finished = task.remaining === 0;
+  const pct = task.limit > 0 ? Math.min(100, (task.done / task.limit) * 100) : 0;
+
+  return (
+    <Link
+      href={task.href}
+      className={cn(
+        'flex items-center gap-3 p-3 rounded-xl border border-transparent transition-colors',
+        finished
+          ? 'opacity-70'
+          : 'hover:border-[#E2E8F0] hover:bg-[#F8FAFC] dark:hover:border-[#334155] dark:hover:bg-[#0F172A]/40',
+      )}
+    >
+      <span className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', style.tint)}>
+        <Icon size={20} />
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-[#0F172A] dark:text-white truncate">
+            {task.label}
+          </p>
+          <span className="text-xs font-semibold tabular-nums text-[#64748B] dark:text-[#94A3B8] shrink-0">
+            {task.done}/{task.limit}
+          </span>
+        </div>
+        <div className="mt-1.5 h-1.5 rounded-full bg-[#F1F5F9] dark:bg-[#334155] overflow-hidden">
+          <div className={cn('h-full rounded-full transition-all', style.bar)} style={{ width: `${pct}%` }} />
         </div>
       </div>
+      {finished ? (
+        <CheckCircle2 size={20} className="text-[#22C55E] shrink-0" />
+      ) : (
+        <span className="text-xs font-bold text-[#2563EB] dark:text-[#60A5FA] shrink-0 flex items-center">
+          Start <ChevronRight size={14} />
+        </span>
+      )}
+    </Link>
+  );
+}
 
-      {/* Balance Card - Enhanced with Boostly theme */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0F172A] via-[#1E3A8A] to-[#2563EB] p-5 sm:p-6 text-white shadow-xl shadow-blue-900/20">
-        {/* Decorative elements */}
-        <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-[#60A5FA]/10 blur-3xl" />
-        <div className="absolute -bottom-24 -left-16 w-48 h-48 rounded-full bg-[#3B82F6]/10 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-[#2563EB]/5 blur-2xl" />
+// ─── Page ─────────────────────────────────────────────────────────
+export default function DashboardPage() {
+  const { user } = useAuth();
+  const { data, isLoading, error, refetch } = useEarnToday();
+  const [hidden, setHidden] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setBalanceHidden((v) => !v)}
-                className="flex items-center gap-1.5 text-sm text-white/75 hover:text-white transition-colors touch-min-target"
-              >
-                Total Balance
-                {balanceHidden ? <EyeOff size={14} /> : <Eye size={14} />}
-              </button>
-              <span className="text-[10px] font-bold bg-white/10 text-white/60 px-2 py-0.5 rounded-full">
-                {user?.badge || 'Silver'}
-              </span>
-            </div>
-            <p className="text-3xl sm:text-4xl font-extrabold tracking-tight tabular-nums mt-1 break-all">
-              {balanceHidden
-                ? '••••••'
-                : formatCurrencyWithSpace(stats.balance, formatAmount)}
-            </p>
-            <div className="flex items-center gap-3 mt-2 flex-wrap">
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-500/30 text-emerald-200 px-2.5 py-1 rounded-full">
-                <ArrowUpRight size={12} />+
-                {formatCurrencyWithSpace(stats.todayEarnings, formatAmount)}{' '}
-                today
-              </span>
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-[#F59E0B]/20 text-[#FBBF24] px-2.5 py-1 rounded-full">
-                <Zap size={12} /> {stats.streak} day streak
-              </span>
-            </div>
-          </div>
+  useEffect(() => {
+    try {
+      setShowGuide(localStorage.getItem(GUIDE_KEY) !== '1');
+    } catch {
+      setShowGuide(true);
+    }
+  }, []);
 
-          <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6">
-            <div className="text-left sm:text-center">
-              <p className="text-[10px] text-white/70">Total Earned</p>
-              <p className="text-base sm:text-lg font-bold tabular-nums">
-                {formatCurrencyWithSpace(stats.totalEarnings, formatAmount)}
-              </p>
-            </div>
-            <div className="text-left sm:text-center">
-              <p className="text-[10px] text-white/70">Withdrawn</p>
-              <p className="text-base sm:text-lg font-bold tabular-nums">
-                {formatCurrencyWithSpace(
-                  stats.totalEarnings - stats.balance,
-                  formatAmount,
-                )}
-              </p>
-            </div>
+  const closeGuide = () => {
+    setShowGuide(false);
+    try {
+      localStorage.setItem(GUIDE_KEY, '1');
+    } catch {
+      /* ignore */
+    }
+  };
+
+  if (isLoading) return <Skeleton />;
+
+  if (error || !data) {
+    return (
+      <div className={cn(card, 'p-8 text-center font-outfit')}>
+        <p className="text-sm text-[#64748B] mb-3">{error || 'Something went wrong.'}</p>
+        <button
+          type="button"
+          onClick={refetch}
+          className="inline-flex items-center gap-2 text-sm font-semibold text-[#2563EB]"
+        >
+          <RefreshCw size={14} /> Try again
+        </button>
+      </div>
+    );
+  }
+
+  const { plan, tasks, totals, wallet, earnings, withdrawal, streak } = data;
+  const firstName = (user?.name || '').split(' ')[0] || 'there';
+  const allDone = totals.limit > 0 && totals.done >= totals.limit;
+  const totalPct = totals.limit > 0 ? Math.round((totals.done / totals.limit) * 100) : 0;
+
+  return (
+    <div className="space-y-4 sm:space-y-5 pb-4 font-outfit max-w-4xl mx-auto">
+      {/* Greeting */}
+      <header className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-[#0F172A] dark:text-white truncate">
+            Hi, {firstName} 👋
+          </h1>
+          <p className="text-sm text-[#64748B] dark:text-[#94A3B8]">
+            {allDone ? 'All tasks done for today. Great work!' : 'Complete your tasks to grow your balance.'}
+          </p>
+        </div>
+        <Link
+          href="/plans"
+          className={cn(
+            'shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold border transition-colors',
+            plan.isFree
+              ? 'border-[#F59E0B]/40 bg-[#FFFBEB] text-[#B45309] hover:bg-[#FEF3C7] dark:bg-[#F59E0B]/10 dark:text-[#FBBF24]'
+              : 'border-[#2563EB]/30 bg-[#EFF6FF] text-[#1D4ED8] dark:bg-[#2563EB]/15 dark:text-[#93C5FD]',
+          )}
+        >
+          <Crown size={13} />
+          {plan.isFree ? 'Free · Upgrade' : plan.name.replace(/ Plan$/, '')}
+        </Link>
+      </header>
+
+      {/* Balance + withdraw */}
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0F172A] via-[#1E3A8A] to-[#2563EB] p-5 sm:p-6 text-white">
+        <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-white/5 blur-2xl" />
+        <div className="relative flex flex-col sm:flex-row sm:items-end justify-between gap-5">
+          <div>
             <button
               type="button"
-              className="bg-white text-[#1E3A8A] text-xs sm:text-sm font-bold px-4 sm:px-5 py-2.5 rounded-xl hover:bg-white/90 transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 flex items-center gap-1.5 touch-min-target"
-              onClick={() => router.push('/wallet/withdraw')}
+              onClick={() => setHidden((v) => !v)}
+              className="flex items-center gap-1.5 text-sm text-white/75 hover:text-white"
             >
-              <Rocket size={14} />
-              Withdraw
+              Available balance {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Row - With Boostly theme */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatsCard
-          icon={<Coins size={16} />}
-          value={formatCurrencyWithSpace(stats.todayEarnings, formatAmount)}
-          label="Today"
-          change="+12%"
-          changeType="up"
-          iconBg="bg-[#EFF6FF] dark:bg-[#2563EB]/15"
-          iconColor="text-[#2563EB] dark:text-[#60A5FA]"
-        />
-        <StatsCard
-          icon={<Calendar size={16} />}
-          value={formatCurrencyWithSpace(stats.monthlyEarnings, formatAmount)}
-          label="This Month"
-          change="+18.5%"
-          changeType="up"
-          iconBg="bg-[#F0FDF4] dark:bg-[#22C55E]/15"
-          iconColor="text-[#22C55E] dark:text-[#4ADE80]"
-        />
-        <StatsCard
-          icon={<TrendingUp size={16} />}
-          value={formatCurrencyWithSpace(stats.totalEarnings, formatAmount)}
-          label="All Time"
-          change="+5.2%"
-          changeType="up"
-          iconBg="bg-[#FFFBEB] dark:bg-[#F59E0B]/15"
-          iconColor="text-[#F59E0B] dark:text-[#FBBF24]"
-        />
-        <StatsCard
-          icon={<Flame size={16} />}
-          value={`${stats.streak}d`}
-          label="Streak"
-          change="🔥"
-          changeType="up"
-          iconBg="bg-[#F5F3FF] dark:bg-[#8B5CF6]/15"
-          iconColor="text-[#8B5CF6] dark:text-[#A78BFA]"
-          className="border-[#8B5CF6]/20 dark:border-[#8B5CF6]/10"
-        />
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-4 gap-3">
-        {quickActions.map((action) => (
-          <QuickAction
-            key={action.label}
-            icon={action.icon}
-            label={action.label}
-            color={action.color}
-            onClick={() => router.push(action.href)}
-          />
-        ))}
-      </div>
-
-      {/* Streak Card - Enhanced with Boostly theme */}
-      <StreakCard streak={stats.streak} />
-
-      {/* Earnings Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Earnings Chart - Boostly themed */}
-        <div className="bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155] shadow-sm p-5 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-4 gap-3">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#1D4ED8]">
-                <TrendingUp size={14} className="text-white" />
-              </div>
-              <h3 className="text-sm font-bold text-[#0F172A] dark:text-white">
-                Earnings Overview
-              </h3>
+            <p className="text-3xl sm:text-4xl font-extrabold tracking-tight tabular-nums mt-1">
+              {hidden ? '••••••' : rwf(wallet.balance)}
+            </p>
+            <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px] font-semibold">
+              <span className="inline-flex items-center gap-1 bg-emerald-400/20 text-emerald-200 px-2 py-0.5 rounded-full">
+                +{rwf(earnings.today)} today
+              </span>
+              {streak.current > 0 && (
+                <span className="inline-flex items-center gap-1 bg-amber-400/20 text-amber-200 px-2 py-0.5 rounded-full">
+                  <Flame size={12} /> {streak.current}-day streak
+                </span>
+              )}
+              {wallet.pendingWithdrawal > 0 && (
+                <span className="inline-flex items-center gap-1 bg-white/10 text-white/85 px-2 py-0.5 rounded-full">
+                  {rwf(wallet.pendingWithdrawal)} on the way
+                </span>
+              )}
             </div>
-            <select
-              className="text-[10px] border border-[#F1F5F9] dark:border-[#334155] rounded-lg px-2.5 py-1.5 bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white flex-shrink-0 focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]/20 outline-none transition-all touch-min-target"
-              defaultValue="week"
+          </div>
+
+          <div className="flex flex-col items-stretch sm:items-end gap-2">
+            <Link
+              href="/wallet/withdraw"
+              className="inline-flex items-center justify-center gap-2 bg-white text-[#1E3A8A] text-sm font-bold px-5 py-3 rounded-xl hover:bg-white/90 transition-colors"
             >
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-              <option value="year">This Year</option>
-            </select>
-          </div>
-          <div className="overflow-x-auto">
-            <EarningsChart data={data?.chartData} />
+              <Smartphone size={16} /> Withdraw to mobile money
+            </Link>
+            <PayoutCountdown tone="dark" />
           </div>
         </div>
+        {!withdrawal.canWithdraw && withdrawal.reason && (
+          <p className="relative mt-4 text-xs text-white/75 border-t border-white/10 pt-3">
+            {withdrawal.reason}
+          </p>
+        )}
+      </section>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          <StatsCard
-            icon={<Video size={16} />}
-            value={formatCurrencyWithSpace(stats.videoEarnings, formatAmount)}
-            label="Video Rewards"
-            change="+180 RWF"
-            changeType="up"
-            iconBg="bg-[#EFF6FF] dark:bg-[#2563EB]/15"
-            iconColor="text-[#2563EB] dark:text-[#60A5FA]"
-            onClick={() => router.push('/earn/videos')}
-            className="hover:border-[#2563EB] transition-all"
-          />
-          <StatsCard
-            icon={<Gamepad2 size={16} />}
-            value={formatCurrencyWithSpace(stats.gameEarnings, formatAmount)}
-            label="Game Rewards"
-            change="+140 RWF"
-            changeType="up"
-            iconBg="bg-[#F0FDF4] dark:bg-[#22C55E]/15"
-            iconColor="text-[#22C55E] dark:text-[#4ADE80]"
-            onClick={() => router.push('/earn/games')}
-            className="hover:border-[#22C55E] transition-all"
-          />
-          <StatsCard
-            icon={<Gift size={16} />}
-            value={formatCurrencyWithSpace(stats.bonusEarnings, formatAmount)}
-            label="Daily Bonus"
-            change="7 days"
-            changeType="up"
-            iconBg="bg-[#FFFBEB] dark:bg-[#F59E0B]/15"
-            iconColor="text-[#F59E0B] dark:text-[#FBBF24]"
-            onClick={() => router.push('/daily-bonus')}
-            className="hover:border-[#F59E0B] transition-all"
-          />
-          <StatsCard
-            icon={<Users size={16} />}
-            value={formatCurrencyWithSpace(
-              stats.referralEarnings,
-              formatAmount,
-            )}
-            label="Referrals"
-            change="3 new"
-            changeType="up"
-            iconBg="bg-[#F5F3FF] dark:bg-[#8B5CF6]/15"
-            iconColor="text-[#8B5CF6] dark:text-[#A78BFA]"
-            onClick={() => router.push('/referrals')}
-            className="hover:border-[#8B5CF6] transition-all"
+      {showGuide && <EarnGuide onClose={closeGuide} />}
+
+      {/* Today's tasks */}
+      <section className={cn(card, 'p-4 sm:p-5')}>
+        <div className="flex items-end justify-between gap-3 mb-2">
+          <div>
+            <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">Today&apos;s tasks</h2>
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
+              {totals.done} of {totals.limit} done · new tasks every day
+            </p>
+          </div>
+          <span className="text-lg font-extrabold text-[#2563EB] dark:text-[#60A5FA] tabular-nums">
+            {totalPct}%
+          </span>
+        </div>
+        <div className="h-2 rounded-full bg-[#F1F5F9] dark:bg-[#334155] overflow-hidden mb-2">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#22C55E] transition-all"
+            style={{ width: `${totalPct}%` }}
           />
         </div>
-      </div>
+        <div className="-mx-1 divide-y divide-[#F1F5F9] dark:divide-[#334155]/60">
+          {tasks.map((t) => (
+            <TaskRow key={t.key} task={t} />
+          ))}
+        </div>
+      </section>
 
-      {/* Recent Transactions */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-gradient-to-br from-[#8B5CF6] to-[#7C3AED]">
-              <Award size={14} className="text-white" />
-            </div>
-            <h3 className="text-xs font-bold text-[#0F172A] dark:text-white">
-              Recent Activity
-            </h3>
+      {/* Upgrade nudge for free users */}
+      {plan.isFree && (
+        <Link
+          href="/plans"
+          className="flex items-center gap-3 rounded-2xl border border-[#F59E0B]/30 bg-gradient-to-r from-[#FFFBEB] to-white dark:from-[#F59E0B]/10 dark:to-[#1E293B] p-4 hover:border-[#F59E0B] transition-colors"
+        >
+          <span className="w-10 h-10 rounded-xl bg-[#F59E0B] text-white flex items-center justify-center shrink-0">
+            <Sparkles size={18} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-[#0F172A] dark:text-white">
+              Earn more and withdraw every day
+            </p>
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
+              Free plan: more tasks unlock with an upgrade, and withdrawals are once a week.
+            </p>
           </div>
-          <button
-            type="button"
-            className="text-[10px] font-semibold text-[#2563EB] dark:text-[#60A5FA] flex items-center gap-0.5 hover:gap-1.5 transition-all touch-min-target"
-            onClick={() => router.push('/wallet/history')}
+          <ChevronRight size={18} className="text-[#B45309] shrink-0" />
+        </Link>
+      )}
+
+      {/* Summary + activity */}
+      <div className="grid gap-4 sm:gap-5 lg:grid-cols-5">
+        <section className={cn(card, 'p-4 sm:p-5 lg:col-span-2')}>
+          <h2 className="text-sm font-bold text-[#0F172A] dark:text-white mb-3">Your earnings</h2>
+          <dl className="grid grid-cols-2 gap-3">
+            {[
+              { label: 'Today', value: earnings.today },
+              { label: 'Last 7 days', value: earnings.week },
+              { label: 'Last 30 days', value: earnings.month },
+              { label: 'Withdrawn', value: wallet.totalWithdrawn },
+            ].map((s) => (
+              <div key={s.label} className="rounded-xl bg-[#F8FAFC] dark:bg-[#0F172A]/40 p-3">
+                <dt className="text-[11px] text-[#64748B] dark:text-[#94A3B8]">{s.label}</dt>
+                <dd className="text-sm font-bold tabular-nums text-[#0F172A] dark:text-white mt-0.5">
+                  {rwf(s.value)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <Link
+            href="/wallet"
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#2563EB] dark:text-[#60A5FA]"
           >
-            View all
-            <ChevronRight size={12} />
-          </button>
-        </div>
-        <TransactionList transactions={recentTransactions} />
+            <Wallet size={14} /> Open wallet
+          </Link>
+        </section>
+
+        <section className={cn(card, 'p-4 sm:p-5 lg:col-span-3')}>
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">Recent activity</h2>
+            <Link href="/wallet/history" className="text-xs font-semibold text-[#2563EB] dark:text-[#60A5FA]">
+              View all
+            </Link>
+          </div>
+          {data.recentTransactions.length === 0 ? (
+            <p className="text-sm text-[#64748B] dark:text-[#94A3B8] py-6 text-center">
+              No activity yet. Start with a task above.
+            </p>
+          ) : (
+            <ul className="divide-y divide-[#F1F5F9] dark:divide-[#334155]/60">
+              {data.recentTransactions.map((tx) => (
+                <LedgerRow key={tx.id} tx={tx} />
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
     </div>
   );

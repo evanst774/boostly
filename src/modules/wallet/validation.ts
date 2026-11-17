@@ -1,5 +1,6 @@
 // src/modules/wallet/validation.ts
 import { z } from 'zod';
+import { MIN_WITHDRAWAL, normalizeRwandaPhone } from '@/lib/constants/payouts';
 
 // ============================================
 // TRANSACTION VALIDATION
@@ -38,32 +39,25 @@ export type GetTransactionsFilters = z.infer<
 // ============================================
 // WITHDRAWAL VALIDATION
 // ============================================
-export const createWithdrawalSchema = z
-  .object({
-    amount: z.number().positive().min(1000, 'Minimum withdrawal is Rwf 1,000'),
-    method: z.enum(['MOBILE_MONEY', 'BANK_TRANSFER', 'CARD']),
-    phoneNumber: z.string().optional(),
-    bankAccount: z.string().optional(),
-    accountName: z.string().optional(),
-    bankName: z.string().optional(),
-  })
-  .refine(
-    (data) => {
-      if (data.method === 'MOBILE_MONEY' && !data.phoneNumber) {
-        return false;
-      }
-      if (
-        data.method === 'BANK_TRANSFER' &&
-        (!data.bankAccount || !data.accountName || !data.bankName)
-      ) {
-        return false;
-      }
-      return true;
-    },
-    {
-      message: 'Missing required fields for selected payment method',
-    },
-  );
+// Withdrawals are paid manually to mobile money at the daily 3:00 PM run.
+export const createWithdrawalSchema = z.object({
+  amount: z
+    .number({ message: 'Enter an amount' })
+    .int('Enter a whole amount in RWF')
+    .min(MIN_WITHDRAWAL, `Minimum withdrawal is ${MIN_WITHDRAWAL.toLocaleString()} RWF`),
+  method: z.literal('MOBILE_MONEY').default('MOBILE_MONEY'),
+  phoneNumber: z
+    .string()
+    .trim()
+    .refine((v) => normalizeRwandaPhone(v) !== null, {
+      message: 'Enter a valid MTN or Airtel Rwanda number (e.g. 078 123 4567)',
+    }),
+  accountName: z
+    .string()
+    .trim()
+    .min(2, 'Enter the name registered on the mobile money account')
+    .max(100),
+});
 
 export const processWithdrawalSchema = z.object({
   action: z.enum(['approve', 'reject']),

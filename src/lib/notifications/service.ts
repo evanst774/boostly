@@ -293,8 +293,8 @@ export class NotificationsService {
       messages[status],
       {
         type: types[status],
-        link: '/subscription',
-        linkText: 'View Subscription',
+        link: '/plans',
+        linkText: 'View Plan',
         entityType: 'subscription',
       },
     );

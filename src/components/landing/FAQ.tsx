@@ -3,69 +3,41 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
-import { ChevronDown, HelpCircle, Bitcoin } from 'lucide-react';
+import { ChevronDown, HelpCircle } from 'lucide-react';
+import { MIN_WITHDRAWAL, PAYOUT_TIME_LABEL } from '@/lib/constants/payouts';
 
 const FAQS = [
-  // Original FAQs
   {
-    q: 'Is Boostly free to use?',
-    a: 'Yes! You can join Boostly for free and start earning immediately. Premium plans are optional and offer higher earning limits and exclusive benefits.',
+    q: 'Is Boostly free to join?',
+    a: 'Yes. Creating an account is free, and you can start completing tasks and earning right away.',
   },
   {
-    q: 'How do I get paid?',
-    a: 'Earnings convert to cash automatically. Withdraw anytime via Mobile Money, bank transfer, or cryptocurrency — most payouts are instant.',
+    q: 'How do I earn money?',
+    a: 'Complete your daily tasks: watch sponsored videos, play games and answer surveys. Each finished task adds money to your Boostly balance.',
   },
   {
-    q: 'What activities can I do to earn?',
-    a: 'Watch videos, play games, complete surveys, view sponsored ads, and refer friends. New ways to earn are added regularly.',
+    q: 'How do I withdraw?',
+    a: 'Open your wallet, enter the amount and the MTN MoMo or Airtel Money number you want to be paid on, then submit your request.',
   },
   {
-    q: 'How much can I earn?',
-    a: 'Earnings depend on your plan and activity level. Free users can earn up to $1/day; Platinum members can earn up to $20/day.',
+    q: 'When do I receive my money?',
+    a: `All withdrawals are processed every day at ${PAYOUT_TIME_LABEL} (Kigali time). Requests made before ${PAYOUT_TIME_LABEL} are paid the same day; later requests are paid the next day.`,
+  },
+  {
+    q: 'Is there a minimum withdrawal?',
+    a: `Yes, the minimum withdrawal is ${MIN_WITHDRAWAL.toLocaleString()} RWF. There are no withdrawal fees.`,
+  },
+  {
+    q: 'How many tasks can I do each day?',
+    a: 'Every account gets a set of tasks each day. New tasks become available daily, so come back every day to keep earning.',
   },
   {
     q: 'Is my personal data safe?',
-    a: 'Yes. Boostly uses bank-level encryption and never sells your personal data to third parties.',
+    a: 'Yes. Your data is encrypted and we never sell your personal information to third parties.',
   },
   {
-    q: 'Can I use Boostly on mobile?',
-    a: 'Absolutely — Boostly works on any device via your browser, with dedicated iOS and Android apps coming soon.',
-  },
-
-  // ============================================
-  // NEW CRYPTO FAQs
-  // ============================================
-  {
-    q: 'Which cryptocurrencies does Boostly support?',
-    a: "Boostly supports major cryptocurrencies including Bitcoin (BTC), Ethereum (ETH), USDT, USDC, Solana (SOL), XRP, Cardano (ADA), Polkadot (DOT), Avalanche (AVAX), and Polygon (MATIC). We're constantly adding new currencies based on user demand.",
-  },
-  {
-    q: 'How do I deposit crypto to my Boostly wallet?',
-    a: "Go to Wallet → Crypto → Deposit, select your preferred cryptocurrency, and you'll receive a unique wallet address. Simply send your crypto to that address. Deposits are typically confirmed within 1-3 blockchain confirmations.",
-  },
-  {
-    q: 'What are the fees for crypto deposits and withdrawals?',
-    a: 'Crypto deposits are usually free (network fees may apply). Withdrawals have a small fee that varies by currency — typically 0.0005 BTC, 0.005 ETH, or equivalent. All fees are clearly displayed before you confirm any transaction.',
-  },
-  {
-    q: 'How long do crypto withdrawals take?',
-    a: 'Crypto withdrawals are processed within 24 hours of approval. Once processed, the transaction is broadcast to the blockchain and typically completes within 10-30 minutes depending on network congestion.',
-  },
-  {
-    q: 'Can I convert my crypto to USD/RWF?',
-    a: 'Yes! Your crypto balance is automatically converted to USD value using real-time exchange rates. You can withdraw your crypto directly or convert to fiat currency for withdrawal via bank transfer or mobile money.',
-  },
-  {
-    q: 'Is crypto on Boostly secure?',
-    a: 'Absolutely. We use industry-leading security practices including cold storage for the majority of funds, multi-signature wallets, and 2FA for all withdrawal requests. Your crypto assets are protected with bank-level security.',
-  },
-  {
-    q: 'What is the minimum crypto deposit/withdrawal?',
-    a: 'Minimum deposit and withdrawal amounts vary by currency. For Bitcoin, the minimum is 0.0001 BTC; for Ethereum, 0.01 ETH; and for USDT, 10 USDT. Check the Wallet → Crypto section for exact limits for each currency.',
-  },
-  {
-    q: 'Do I need a separate crypto wallet to use Boostly?',
-    a: 'No! Boostly provides you with a hosted wallet for each supported cryptocurrency. However, we recommend using your own external wallet for long-term storage of large amounts. You can withdraw to any external wallet address.',
+    q: 'Can I use Boostly on my phone?',
+    a: 'Yes. Boostly works in any browser on your phone or computer.',
   },
 ];
 
@@ -135,7 +107,8 @@ export function FAQ() {
       whileInView="visible"
       viewport={{ once: true, amount: 0.15 }}
       variants={sectionVariants}
-      className="py-20 bg-navy"
+      id="faq"
+      className="py-20 bg-navy scroll-mt-20"
     >
       <div className="max-w-4xl mx-auto px-6">
         {/* Header */}
@@ -170,47 +143,23 @@ export function FAQ() {
             transition={{ delay: 0.3, duration: 0.4 }}
             className="text-white/40 text-sm max-w-md mx-auto"
           >
-            Everything you need to know about Boostly, including our new
-            cryptocurrency features. Can&apos;t find what you&apos;re looking
-            for?
+            Everything you need to know about earning and getting paid.
+            Can&apos;t find what you&apos;re looking for?
             <a
-              href="/contact"
+              href="/support"
               className="text-gold hover:text-gold-hover ml-1 transition-colors"
             >
               Contact us →
             </a>
           </motion.p>
 
-          {/* Crypto Badge */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.35, duration: 0.4 }}
-            className="inline-flex items-center gap-2 mt-4 bg-gold/10 border border-gold/20 rounded-full px-4 py-1.5"
-          >
-            <Bitcoin className="w-3.5 h-3.5 text-gold" />
-            <span className="text-[10px] font-bold text-gold tracking-wider uppercase">
-              Crypto Ready
-            </span>
-            <span className="w-1.5 h-1.5 rounded-full bg-gold/50" />
-            <span className="text-[10px] text-white/40">
-              BTC · ETH · USDT · SOL · XRP · ADA · DOT · AVAX · MATIC
-            </span>
-          </motion.div>
         </div>
 
         {/* FAQ Grid */}
         <div className="grid sm:grid-cols-2 gap-3 md:gap-4">
           {FAQS.map((faq, i) => {
             const isOpen = openIndex === i;
-            // Check if this is a crypto FAQ (contains crypto-related keywords)
-            const isCrypto =
-              faq.q.toLowerCase().includes('crypto') ||
-              faq.q.toLowerCase().includes('bitcoin') ||
-              faq.q.toLowerCase().includes('ethereum') ||
-              faq.q.toLowerCase().includes('usdt') ||
-              faq.q.toLowerCase().includes('wallet');
+
 
             return (
               <motion.div
@@ -223,9 +172,7 @@ export function FAQ() {
                 className={`bg-white/5 backdrop-blur-sm border rounded-xl overflow-hidden transition-all duration-300 ${
                   isOpen
                     ? 'border-gold/50 shadow-glow'
-                    : isCrypto
-                      ? 'border-primary/30 hover:border-primary/50'
-                      : 'border-white/10 hover:border-white/20'
+                    : 'border-white/10 hover:border-white/20'
                 }`}
               >
                 <button
@@ -234,9 +181,6 @@ export function FAQ() {
                   aria-expanded={isOpen}
                 >
                   <div className="flex items-center gap-2">
-                    {isCrypto && (
-                      <Bitcoin className="w-3.5 h-3.5 text-gold/60 flex-shrink-0" />
-                    )}
                     <span
                       className={`text-sm font-semibold transition-colors duration-200 ${
                         isOpen ? 'text-gold' : 'text-white'
@@ -289,7 +233,7 @@ export function FAQ() {
           <p className="text-white/30 text-sm">
             Still have questions?{' '}
             <a
-              href="/contact"
+              href="/support"
               className="text-gold hover:text-gold-hover font-medium transition-colors"
             >
               Get in touch with our team

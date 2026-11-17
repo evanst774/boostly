@@ -22,10 +22,24 @@ import {
   type TransactionStatus,
   type WithdrawalStatus,
 } from '@/lib/db/schema';
+import { db } from '@/lib/db';
+import { wallets, withdrawals, transactions } from '@/lib/db/schema';
+import { and, eq, gte, sql } from 'drizzle-orm';
+import { getWithdrawalEligibility } from './withdrawal-policy';
+import {
+  MOBILE_MONEY_PROVIDERS,
+  detectMobileProvider,
+  formatRwandaPhone,
+  getNextPayoutAt,
+  normalizeRwandaPhone,
+} from '@/lib/constants/payouts';
 
 // ============================================
 // TYPES
 // ============================================
+
+/** A user-facing problem with a withdrawal request (maps to HTTP 400). */
+export class WithdrawalRequestError extends Error {}
 
 /**
  * FIX: addBalance/deductBalance previously typed their third parameter as
@@ -238,57 +252,96 @@ export class WalletService {
     if (!user) throw new Error('Unauthorized');
 
     const validated = createWithdrawalSchema.parse(input);
+    const phoneNumber = normalizeRwandaPhone(validated.phoneNumber)!;
+    const provider = detectMobileProvider(phoneNumber);
 
-    // Check balance
-    const wallet = await walletRepository.getByUserId(user.id);
-    if (!wallet || wallet.balance < validated.amount) {
-      throw new Error('Insufficient balance');
+    // Plan-based frequency (Free: weekly, paid: daily) + minimum balance.
+    const eligibility = await getWithdrawalEligibility(user.id);
+    if (!eligibility.canWithdraw) {
+      throw new WithdrawalRequestError(eligibility.reason!);
+    }
+    if (validated.amount > eligibility.balance) {
+      throw new WithdrawalRequestError(
+        'Amount is more than your available balance',
+      );
     }
 
-    // Check minimum withdrawal
-    if (validated.amount < 1000) {
-      throw new Error('Minimum withdrawal is Rwf 1,000');
-    }
+    const now = new Date();
+    const scheduledPayoutAt = getNextPayoutAt(now).toISOString();
 
-    // Create withdrawal request
-    const withdrawal = await withdrawalsRepository.create({
-      userId: user.id,
-      amount: validated.amount,
-      currency: wallet.defaultCurrency,
-      amountInBase: validated.amount,
-      method: validated.method,
-      phoneNumber: validated.phoneNumber,
-      bankAccount: validated.bankAccount,
-      accountName: validated.accountName,
-      bankName: validated.bankName,
-      status: WithdrawalStatusEnum.PENDING,
-      requestedAt: new Date().toISOString(),
+    // Hold the money in one atomic step: the conditional UPDATE only succeeds
+    // if the balance still covers the amount, so concurrent requests can't
+    // overdraw. Rejection refunds it; approval just releases the hold.
+    const withdrawal = await db.transaction(async (tx) => {
+      const [wallet] = await tx
+        .update(wallets)
+        .set({
+          balance: sql`${wallets.balance} - ${validated.amount}`,
+          pendingWithdrawal: sql`${wallets.pendingWithdrawal} + ${validated.amount}`,
+          updatedAt: now.toISOString(),
+          lastActivityAt: now.toISOString(),
+        })
+        .where(
+          and(
+            eq(wallets.userId, user.id),
+            gte(wallets.balance, validated.amount),
+          ),
+        )
+        .returning();
+
+      if (!wallet) {
+        throw new WithdrawalRequestError('Insufficient balance');
+      }
+
+      const [created] = await tx
+        .insert(withdrawals)
+        .values({
+          userId: user.id,
+          amount: validated.amount,
+          currency: wallet.defaultCurrency,
+          amountInBase: validated.amount,
+          method: 'MOBILE_MONEY',
+          phoneNumber,
+          accountName: validated.accountName,
+          fee: 0,
+          netAmount: validated.amount,
+          status: WithdrawalStatusEnum.PENDING,
+          requestedAt: now.toISOString(),
+          metadata: { provider, scheduledPayoutAt },
+        })
+        .returning();
+
+      const providerLabel = provider
+        ? MOBILE_MONEY_PROVIDERS[provider].label
+        : 'Mobile Money';
+
+      await tx.insert(transactions).values({
+        userId: user.id,
+        walletId: wallet.id,
+        type: TransactionTypeEnum.DEBIT,
+        amount: validated.amount,
+        currency: wallet.defaultCurrency,
+        amountInBase: validated.amount,
+        description: `Withdrawal to ${providerLabel} ${formatRwandaPhone(phoneNumber)}`,
+        referenceId: created.id,
+        referenceType: 'withdrawal',
+        status: TransactionStatusEnum.PENDING,
+      });
+
+      return created;
     });
 
-    // Update wallet pending withdrawal
-    await walletRepository.updatePendingWithdrawal(user.id, validated.amount);
-
-    // Create transaction (pending)
-    await transactionsRepository.create({
-      userId: user.id,
-      walletId: wallet.id,
-      type: TransactionTypeEnum.DEBIT,
-      amount: validated.amount,
-      currency: wallet.defaultCurrency,
-      amountInBase: validated.amount,
-      description: `Withdrawal request - ${validated.method}`,
-      referenceId: withdrawal.id,
-      referenceType: 'withdrawal',
-      status: TransactionStatusEnum.PENDING,
-    });
-
-    // Correct
     await createAuditLog({
       userId: user.id,
       action: 'WITHDRAWAL_REQUESTED',
       entityType: 'withdrawal',
       entityId: withdrawal.id,
-      newData: { amount: validated.amount, method: validated.method },
+      newData: {
+        amount: validated.amount,
+        method: 'MOBILE_MONEY',
+        provider,
+        scheduledPayoutAt,
+      },
     });
 
     return withdrawal;
@@ -416,14 +469,15 @@ export class WalletService {
         );
       }
 
-      // Revert pending withdrawal
-      const wallet = await walletRepository.getByUserId(withdrawal.userId);
-      if (wallet) {
-        await walletRepository.updatePendingWithdrawal(
-          withdrawal.userId,
-          -withdrawal.amount,
-        );
-      }
+      // Release the hold and refund: the amount left `balance` at request time.
+      await db
+        .update(wallets)
+        .set({
+          pendingWithdrawal: sql`MAX(0, ${wallets.pendingWithdrawal} - ${withdrawal.amount})`,
+          balance: sql`${wallets.balance} + ${withdrawal.amount}`,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(wallets.userId, withdrawal.userId));
 
       await createAuditLog({
         userId: user.id,

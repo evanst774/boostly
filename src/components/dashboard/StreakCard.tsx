@@ -60,7 +60,7 @@ export function StreakCard({ streak }: StreakCardProps) {
 
       <button
         className="w-full bg-[#F59E0B] hover:bg-[#D97706] dark:bg-[#F59E0B] dark:hover:bg-[#D97706] text-[#0F172A] font-bold py-2.5 rounded-lg transition-colors text-xs font-outfit"
-        onClick={() => router.push('/daily-bonus')}
+        onClick={() => router.push('/dashboard')}
       >
         🎁 Claim Today&apos;s Bonus - 100 RWF
       </button>

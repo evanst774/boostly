@@ -1,7 +1,11 @@
 // src/app/api/wallet/withdrawals/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getCurrentUser } from '@/lib/auth/session.server';
-import { walletService } from '@/modules/wallet/service';
+import {
+  walletService,
+  WithdrawalRequestError,
+} from '@/modules/wallet/service';
 import { createWithdrawalSchema } from '@/modules/wallet/validation';
 import {
   WITHDRAWAL_STATUS_LIST,
@@ -56,14 +60,23 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const validated = createWithdrawalSchema.parse(body);
-
     const withdrawal = await walletService.createWithdrawal(validated);
 
     return NextResponse.json({ withdrawal }, { status: 201 });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: error.issues[0]?.message ?? 'Invalid request' },
+        { status: 400 },
+      );
+    }
+    if (error instanceof WithdrawalRequestError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error('Withdrawal POST error:', error);
-    const message =
-      error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Could not submit your withdrawal. Please try again.' },
+      { status: 500 },
+    );
   }
 }

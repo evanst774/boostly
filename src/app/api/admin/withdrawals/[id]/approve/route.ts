@@ -12,7 +12,8 @@ import {
   TransactionTypeEnum,
   TransactionStatusEnum,
 } from '@/lib/db/schema/wallet';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
+import { notificationsService } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,9 +77,27 @@ export async function POST(
         .where(eq(wallets.userId, withdrawal.userId))
         .returning();
 
-      // Wallet row should always exist by this point, but don't let a missing
-      // row silently skip the ledger entry.
-      if (wallet) {
+      // The request already wrote a PENDING debit for this withdrawal; mark it
+      // COMPLETED rather than adding a second debit to the ledger. Older
+      // requests without one still get a ledger entry here.
+      const settled = await tx
+        .update(transactions)
+        .set({
+          status: TransactionStatusEnum.COMPLETED,
+          completedAt: now,
+          updatedAt: now,
+          description: `Withdrawal paid (${reference})`,
+        })
+        .where(
+          and(
+            eq(transactions.referenceId, withdrawal.id),
+            eq(transactions.referenceType, 'withdrawal'),
+            eq(transactions.status, TransactionStatusEnum.PENDING),
+          ),
+        )
+        .returning({ id: transactions.id });
+
+      if (wallet && settled.length === 0) {
         await tx.insert(transactions).values({
           walletId: wallet.id,
           userId: withdrawal.userId,
@@ -86,7 +105,7 @@ export async function POST(
           amount: withdrawal.amount,
           currency: withdrawal.currency,
           amountInBase: withdrawal.amountInBase,
-          description: `Withdrawal approved (${reference})`,
+          description: `Withdrawal paid (${reference})`,
           referenceId: withdrawal.id,
           referenceType: 'withdrawal',
           status: TransactionStatusEnum.COMPLETED,
@@ -96,6 +115,10 @@ export async function POST(
 
       return result;
     });
+
+    await notificationsService
+      .notifyWithdrawalStatus(withdrawal.userId, withdrawal.amount, 'completed')
+      .catch((e) => console.error('Withdrawal notification failed:', e));
 
     return NextResponse.json({ success: true, withdrawal: updated });
   } catch (error) {

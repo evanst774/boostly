@@ -103,12 +103,6 @@ export default function AdminVideosPage() {
   const [videoToDelete, setVideoToDelete] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fixed: Added fetchStats and fetchVideos to dependencies
-  useEffect(() => {
-    fetchVideos();
-    fetchStats();
-  }, [fetchVideos, fetchStats]);
-
   const fetchVideos = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -138,6 +132,12 @@ export default function AdminVideosPage() {
       console.error('Failed to fetch video stats:', error);
     }
   }, []);
+
+  // Declared after the callbacks: referencing them earlier hits the TDZ.
+  useEffect(() => {
+    fetchVideos();
+    fetchStats();
+  }, [fetchVideos, fetchStats]);
 
   const handleDeleteVideo = async () => {
     if (!videoToDelete) return;

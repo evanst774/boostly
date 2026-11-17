@@ -324,3 +324,32 @@ export function hasContentCreation(tier: string): boolean {
 export function getRevenueShare(tier: string): number {
   return TIERS[tier]?.metadata.revenueShare || 0;
 }
+
+// ─── Plan display helpers (added; prices mirror the seed price map) ─────────
+
+/** Display order, cheapest first. */
+export const TIER_ORDER = [
+  'FREE',
+  'STARTER',
+  'SILVER',
+  'GOLD',
+  'PLATINUM',
+  'PREMIUM',
+] as const;
+
+/**
+ * Fallback prices (RWF) used only when the plans API returns nothing.
+ * Must match src/lib/db/seeds/gamification/badges-subscriptions.seed.ts.
+ */
+export const TIER_PRICES: Record<string, { monthly: number; yearly: number }> =
+  {
+    FREE: { monthly: 0, yearly: 0 },
+    STARTER: { monthly: 6000, yearly: 60000 },
+    SILVER: { monthly: 15000, yearly: 150000 },
+    GOLD: { monthly: 30000, yearly: 300000 },
+    PLATINUM: { monthly: 60000, yearly: 600000 },
+    PREMIUM: { monthly: 120000, yearly: 1200000 },
+  };
+
+/** The plan we nudge people towards. */
+export const RECOMMENDED_TIER = 'SILVER';

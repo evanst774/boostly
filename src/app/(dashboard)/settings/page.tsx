@@ -340,7 +340,7 @@ export default function SettingsPage() {
       id: 1,
       question: 'How do I withdraw my earnings?',
       answer:
-        'Withdrawals are processed on the 1st–5th of each month. Go to Wallet → Withdraw, select your preferred method (Mobile Money or Bank Transfer), enter the amount and confirm.',
+        'Go to Withdraw, enter the MTN or Airtel number you want to be paid on and the amount, then confirm. All withdrawals are paid daily at 3:00 PM. Free plan members can withdraw once a week; paid plans can withdraw every day.',
     },
     {
       id: 2,
@@ -592,18 +592,16 @@ export default function SettingsPage() {
               {
                 icon: <Award size={18} />,
                 title: 'My Badges',
-                subtitle: 'Gold Badge — Active',
-                badge: 'Active',
-                badgeColor: 'bg-[#22C55E]',
+                subtitle: 'Boost your task rewards',
                 onClick: () => router.push('/badges'),
               },
               {
                 icon: <Crown size={18} />,
-                title: 'My Subscription',
-                subtitle: 'Pro Plan — Active',
-                badge: 'Active',
-                badgeColor: 'bg-[#22C55E]',
-                onClick: () => router.push('/badges'),
+                title: 'My Plan',
+                subtitle: user?.plan ? `${user.plan}` : 'Free — upgrade to withdraw daily',
+                badge: undefined as string | undefined,
+                badgeColor: undefined as string | undefined,
+                onClick: () => router.push('/plans'),
               },
               {
                 icon: <Users size={18} />,
@@ -1231,12 +1229,11 @@ export default function SettingsPage() {
             />
             <div>
               <p className="text-sm font-semibold text-[#2563EB]">
-                Withdrawals are processed on the{' '}
-                <strong>1st–5th of each month</strong>
+                Withdrawals are paid to mobile money{' '}
+                <strong>every day at 3:00 PM</strong>
               </p>
               <p className="text-sm text-[#2563EB]/80 mt-0.5">
-                Make sure your payment method is verified before the payout
-                date.
+                Requests made after 3:00 PM are paid the next day.
               </p>
             </div>
           </div>

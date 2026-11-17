@@ -298,7 +298,9 @@ export class UserSubscriptionsRepository {
       where: and(
         eq(userSubscriptions.userId, userId),
         eq(userSubscriptions.status, 'ACTIVE'),
-        sql`${userSubscriptions.expiresAt} IS NULL OR ${userSubscriptions.expiresAt} > datetime('now')`,
+        // expiresAt is stored as an ISO string, so compare against ISO "now"
+        // (datetime('now') uses a space separator and sorts wrongly).
+        sql`(${userSubscriptions.expiresAt} IS NULL OR ${userSubscriptions.expiresAt} > strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`,
       ),
       with: { plan: true },
     });

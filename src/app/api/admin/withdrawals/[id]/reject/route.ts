@@ -12,7 +12,8 @@ import {
   TransactionTypeEnum,
   TransactionStatusEnum,
 } from '@/lib/db/schema/wallet';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
+import { notificationsService } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -82,7 +83,26 @@ export async function POST(
         .where(eq(wallets.userId, withdrawal.userId))
         .returning();
 
-      if (wallet) {
+      // Void the PENDING debit written at request time. Only older requests
+      // without one get an explicit refund credit, so the ledger never shows
+      // both a debit and a refund for the same money.
+      const voided = await tx
+        .update(transactions)
+        .set({
+          status: TransactionStatusEnum.FAILED,
+          updatedAt: now,
+          description: `Withdrawal rejected, refunded to balance (${reason})`,
+        })
+        .where(
+          and(
+            eq(transactions.referenceId, withdrawal.id),
+            eq(transactions.referenceType, 'withdrawal'),
+            eq(transactions.status, TransactionStatusEnum.PENDING),
+          ),
+        )
+        .returning({ id: transactions.id });
+
+      if (wallet && voided.length === 0) {
         await tx.insert(transactions).values({
           walletId: wallet.id,
           userId: withdrawal.userId,
@@ -100,6 +120,10 @@ export async function POST(
 
       return result;
     });
+
+    await notificationsService
+      .notifyWithdrawalStatus(withdrawal.userId, withdrawal.amount, 'rejected', reason)
+      .catch((e) => console.error('Withdrawal notification failed:', e));
 
     return NextResponse.json({ success: true, withdrawal: updated });
   } catch (error) {

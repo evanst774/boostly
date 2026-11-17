@@ -169,9 +169,8 @@ export function Footer() {
             </p>
             <ul className="space-y-2.5">
               {[
-                { name: 'Features', href: '#features' },
-                { name: 'How It Works', href: '#how' },
-                { name: 'Plans', href: '#plans' },
+                { name: 'Ways to Earn', href: '/#ways-to-earn' },
+                { name: 'How It Works', href: '/#how-it-works' },
                 { name: 'FAQ', href: '/resources/faq' },
               ].map((link) => (
                 <motion.li

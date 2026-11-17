@@ -51,9 +51,9 @@ export function Navbar() {
   }, []);
 
   const navLinks = [
-    { name: 'Features', href: '#features' },
-    { name: 'How It Works', href: '#how' },
-    { name: 'Plans', href: '#plans' },
+    { name: 'Ways to Earn', href: '/#ways-to-earn' },
+    { name: 'How It Works', href: '/#how-it-works' },
+    { name: 'FAQ', href: '/#faq' },
   ];
 
   return (
