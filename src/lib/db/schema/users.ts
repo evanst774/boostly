@@ -58,3 +58,25 @@ export const usersRelations = relations(users, ({ many, one }) => ({
 // ============================================
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+// ============================================
+// SAFE COLUMN SETS FOR RELATION LOADS
+// ============================================
+// Never load a related user with `{ user: true }`: that selects every column,
+// including passwordHash, reset/verification tokens, totpSecret and backup
+// codes, and those end up in API responses. Use one of these instead.
+
+/** Visible to other users (comments, leaderboards, public engagement). */
+export const PUBLIC_USER_COLUMNS = {
+  id: true,
+  name: true,
+  avatar: true,
+} as const;
+
+/** For admin screens and a user's own data (adds contact details). */
+export const SAFE_USER_COLUMNS = {
+  id: true,
+  name: true,
+  email: true,
+  phone: true,
+  avatar: true,
+} as const;

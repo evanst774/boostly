@@ -329,7 +329,20 @@ export class BadgesService {
     const existing = await subscriptionPlansRepository.getById(id);
     if (!existing) throw new Error('Subscription plan not found');
 
-    await subscriptionPlansRepository.delete(id);
+    try {
+      await subscriptionPlansRepository.delete(id);
+    } catch (err) {
+      // user_subscriptions.planId is ON DELETE RESTRICT.
+      const text = `${err instanceof Error ? err.message : ''} ${
+        (err as { cause?: { message?: string } })?.cause?.message ?? ''
+      }`;
+      if (/FOREIGN KEY|SQLITE_CONSTRAINT/i.test(text)) {
+        throw new Error(
+          'This plan has subscribers, so it cannot be deleted. Deactivate it instead.',
+        );
+      }
+      throw err;
+    }
 
     await createAuditLog({
       userId: user.id,

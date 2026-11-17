@@ -107,10 +107,7 @@ export const ROUTES = {
       VERIFY_EMAIL_REQUEST: '/api/auth/verify-email/request',
       VERIFY_EMAIL_CONFIRM: '/api/auth/verify-email/confirm',
       TWO_FACTOR_SETUP: '/api/auth/2fa/setup',
-      TWO_FACTOR_VERIFY: '/api/auth/2fa/verify',
-      TWO_FACTOR_RESEND: '/api/auth/2fa/resend',
       CHECK: '/api/auth/check',
-      DEBUG_COOKIE: '/api/auth/debug-cookie',
       RESEND_2FA: '/api/auth/resend-2fa',
     },
     CUSTOMERS: {

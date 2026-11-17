@@ -3,6 +3,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import {
   Plus,
   Edit2,
@@ -89,6 +90,8 @@ export default function AdminPlansPage() {
   >({});
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [planToDelete, setPlanToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchPlans();
@@ -156,14 +159,13 @@ export default function AdminPlansPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (
-      !confirm(
-        'Are you sure you want to delete this plan? This action cannot be undone.',
-      )
-    )
-      return;
+  // Opens the confirmation dialog; the delete runs from confirmDelete().
+  const handleDelete = (id: string) => setPlanToDelete(id);
 
+  const confirmDelete = async () => {
+    const id = planToDelete;
+    if (!id) return;
+    setIsDeleting(true);
     try {
       const response = await fetch(`/api/subscriptions/plans/${id}`, {
         method: 'DELETE',
@@ -178,6 +180,9 @@ export default function AdminPlansPage() {
       await fetchPlans();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete plan');
+    } finally {
+      setIsDeleting(false);
+      setPlanToDelete(null);
     }
   };
 
@@ -878,6 +883,16 @@ export default function AdminPlansPage() {
           </div>
         )}
       </AnimatePresence>
+      <ConfirmDialog
+        open={!!planToDelete}
+        onOpenChange={(open) => !open && setPlanToDelete(null)}
+        title="Delete this plan?"
+        description="This cannot be undone. A plan that anyone has ever subscribed to cannot be deleted; deactivate it instead so new users can't pick it."
+        confirmText="Delete plan"
+        variant="danger"
+        isLoading={isDeleting}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

@@ -74,12 +74,6 @@ interface AuthContextType {
   logout: () => Promise<void>;
   checkAuth: () => Promise<User | null>;
   refreshUser: () => Promise<void>;
-  verify2FA: (
-    otpCode: string,
-    method: 'EMAIL' | 'TOTP',
-    sessionId: string,
-  ) => Promise<boolean>;
-  resend2FA: (sessionId: string) => Promise<void>;
   initiateOAuth: (provider: 'google' | 'facebook', returnTo?: string) => void;
   handleOAuthCallback: (params: URLSearchParams) => Promise<void>;
   clearOAuthState: () => void;
@@ -713,69 +707,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   // ============================================
-  // 2FA HELPERS
-  // ============================================
-
-  const verify2FA = useCallback(
-    async (
-      otpCode: string,
-      method: 'EMAIL' | 'TOTP',
-      sessionId: string,
-    ): Promise<boolean> => {
-      try {
-        const res = await fetch('/api/auth/2fa/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ otpCode, method, sessionId }),
-          credentials: 'include',
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data.user) {
-            setUser(data.user);
-            setIsAccountLocked(false);
-            toast.success('2FA verified successfully!');
-            const redirectPath =
-              data.redirectTo || getRoleRedirectPath(data.user?.role);
-            router.push(redirectPath);
-            return true;
-          }
-        }
-
-        toast.error('Invalid verification code');
-        return false;
-      } catch (error) {
-        console.error('2FA verification error:', error);
-        toast.error('Failed to verify 2FA code');
-        return false;
-      }
-    },
-    [router],
-  );
-
-  const resend2FA = useCallback(async (sessionId: string): Promise<void> => {
-    try {
-      const res = await fetch('/api/auth/2fa/resend', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId }),
-        credentials: 'include',
-      });
-
-      if (res.ok) {
-        toast.success('New 2FA code sent to your email');
-      } else {
-        const data = await res.json();
-        toast.error(data.message || 'Failed to resend code');
-      }
-    } catch (error) {
-      console.error('Resend 2FA error:', error);
-      toast.error('Failed to resend code');
-    }
-  }, []);
-
-  // ============================================
   // LOGOUT
   // ============================================
 
@@ -822,8 +753,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         checkAuth,
         refreshUser,
-        verify2FA,
-        resend2FA,
         initiateOAuth,
         handleOAuthCallback,
         clearOAuthState,

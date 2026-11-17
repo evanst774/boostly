@@ -32,8 +32,36 @@ export async function GET(request: NextRequest) {
       offset,
     });
 
+    // Only what the inviter needs: never a friend's email or phone.
+    // The repository loads `referee` (safe columns) but types rows as plain
+    // Referral, so widen the row type here.
+    type Row = (typeof result.referrals)[number] & {
+      referee?: { id: string; name: string } | null;
+    };
+    const referrals = (result.referrals as Row[]).map((r) => ({
+      id: r.id,
+      status: r.status,
+      createdAt: r.createdAt,
+      activatedAt: r.activatedAt,
+      referrerReward: r.referrerRewardClaimed ? r.referrerReward : 0,
+      referee: r.referee ? { id: r.referee.id, name: r.referee.name } : null,
+    }));
+
+    const friends = referrals.map((r) => ({
+      id: r.id,
+      name: r.referee?.name ?? 'Friend',
+      date: new Date(r.createdAt).toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }),
+      status: (r.status || 'PENDING').toLowerCase(),
+      reward: r.referrerReward,
+    }));
+
     return NextResponse.json({
-      referrals: result.referrals,
+      referrals,
+      friends,
       total: result.total,
       limit,
       offset,

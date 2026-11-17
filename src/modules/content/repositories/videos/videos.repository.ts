@@ -1,4 +1,5 @@
 // src/modules/content/repositories/videos/videos.repository.ts
+import { PUBLIC_USER_COLUMNS } from '@/lib/db/schema/users';
 import { db } from '@/lib/db';
 import {
   videos,
@@ -45,10 +46,10 @@ export class VideosRepository {
           where: eq(videoComments.isHidden, false),
           orderBy: [desc(videoComments.createdAt)],
           with: {
-            user: true,
+            user: { columns: PUBLIC_USER_COLUMNS },
             replies: {
               where: eq(videoComments.isHidden, false),
-              with: { user: true },
+              with: { user: { columns: PUBLIC_USER_COLUMNS } },
             },
           },
         },

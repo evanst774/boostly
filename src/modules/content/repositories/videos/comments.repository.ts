@@ -1,4 +1,5 @@
 // src/modules/content/repositories/videos/comments.repository.ts
+import { PUBLIC_USER_COLUMNS } from '@/lib/db/schema/users';
 import { db } from '@/lib/db';
 import {
   videoComments,
@@ -23,9 +24,9 @@ export class VideoCommentsRepository {
     return await db.query.videoComments.findFirst({
       where: eq(videoComments.id, id),
       with: {
-        user: true,
+        user: { columns: PUBLIC_USER_COLUMNS },
         replies: {
-          with: { user: true },
+          with: { user: { columns: PUBLIC_USER_COLUMNS } },
           where: eq(videoComments.isHidden, false),
         },
       },
@@ -40,9 +41,9 @@ export class VideoCommentsRepository {
         sql`${videoComments.parentId} IS NULL`,
       ),
       with: {
-        user: true,
+        user: { columns: PUBLIC_USER_COLUMNS },
         replies: {
-          with: { user: true },
+          with: { user: { columns: PUBLIC_USER_COLUMNS } },
           where: eq(videoComments.isHidden, false),
           orderBy: [desc(videoComments.createdAt)],
           limit: 5,
@@ -59,7 +60,7 @@ export class VideoCommentsRepository {
         eq(videoComments.parentId, commentId),
         eq(videoComments.isHidden, false),
       ),
-      with: { user: true },
+      with: { user: { columns: PUBLIC_USER_COLUMNS } },
       orderBy: [desc(videoComments.createdAt)],
       limit: limit,
     });

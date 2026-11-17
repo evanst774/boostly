@@ -1,4 +1,5 @@
 // src/modules/content/repositories/videos/reports.repository.ts
+import { SAFE_USER_COLUMNS } from '@/lib/db/schema/users';
 import { db } from '@/lib/db';
 import {
   videoReports,
@@ -22,14 +23,14 @@ export class VideoReportsRepository {
   async getById(id: string): Promise<VideoReport | undefined> {
     return await db.query.videoReports.findFirst({
       where: eq(videoReports.id, id),
-      with: { video: true, user: true, reviewer: true },
+      with: { video: true, user: { columns: SAFE_USER_COLUMNS }, reviewer: { columns: SAFE_USER_COLUMNS } },
     });
   }
 
   async getByVideoId(videoId: string): Promise<VideoReport[]> {
     return await db.query.videoReports.findMany({
       where: eq(videoReports.videoId, videoId),
-      with: { user: true },
+      with: { user: { columns: SAFE_USER_COLUMNS } },
       orderBy: [desc(videoReports.createdAt)],
     });
   }
@@ -45,7 +46,7 @@ export class VideoReportsRepository {
   async getPendingReports(limit?: number): Promise<VideoReport[]> {
     return await db.query.videoReports.findMany({
       where: eq(videoReports.status, 'pending'),
-      with: { video: true, user: true },
+      with: { video: true, user: { columns: SAFE_USER_COLUMNS } },
       orderBy: [desc(videoReports.createdAt)],
       limit: limit,
     });

@@ -8,8 +8,6 @@ import {
   Activity,
   Loader2,
   Download,
-  ArrowUpRight,
-  ArrowDownRight,
   Users,
   Wallet,
   BarChart3,
@@ -343,28 +341,25 @@ export function AnalyticsTab() {
 
   const stats = [
     {
-      label: 'Total Revenue',
+      label: 'Rewards paid (all time)',
       value: formatAmount(data.totalRevenue || 0),
-      change: '+18.5%',
-      trend: 'up',
+      trend: 'neutral',
       icon: <DollarSign size={18} />,
       color: 'text-[#22C55E] dark:text-[#4ADE80]',
       bg: 'bg-[#F0FDF4] dark:bg-[#22C55E]/20',
     },
     {
-      label: 'Monthly Revenue',
+      label: 'Rewards paid (this month)',
       value: formatAmount(data.monthlyRevenue || 0),
-      change: '+12.3%',
-      trend: 'up',
+      trend: 'neutral',
       icon: <TrendingUp size={18} />,
       color: 'text-[#2563EB] dark:text-[#60A5FA]',
       bg: 'bg-[#EFF6FF] dark:bg-[#2563EB]/20',
     },
     {
-      label: 'Total Withdrawals',
+      label: 'Withdrawn to users',
       value: formatAmount(data.totalWithdrawals || 0),
-      change: '-5.2%',
-      trend: 'down',
+      trend: 'neutral',
       icon: <Wallet size={18} />,
       color: 'text-[#EF4444] dark:text-[#F87171]',
       bg: 'bg-[#FEF2F2] dark:bg-[#EF4444]/20',
@@ -372,8 +367,7 @@ export function AnalyticsTab() {
     {
       label: 'Active Users',
       value: data.activeUsers?.toLocaleString() || '0',
-      change: '+8.1%',
-      trend: 'up',
+      trend: 'neutral',
       icon: <Users size={18} />,
       color: 'text-[#8B5CF6] dark:text-[#A78BFA]',
       bg: 'bg-[#F5F3FF] dark:bg-[#8B5CF6]/20',
@@ -439,19 +433,7 @@ export function AnalyticsTab() {
               >
                 <span className={stat.color}>{stat.icon}</span>
               </div>
-              <span
-                className={cn(
-                  'text-[10px] sm:text-xs font-semibold flex items-center gap-0.5',
-                  stat.trend === 'up' ? 'text-[#22C55E]' : 'text-[#EF4444]',
-                )}
-              >
-                {stat.trend === 'up' ? (
-                  <ArrowUpRight size={12} />
-                ) : (
-                  <ArrowDownRight size={12} />
-                )}
-                {stat.change}
-              </span>
+
             </div>
             <p className="text-lg sm:text-xl font-extrabold mt-2 text-[#0F172A] dark:text-white">
               {stat.value}

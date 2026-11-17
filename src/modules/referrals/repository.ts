@@ -1,4 +1,5 @@
 // src/modules/referrals/repository.ts
+import { SAFE_USER_COLUMNS } from '@/lib/db/schema/users';
 import { db } from '@/lib/db';
 import {
   referrals,
@@ -36,7 +37,7 @@ export class ReferralCodesRepository {
   async getByCode(code: string): Promise<ReferralCode | undefined> {
     return await db.query.referralCodes.findFirst({
       where: eq(referralCodes.code, code.toUpperCase()),
-      with: { user: true },
+      with: { user: { columns: SAFE_USER_COLUMNS } },
     });
   }
 
@@ -136,8 +137,8 @@ export class ReferralsRepository {
     return await db.query.referrals.findFirst({
       where: eq(referrals.id, id),
       with: {
-        referrer: true,
-        referee: true,
+        referrer: { columns: SAFE_USER_COLUMNS },
+        referee: { columns: SAFE_USER_COLUMNS },
       },
     });
   }
@@ -164,8 +165,8 @@ export class ReferralsRepository {
       db.query.referrals.findMany({
         where: whereClause,
         with: {
-          referrer: true,
-          referee: true,
+          referrer: { columns: SAFE_USER_COLUMNS },
+          referee: { columns: SAFE_USER_COLUMNS },
         },
         limit,
         offset,
@@ -187,8 +188,8 @@ export class ReferralsRepository {
     return await db.query.referrals.findFirst({
       where: eq(referrals.refereeId, refereeId),
       with: {
-        referrer: true,
-        referee: true,
+        referrer: { columns: SAFE_USER_COLUMNS },
+        referee: { columns: SAFE_USER_COLUMNS },
       },
     });
   }
@@ -200,7 +201,7 @@ export class ReferralsRepository {
         eq(referrals.status, 'ACTIVE'),
       ),
       with: {
-        referee: true,
+        referee: { columns: SAFE_USER_COLUMNS },
       },
       orderBy: [desc(referrals.createdAt)],
     });

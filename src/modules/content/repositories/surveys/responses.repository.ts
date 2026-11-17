@@ -1,4 +1,5 @@
 // src/modules/content/repositories/surveys/responses.repository.ts
+import { SAFE_USER_COLUMNS } from '@/lib/db/schema/users';
 import { db } from '@/lib/db';
 import {
   surveyResponses,
@@ -76,7 +77,7 @@ export class SurveyResponsesRepository {
   async getSurveyResponses(surveyId: string): Promise<SurveyResponse[]> {
     return await db.query.surveyResponses.findMany({
       where: eq(surveyResponses.surveyId, surveyId),
-      with: { user: true },
+      with: { user: { columns: SAFE_USER_COLUMNS } },
       orderBy: [desc(surveyResponses.createdAt)],
     });
   }

@@ -56,6 +56,7 @@ export function UsersTab() {
     isActive: boolean;
   } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async (searchTerm: string) => {
     setIsLoading(true);
@@ -109,18 +110,22 @@ export function UsersTab() {
   const confirmToggleStatus = async () => {
     if (!userToToggle) return;
     setIsSubmitting(true);
+    setActionError(null);
     try {
-      await fetch(`/api/admin/users/${userToToggle.id}/toggle-status`, {
+      const res = await fetch(`/api/admin/users/${userToToggle.id}/toggle-status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ active: !userToToggle.isActive }),
       });
+      if (!res.ok) {
+        throw new Error((await res.json().catch(() => ({}))).error || 'Failed to update user status');
+      }
       refetchAll();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Failed to update user status');
+    } finally {
       setStatusDialogOpen(false);
       setUserToToggle(null);
-    } catch {
-      alert('Failed to update user status');
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -133,14 +138,18 @@ export function UsersTab() {
   const confirmDeleteUser = async () => {
     if (!userToDelete) return;
     setIsSubmitting(true);
+    setActionError(null);
     try {
-      await fetch(`/api/admin/users/${userToDelete}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/users/${userToDelete}`, { method: 'DELETE' });
+      if (!res.ok) {
+        throw new Error((await res.json().catch(() => ({}))).error || 'Failed to delete user');
+      }
       refetchAll();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Failed to delete user');
+    } finally {
       setDeleteDialogOpen(false);
       setUserToDelete(null);
-    } catch {
-      alert('Failed to delete user');
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -155,6 +164,14 @@ export function UsersTab() {
 
   return (
     <div className="space-y-4">
+      {actionError && (
+        <div className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] dark:bg-[#EF4444]/10 p-3 text-sm text-[#B91C1C] dark:text-[#F87171] flex justify-between gap-3">
+          {actionError}
+          <button type="button" onClick={() => setActionError(null)} className="font-semibold">
+            Dismiss
+          </button>
+        </div>
+      )}
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

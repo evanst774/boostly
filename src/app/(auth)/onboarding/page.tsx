@@ -5,51 +5,53 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ChevronLeft, Sparkles } from 'lucide-react';
+import { MIN_WITHDRAWAL, PAYOUT_TIME_LABEL } from '@/lib/constants/payouts';
 
-const STEPS = [
+// Copy must match the real rules: per-plan daily tasks, mobile money payouts
+// at 3:00 PM (lib/constants/payouts.ts), and an 18% referral commission on a
+// friend's first plan/badge purchase (modules/referrals/service.ts).
+const STEPS: {
+  title: string;
+  description: string;
+  icon: string;
+  bg: string;
+  color: string;
+  emojis?: string[];
+  labels?: string[];
+  subLabels?: string[];
+  badges?: { name: string; reward: string; color: string; icon: string; bonus: string }[];
+  stats?: { value: string; label: string }[];
+}[] = [
   {
     title: 'Welcome to Boostly',
     description:
-      "Earn real money every day by watching videos, playing games, completing daily tasks, and inviting friends. It's that simple.",
+      'Earn real money every day by watching sponsored videos, playing games and answering short surveys. Each finished task adds RWF to your balance.',
     icon: '💡',
     bg: 'bg-gradient-to-br from-blue-500/10 via-blue-600/5 to-blue-500/10',
-    emojis: ['🎬', '🎮', '📅'],
-    labels: ['Watch Videos', 'Play Games', 'Daily Bonus'],
-    subLabels: ['+40 Rwf each', '+50 Rwf each', '+100 Rwf'],
+    emojis: ['🎬', '🎮', '📋'],
+    labels: ['Sponsored videos', 'Games', 'Surveys'],
+    subLabels: ['Daily tasks', 'Daily tasks', 'Daily tasks'],
     color: 'from-blue-500 to-blue-600',
   },
   {
-    title: 'Boost Your Daily Rewards',
-    description:
-      'Come back every day to claim your streak bonus. Upgrade to Gold or Platinum badges to multiply your earnings by up to 2×.',
-    icon: '💰',
+    title: 'Cash Out to Mobile Money',
+    description: `Request a withdrawal to any MTN or Airtel number. All withdrawals are paid every day at ${PAYOUT_TIME_LABEL}. Free members cash out weekly; paid plans cash out every day.`,
+    icon: '💸',
     bg: 'bg-gradient-to-br from-green-500/10 via-green-600/5 to-green-500/10',
-    badges: [
-      {
-        name: 'Silver Badge',
-        reward: '+15%',
-        color: 'border-gray-300',
-        icon: '🥈',
-        bonus: 'Rwf 5,000',
-      },
-      {
-        name: 'Gold Badge',
-        reward: '+30%',
-        color: 'border-gold',
-        icon: '🥇',
-        bonus: 'Rwf 10,000',
-      },
+    stats: [
+      { value: PAYOUT_TIME_LABEL, label: 'Daily payout' },
+      { value: `${MIN_WITHDRAWAL.toLocaleString()} RWF`, label: 'Minimum' },
     ],
     color: 'from-green-500 to-green-600',
   },
   {
     title: 'Invite Friends & Earn More',
     description:
-      'Share your unique referral code and earn Rwf 200 for every friend who joins. The more you share, the more you earn — together.',
+      'Share your referral code. When a friend you invited buys their first plan or badge, you earn 18% of it.',
     icon: '🚀',
     bg: 'bg-gradient-to-br from-purple-500/10 via-purple-600/5 to-purple-500/10',
     stats: [
-      { value: 'Rwf 200', label: 'Per referral' },
+      { value: '18%', label: 'Commission' },
       { value: '∞', label: 'No limit' },
     ],
     color: 'from-purple-500 to-purple-600',

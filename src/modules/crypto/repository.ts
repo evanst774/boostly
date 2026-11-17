@@ -1,4 +1,5 @@
 // src/modules/crypto/repository.ts
+import { SAFE_USER_COLUMNS } from '@/lib/db/schema/users';
 import { db } from '@/lib/db';
 import {
   cryptoCurrencies,
@@ -103,7 +104,7 @@ export class CryptoWalletsRepository {
     return await db.query.cryptoWallets.findFirst({
       where: eq(cryptoWallets.id, id),
       with: {
-        user: true,
+        user: { columns: SAFE_USER_COLUMNS },
         deposits: true,
         withdrawals: true,
       },
@@ -114,7 +115,7 @@ export class CryptoWalletsRepository {
     return await db.query.cryptoWallets.findMany({
       where: eq(cryptoWallets.userId, userId),
       with: {
-        user: true,
+        user: { columns: SAFE_USER_COLUMNS },
       },
       orderBy: [desc(cryptoWallets.createdAt)],
     });
@@ -130,7 +131,7 @@ export class CryptoWalletsRepository {
         eq(cryptoWallets.currency, currency),
       ),
       with: {
-        user: true,
+        user: { columns: SAFE_USER_COLUMNS },
       },
     });
   }
@@ -242,9 +243,9 @@ export class CryptoDepositsRepository {
     return await db.query.cryptoDeposits.findFirst({
       where: eq(cryptoDeposits.id, id),
       with: {
-        user: true,
+        user: { columns: SAFE_USER_COLUMNS },
         wallet: true,
-        processedByUser: true,
+        processedByUser: { columns: SAFE_USER_COLUMNS },
       },
     });
   }
@@ -272,7 +273,7 @@ export class CryptoDepositsRepository {
       db.query.cryptoDeposits.findMany({
         where: whereClause,
         with: {
-          user: true,
+          user: { columns: SAFE_USER_COLUMNS },
           wallet: true,
         },
         limit,
@@ -337,7 +338,7 @@ export class CryptoDepositsRepository {
     return await db.query.cryptoDeposits.findMany({
       where: eq(cryptoDeposits.status, 'PENDING'),
       with: {
-        user: true,
+        user: { columns: SAFE_USER_COLUMNS },
         wallet: true,
       },
       orderBy: [desc(cryptoDeposits.createdAt)],
@@ -407,9 +408,9 @@ export class CryptoWithdrawalsRepository {
     return await db.query.cryptoWithdrawals.findFirst({
       where: eq(cryptoWithdrawals.id, id),
       with: {
-        user: true,
+        user: { columns: SAFE_USER_COLUMNS },
         wallet: true,
-        processedByUser: true,
+        processedByUser: { columns: SAFE_USER_COLUMNS },
       },
     });
   }
@@ -437,7 +438,7 @@ export class CryptoWithdrawalsRepository {
       db.query.cryptoWithdrawals.findMany({
         where: whereClause,
         with: {
-          user: true,
+          user: { columns: SAFE_USER_COLUMNS },
           wallet: true,
         },
         limit,
@@ -518,7 +519,7 @@ export class CryptoWithdrawalsRepository {
     return await db.query.cryptoWithdrawals.findMany({
       where: eq(cryptoWithdrawals.status, 'PENDING'),
       with: {
-        user: true,
+        user: { columns: SAFE_USER_COLUMNS },
         wallet: true,
       },
       orderBy: [desc(cryptoWithdrawals.createdAt)],

@@ -21,6 +21,8 @@ interface ReferralFriend {
   name?: string;
   date?: string;
   status?: string;
+  /** Commission earned from this friend so far (RWF). */
+  reward: number;
 }
 
 // Custom SVG icons for Facebook and X (Twitter)
@@ -82,8 +84,14 @@ export default function ReferralsPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback
-      alert(`Referral code: ${referralCode}`);
+      // Clipboard blocked: select the code so the user can copy it manually.
+      const el = document.getElementById('referral-code');
+      if (el) {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        window.getSelection()?.removeAllRanges();
+        window.getSelection()?.addRange(range);
+      }
     }
   };
 
@@ -258,8 +266,8 @@ export default function ReferralsPage() {
           </div>
           <h2 className="text-2xl font-extrabold">Invite Friends &amp; Earn</h2>
           <p className="text-white/80 text-sm mt-2 max-w-sm mx-auto">
-            Share your unique code and earn <strong>200 RWF</strong> for every
-            friend who joins and starts earning on Boostly.
+            Share your code. When a friend you invited buys their first plan or
+            badge, you earn <strong>18%</strong> of it.
           </p>
           <div className="inline-flex items-center gap-2 bg-white/15 border border-white/25 rounded-full px-5 py-2.5 mt-4 text-sm font-bold">
             <Check size={16} className="text-white/80" />
@@ -303,7 +311,10 @@ export default function ReferralsPage() {
         <div className="flex items-center gap-3 mt-3">
           <div className="flex-1 bg-[#EFF6FF] border-2 border-dashed border-[#2563EB] rounded-xl px-4 py-3">
             {referralCode ? (
-              <p className="text-xl font-extrabold text-[#2563EB] tracking-widest text-center">
+              <p
+                id="referral-code"
+                className="text-xl font-extrabold text-[#2563EB] tracking-widest text-center select-all"
+              >
                 {referralCode}
               </p>
             ) : (
@@ -320,7 +331,7 @@ export default function ReferralsPage() {
           </button>
         </div>
         <p className="text-xs text-[#6B7280] text-center mt-3">
-          Share this code with friends to earn 200 RWF per successful referral
+          You earn 18% of each invited friend&apos;s first plan or badge purchase
         </p>
       </div>
 
@@ -393,8 +404,8 @@ export default function ReferralsPage() {
                 {
                   step: 3,
                   icon: '💰',
-                  title: 'You Both Earn',
-                  desc: 'You get 200 RWF instantly. Your friend gets a welcome bonus too!',
+                  title: 'You Earn 18%',
+                  desc: 'When your friend buys their first plan or badge, 18% of it is added to your balance (after a 7-day hold).',
                 },
               ].map((item) => (
                 <div key={item.step} className="flex items-start gap-4">
@@ -487,7 +498,16 @@ export default function ReferralsPage() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-[#22C55E]">+200 RWF</p>
+                  <p
+                    className={cn(
+                      'text-sm font-bold',
+                      friend.reward > 0 ? 'text-[#22C55E]' : 'text-[#9CA3AF]',
+                    )}
+                  >
+                    {friend.reward > 0
+                      ? `+${Math.round(friend.reward).toLocaleString()} RWF`
+                      : 'Earns 18% on first purchase'}
+                  </p>
                   <span
                     className={cn(
                       'text-[10px] font-semibold px-2 py-0.5 rounded-full text-white',
@@ -564,62 +584,39 @@ export default function ReferralsPage() {
             ))}
           </div>
 
-          {/* Earnings History */}
+          {/* Earnings History: real commissions only */}
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-[#F3F4F6]">
               <h3 className="text-sm font-bold">Earnings History</h3>
             </div>
-            {[
-              {
-                name: 'Alice Mukamana joined',
-                date: 'Jun 8, 2025 · Active user',
-                amount: 200,
-              },
-              {
-                name: 'Jean Niyonzima joined',
-                date: 'Jun 7, 2025 · Active user',
-                amount: 200,
-              },
-              {
-                name: 'Grace K. upgraded to Gold',
-                date: 'Jun 5, 2025 · Plan upgrade bonus',
-                amount: 500,
-              },
-              {
-                name: 'Patrick Manzi joined',
-                date: 'Jun 5, 2025 · Pending activation',
-                amount: 200,
-                pending: true,
-              },
-            ].map((item, index) => (
-              <div
-                key={index}
-                className={cn(
-                  'flex items-center gap-4 px-5 py-3',
-                  index !== 3 && 'border-b border-[#F3F4F6]',
-                )}
-              >
-                <div className="w-10 h-10 rounded-xl bg-[#F0FDF4] flex items-center justify-center text-lg flex-shrink-0">
-                  🤝
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#111827]">
-                    {item.name}
-                  </p>
-                  <p className="text-xs text-[#6B7280]">{item.date}</p>
-                </div>
-                <div className="text-right">
-                  <p
-                    className={cn(
-                      'text-sm font-bold',
-                      item.pending ? 'text-[#6B7280]' : 'text-[#22C55E]',
-                    )}
+            {(data?.friends || []).filter((f) => f.reward > 0).length === 0 ? (
+              <p className="px-5 py-8 text-sm text-center text-[#6B7280]">
+                No referral earnings yet. You&apos;ll see them here when an
+                invited friend buys their first plan or badge.
+              </p>
+            ) : (
+              (data?.friends || [])
+                .filter((f) => f.reward > 0)
+                .map((f) => (
+                  <div
+                    key={f.id}
+                    className="flex items-center gap-4 px-5 py-3 border-b border-[#F3F4F6] last:border-b-0"
                   >
-                    +{item.amount} RWF
-                  </p>
-                </div>
-              </div>
-            ))}
+                    <div className="w-10 h-10 rounded-xl bg-[#F0FDF4] flex items-center justify-center text-lg flex-shrink-0">
+                      🤝
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-[#111827] truncate">
+                        {f.name || 'Friend'}
+                      </p>
+                      <p className="text-xs text-[#6B7280]">{f.date}</p>
+                    </div>
+                    <p className="text-sm font-bold text-[#22C55E]">
+                      +{Math.round(f.reward).toLocaleString()} RWF
+                    </p>
+                  </div>
+                ))
+            )}
           </div>
         </div>
       )}

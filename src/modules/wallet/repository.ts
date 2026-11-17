@@ -1,4 +1,5 @@
 // src/modules/wallet/repository.ts
+import { SAFE_USER_COLUMNS } from '@/lib/db/schema/users';
 import { db } from '@/lib/db';
 import {
   wallets,
@@ -399,7 +400,7 @@ export class WithdrawalsRepository {
   async getPendingWithdrawals(): Promise<Withdrawal[]> {
     return await db.query.withdrawals.findMany({
       where: eq(withdrawals.status, WithdrawalStatusEnum.PENDING),
-      with: { user: true },
+      with: { user: { columns: SAFE_USER_COLUMNS } },
       orderBy: [desc(withdrawals.requestedAt)],
     });
   }

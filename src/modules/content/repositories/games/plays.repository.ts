@@ -1,4 +1,5 @@
 // src/modules/content/repositories/games/plays.repository.ts
+import { PUBLIC_USER_COLUMNS } from '@/lib/db/schema/users';
 import { and, desc, eq, lt, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db';
@@ -225,7 +226,7 @@ export class GamePlaysRepository {
         eq(gamePlays.gameId, gameId),
         eq(gamePlays.status, GamePlayStatusEnum.COMPLETED),
       ),
-      with: { user: true },
+      with: { user: { columns: PUBLIC_USER_COLUMNS } },
       limit: limit,
       orderBy: [desc(gamePlays.createdAt)],
     });
@@ -280,7 +281,7 @@ export class GamePlaysRepository {
         eq(gamePlays.gameId, gameId),
         eq(gamePlays.status, GamePlayStatusEnum.COMPLETED),
       ),
-      with: { user: true },
+      with: { user: { columns: PUBLIC_USER_COLUMNS } },
       orderBy: [desc(gamePlays.score)],
       limit: limit,
     });

@@ -185,7 +185,7 @@ export default function AdminAnalyticsPage() {
     labels: dates,
     datasets: [
       {
-        label: 'Revenue',
+        label: 'Rewards paid',
         data: amounts,
         borderColor: '#2563EB',
         backgroundColor: (context: ScriptableContext<'line'>) => {
@@ -379,31 +379,27 @@ export default function AdminAnalyticsPage() {
 
   const stats = [
     {
-      label: 'Total Revenue',
+      label: 'Rewards paid (all time)',
       value: formatAmount(data.totalRevenue || 0),
-      change: '+18.5%',
-      trend: 'up',
+      trend: 'neutral',
       icon: <DollarSign size={18} />,
     },
     {
-      label: 'Monthly Revenue',
+      label: 'Rewards paid (this month)',
       value: formatAmount(data.monthlyRevenue || 0),
-      change: '+12.3%',
-      trend: 'up',
+      trend: 'neutral',
       icon: <TrendingUp size={18} />,
     },
     {
-      label: 'Total Withdrawals',
+      label: 'Withdrawn to users',
       value: formatAmount(data.totalWithdrawals || 0),
-      change: '-5.2%',
-      trend: 'down',
+      trend: 'neutral',
       icon: <Wallet size={18} />,
     },
     {
       label: 'Active Users',
       value: data.activeUsers?.toLocaleString() || '0',
-      change: '+8.1%',
-      trend: 'up',
+      trend: 'neutral',
       icon: <Users size={18} />,
     },
   ];
@@ -458,7 +454,6 @@ export default function AdminAnalyticsPage() {
             key={index}
             label={stat.label}
             value={stat.value}
-            change={stat.change}
             icon={stat.icon}
             color={
               stat.trend === 'up'
@@ -486,7 +481,7 @@ export default function AdminAnalyticsPage() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-[#0F172A] dark:text-white">
-                  Revenue Overview
+                  Rewards Paid Overview
                 </h3>
                 <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8]">
                   {timeRange === '7d'
