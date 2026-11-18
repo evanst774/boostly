@@ -111,6 +111,14 @@ export const companySettings = sqliteTable('company_settings', {
   currencySymbol: text('currencySymbol').notNull().default('RWF'),
 
   // ============================================
+  // MOBILE MONEY (members pay plans to these numbers)
+  // ============================================
+  momoMtnNumber: text('momoMtnNumber'),
+  momoAirtelNumber: text('momoAirtelNumber'),
+  /** Name registered on the numbers, shown so members can check before paying. */
+  momoAccountName: text('momoAccountName'),
+
+  // ============================================
   // LOCALE SETTINGS
   // ============================================
   timezone: text('timezone').default('Africa/Kigali'),

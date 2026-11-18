@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBadges, type SubscriptionPlan } from '@/hooks/useBadges';
+import { MomoCheckout } from '@/components/app/MomoCheckout';
 import {
   RECOMMENDED_TIER,
   TIERS,
@@ -122,6 +123,16 @@ function yearlySavings(plan: PlanView) {
   return Math.max(0, full - plan.priceYearly);
 }
 
+interface PlanPaymentView {
+  id: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  amount: number;
+  transactionRef: string;
+  rejectionReason: string | null;
+  createdAt: string;
+  plan?: { name: string; tier: string } | null;
+}
+
 export default function PlansPage() {
   const { data, isLoading, refetch } = useBadges();
   const [cycle, setCycle] = useState<BillingCycle>('MONTHLY');
@@ -133,6 +144,17 @@ export default function PlansPage() {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
+  const [payMethod, setPayMethod] = useState<'MOMO' | 'WALLET'>('MOMO');
+  const [payments, setPayments] = useState<PlanPaymentView[]>([]);
+
+  const loadPayments = async () => {
+    try {
+      const res = await fetch('/api/plan-payments', { cache: 'no-store' });
+      if (res.ok) setPayments((await res.json()).payments || []);
+    } catch {
+      /* informational */
+    }
+  };
 
   const plans = useMemo(() => buildPlans(data?.allPlans ?? []), [data]);
   const subscription = data?.subscription ?? null;
@@ -153,12 +175,20 @@ export default function PlansPage() {
 
   useEffect(() => {
     loadBalance();
+    loadPayments();
   }, []);
+
+  const pendingPayment = payments.find((p) => p.status === 'PENDING') ?? null;
+  // Show a rejection only until the member submits again.
+  const lastRejected =
+    !pendingPayment && payments[0]?.status === 'REJECTED' ? payments[0] : null;
 
   const openCheckout = (plan: PlanView) => {
     setError(null);
     setSuccess(null);
     setCheckoutPlan(plan);
+    // Wallet purchase only works without an active paid plan.
+    setPayMethod('MOMO');
     loadBalance();
   };
 
@@ -252,6 +282,34 @@ export default function PlansPage() {
           </button>
         </div>
       )}
+      {pendingPayment && (
+        <div className="flex items-start gap-3 rounded-2xl border border-[#BFDBFE] bg-[#EFF6FF] dark:bg-[#2563EB]/10 dark:border-[#2563EB]/30 p-4">
+          <Clock size={18} className="mt-0.5 shrink-0 text-[#2563EB]" />
+          <div className="text-sm">
+            <p className="font-semibold text-[#0F172A] dark:text-white">
+              Checking your payment for {pendingPayment.plan?.name ?? 'your plan'}
+            </p>
+            <p className="text-[#475569] dark:text-[#CBD5E1]">
+              {rwf(pendingPayment.amount)} · transaction {pendingPayment.transactionRef}. Your plan
+              activates as soon as an admin confirms it.
+            </p>
+          </div>
+        </div>
+      )}
+      {lastRejected && (
+        <div className="flex items-start gap-3 rounded-2xl border border-[#FECACA] bg-[#FEF2F2] dark:bg-[#EF4444]/10 dark:border-[#EF4444]/30 p-4">
+          <X size={18} className="mt-0.5 shrink-0 text-[#DC2626]" />
+          <div className="text-sm">
+            <p className="font-semibold text-[#0F172A] dark:text-white">
+              We couldn&apos;t confirm your last payment
+            </p>
+            <p className="text-[#475569] dark:text-[#CBD5E1]">
+              {lastRejected.rejectionReason || 'Please check the details and try again.'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {error && !checkoutPlan && (
         <div className="flex items-start gap-3 rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-4 text-sm text-[#B91C1C] dark:border-[#EF4444]/30 dark:bg-[#EF4444]/10 dark:text-[#FCA5A5]">
           <p className="flex-1">{error}</p>
@@ -448,7 +506,16 @@ export default function PlansPage() {
               </ul>
 
               <div className="mt-5">
-                {isCurrent ? (
+                {isCurrent && !isFree ? (
+                  <button
+                    type="button"
+                    onClick={() => openCheckout(plan)}
+                    disabled={!plan.id || !!pendingPayment}
+                    className="w-full rounded-xl border border-[#E2E8F0] dark:border-[#334155] py-2.5 text-sm font-semibold text-[#0F172A] dark:text-white hover:bg-[#F8FAFC] dark:hover:bg-[#0F172A] disabled:opacity-50"
+                  >
+                    Your plan · Renew
+                  </button>
+                ) : isCurrent ? (
                   <div className="w-full rounded-xl bg-[#F1F5F9] dark:bg-[#0F172A] py-2.5 text-center text-sm font-semibold text-[#64748B] dark:text-[#94A3B8]">
                     Your plan
                   </div>
@@ -460,12 +527,8 @@ export default function PlansPage() {
                   <button
                     type="button"
                     onClick={() => openCheckout(plan)}
-                    disabled={!plan.id || (!!subscription && currentTier !== 'FREE')}
-                    title={
-                      subscription && currentTier !== 'FREE'
-                        ? 'Cancel your current plan first to switch'
-                        : undefined
-                    }
+                    disabled={!plan.id || !!pendingPayment}
+                    title={pendingPayment ? 'A payment is waiting for review' : undefined}
                     className={cn(
                       'w-full rounded-xl py-2.5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
                       isRecommended
@@ -568,73 +631,111 @@ export default function PlansPage() {
               </button>
             </div>
 
-            <div className="mt-4 space-y-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0F172A] p-4 text-sm">
-              <div className="flex justify-between">
-                <span className="text-[#64748B] dark:text-[#94A3B8]">
-                  {cycle === 'MONTHLY' ? 'Monthly' : 'Yearly'} price
-                </span>
-                <span className="font-bold text-[#0F172A] dark:text-white">
-                  {rwf(checkoutPrice)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="flex items-center gap-1.5 text-[#64748B] dark:text-[#94A3B8]">
-                  <Wallet size={14} /> Wallet balance
-                </span>
-                <span
-                  className={cn(
-                    'font-semibold',
-                    notEnough ? 'text-[#EF4444]' : 'text-[#0F172A] dark:text-white',
-                  )}
-                >
-                  {balance === null ? '—' : rwf(balance)}
-                </span>
-              </div>
-              <div className="flex justify-between border-t border-[#E2E8F0] dark:border-[#334155] pt-2">
-                <span className="flex items-center gap-1.5 text-[#64748B] dark:text-[#94A3B8]">
-                  <Clock size={14} /> Withdraw
-                </span>
-                <span className="font-semibold text-[#2563EB] dark:text-[#60A5FA]">
-                  Every day at {PAYOUT_TIME_LABEL}
-                </span>
-              </div>
+            {/* Payment method */}
+            <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-[#F1F5F9] dark:bg-[#0F172A] p-1">
+              {(['MOMO', 'WALLET'] as const).map((m) => {
+                const walletBlocked = m === 'WALLET' && !!subscription && currentTier !== 'FREE';
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    disabled={walletBlocked}
+                    onClick={() => setPayMethod(m)}
+                    title={walletBlocked ? 'Wallet payment is only for members without a paid plan' : undefined}
+                    className={cn(
+                      'rounded-lg py-2 text-sm font-semibold transition-colors disabled:opacity-40',
+                      payMethod === m
+                        ? 'bg-white text-[#0F172A] shadow-sm dark:bg-[#334155] dark:text-white'
+                        : 'text-[#64748B] dark:text-[#94A3B8]',
+                    )}
+                  >
+                    {m === 'MOMO' ? 'Mobile money' : 'Wallet balance'}
+                  </button>
+                );
+              })}
             </div>
 
-            <p className="mt-3 text-xs text-[#64748B] dark:text-[#94A3B8]">
-              The price is paid from your Boostly wallet balance. Your new daily
-              tasks ({checkoutPlan.videos} videos, {checkoutPlan.games} games,{' '}
-              {checkoutPlan.surveys} surveys) start right away.
-            </p>
-
-            {error && (
-              <p className="mt-3 rounded-lg bg-[#FEF2F2] dark:bg-[#EF4444]/10 p-3 text-sm text-[#B91C1C] dark:text-[#FCA5A5]">
-                {error}
+            {payMethod === 'MOMO' ? (
+              <div className="max-h-[65vh] overflow-y-auto -mx-1 px-1">
+                <MomoCheckout
+                  planId={checkoutPlan.id!}
+                  planName={checkoutPlan.name}
+                  amount={checkoutPrice}
+                  billingCycle={cycle}
+                  onSubmitted={loadPayments}
+                />
+              </div>
+            ) : (
+              <>
+            <div className="mt-4 space-y-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0F172A] p-4 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-[#64748B] dark:text-[#94A3B8]">
+                    {cycle === 'MONTHLY' ? 'Monthly' : 'Yearly'} price
+                  </span>
+                  <span className="font-bold text-[#0F172A] dark:text-white">
+                    {rwf(checkoutPrice)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="flex items-center gap-1.5 text-[#64748B] dark:text-[#94A3B8]">
+                    <Wallet size={14} /> Wallet balance
+                  </span>
+                  <span
+                    className={cn(
+                      'font-semibold',
+                      notEnough ? 'text-[#EF4444]' : 'text-[#0F172A] dark:text-white',
+                    )}
+                  >
+                    {balance === null ? '—' : rwf(balance)}
+                  </span>
+                </div>
+                <div className="flex justify-between border-t border-[#E2E8F0] dark:border-[#334155] pt-2">
+                  <span className="flex items-center gap-1.5 text-[#64748B] dark:text-[#94A3B8]">
+                    <Clock size={14} /> Withdraw
+                  </span>
+                  <span className="font-semibold text-[#2563EB] dark:text-[#60A5FA]">
+                    Every day at {PAYOUT_TIME_LABEL}
+                  </span>
+                </div>
+              </div>
+  
+              <p className="mt-3 text-xs text-[#64748B] dark:text-[#94A3B8]">
+                The price is paid from your Boostly wallet balance. Your new daily
+                tasks ({checkoutPlan.videos} videos, {checkoutPlan.games} games,{' '}
+                {checkoutPlan.surveys} surveys) start right away.
               </p>
-            )}
-
-            <button
-              type="button"
-              onClick={handleSubscribe}
-              disabled={submitting || notEnough}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] py-3 text-sm font-bold text-white hover:bg-[#1D4ED8] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" /> Activating…
-                </>
-              ) : notEnough ? (
-                'Not enough balance'
-              ) : (
-                `Pay ${rwf(checkoutPrice)} and activate`
+  
+              {error && (
+                <p className="mt-3 rounded-lg bg-[#FEF2F2] dark:bg-[#EF4444]/10 p-3 text-sm text-[#B91C1C] dark:text-[#FCA5A5]">
+                  {error}
+                </p>
               )}
-            </button>
-            {notEnough && (
-              <p className="mt-2 text-center text-xs text-[#64748B] dark:text-[#94A3B8]">
-                You need {rwf(checkoutPrice - (balance ?? 0))} more.{' '}
-                <Link href="/dashboard" className="font-semibold text-[#2563EB] dark:text-[#60A5FA]">
-                  Complete today&apos;s tasks
-                </Link>
-              </p>
+  
+              <button
+                type="button"
+                onClick={handleSubscribe}
+                disabled={submitting || notEnough}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] py-3 text-sm font-bold text-white hover:bg-[#1D4ED8] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" /> Activating…
+                  </>
+                ) : notEnough ? (
+                  'Not enough balance'
+                ) : (
+                  `Pay ${rwf(checkoutPrice)} and activate`
+                )}
+              </button>
+              {notEnough && (
+                <p className="mt-2 text-center text-xs text-[#64748B] dark:text-[#94A3B8]">
+                  You need {rwf(checkoutPrice - (balance ?? 0))} more.{' '}
+                  <Link href="/dashboard" className="font-semibold text-[#2563EB] dark:text-[#60A5FA]">
+                    Complete today&apos;s tasks
+                  </Link>
+                </p>
+              )}
+              </>
             )}
           </div>
         </div>

@@ -75,6 +75,9 @@ export * from './referrals';
 // Badges & Subscriptions
 export * from './badges';
 
+// Mobile money plan payments
+export * from './payments';
+
 // ============================================
 // ADMIN/MONITORING
 // ============================================

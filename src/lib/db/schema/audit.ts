@@ -165,6 +165,11 @@ export const auditActions = [
   'SUBSCRIPTION_PLAN_UPDATED',
   'SUBSCRIPTION_PLAN_DELETED',
   'SUBSCRIPTION_CREATED',
+  'SUBSCRIPTION_ACTIVATED',
+  'PLAN_PAYMENT_SUBMITTED',
+  'PLAN_PAYMENT_APPROVED',
+  'PLAN_PAYMENT_REJECTED',
+  'PAYMENT_SETTINGS_UPDATED',
   'SUBSCRIPTION_CANCELLED',
   'SUBSCRIPTION_RENEWED',
   'SUBSCRIPTION_EXPIRED',
@@ -228,6 +233,8 @@ export const auditEntityTypes = [
   'survey',
   'survey_question',
   'survey_response',
+  'plan_payment',
+  'company_settings',
   'report', // ← ADD THIS
 
   // Rewards

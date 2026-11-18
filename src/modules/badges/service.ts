@@ -25,7 +25,10 @@ import { requirePermission } from '@/lib/auth/permissions';
 import { BadgesPermissions } from './permissions';
 import { walletService } from '../wallet/service';
 import { rewardsService } from '../rewards/service';
-import { RewardTypeEnum } from '@/lib/db/schema';
+import { RewardTypeEnum, userSubscriptions, type SubscriptionPlan } from '@/lib/db/schema';
+import { db } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { notificationsService } from '@/lib/notifications';
 import {
   referralsService,
   QualifyingPurchaseEnum,
@@ -402,59 +405,14 @@ export class BadgesService {
       referenceType: 'subscription',
     });
 
-    // Calculate expiry
-    const expiresAt = new Date();
-    if (validated.billingCycle === 'MONTHLY') {
-      expiresAt.setMonth(expiresAt.getMonth() + 1);
-    } else {
-      expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-    }
-
-    // Create subscription
-    const subscription = await userSubscriptionsRepository.create({
+    const subscription = await activateSubscription({
       userId: user.id,
-      planId: plan.id,
-      status: 'ACTIVE',
-      startsAt: new Date().toISOString(),
-      expiresAt: expiresAt.toISOString(),
+      plan,
       billingCycle: validated.billingCycle,
       autoRenew: validated.autoRenew || false,
-    });
-
-    // Create subscription bonus reward (dailyEarnings * 30)
-    const bonusAmount = (plan.dailyEarnings ?? 0) * 30;
-    if (bonusAmount > 0) {
-      // FIX: `amount` -> `baseAmount`, plus a required `scope`. This call
-      // previously didn't compile against CreateRewardInput (same class of
-      // error as purchaseBadge() above). Scoped to this subscription
-      // instance so a later re-subscribe (new subscription row) can still
-      // earn its own welcome bonus, but this exact subscription can't be
-      // double-credited by a retried request.
-      await rewardsService.createReward({
-        userId: user.id,
-        type: RewardTypeEnum.SUBSCRIPTION_BONUS,
-        baseAmount: bonusAmount,
-        description: `Welcome to ${plan.name} subscription`,
-        sourceId: plan.id,
-        sourceType: 'subscription',
-        scope: subscription.id,
-      });
-    }
-
-    // Same referral commission as purchaseBadge() — see comment there.
-    await referralsService.recordPurchaseCommission(user.id, {
-      type: QualifyingPurchaseEnum.SUBSCRIPTION_PAYMENT,
-      referenceId: subscription.id,
-      netAmount: price,
-      label: `${plan.name} subscription`,
-    });
-
-    await createAuditLog({
-      userId: user.id,
-      action: 'SUBSCRIPTION_CREATED',
-      entityType: 'user_subscription',
-      entityId: subscription.id,
-      newData: { planId: plan.id, billingCycle: validated.billingCycle },
+      amountPaid: price,
+      source: 'WALLET',
+      actorId: user.id,
     });
 
     return { subscription, plan };
@@ -593,3 +551,116 @@ export class BadgesService {
 // EXPORT SERVICES
 // ============================================
 export const badgesService = new BadgesService();
+
+// ============================================
+// PLAN ACTIVATION (shared by wallet purchase and mobile money approval)
+// ============================================
+
+/**
+ * Activates (or renews / switches) a member's plan after it has been paid.
+ *
+ * user_subscriptions.userId is UNIQUE, so a member has one row for life:
+ * this updates it in place instead of inserting (inserting made anyone with
+ * a past subscription unable to subscribe again).
+ *
+ * Renewing the SAME active plan extends from its current expiry, so paid
+ * days are never lost; a different plan starts now.
+ */
+export async function activateSubscription(params: {
+  userId: string;
+  plan: SubscriptionPlan;
+  billingCycle: 'MONTHLY' | 'YEARLY';
+  autoRenew?: boolean;
+  amountPaid: number;
+  source: 'WALLET' | 'MOBILE_MONEY';
+  /** Who triggered it (the member, or the approving admin). */
+  actorId: string;
+  /** Mobile money payment id, when applicable. */
+  paymentId?: string;
+}) {
+  const { userId, plan, billingCycle } = params;
+  const now = new Date();
+
+  const current = await db.query.userSubscriptions.findFirst({
+    where: eq(userSubscriptions.userId, userId),
+  });
+
+  const stillActive =
+    current &&
+    current.status === 'ACTIVE' &&
+    (!current.expiresAt || new Date(current.expiresAt) > now);
+  const base =
+    stillActive && current.planId === plan.id && current.expiresAt
+      ? new Date(current.expiresAt)
+      : now;
+  const expiresAt = new Date(base);
+  if (billingCycle === 'MONTHLY') expiresAt.setMonth(expiresAt.getMonth() + 1);
+  else expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+
+  const values = {
+    planId: plan.id,
+    status: 'ACTIVE',
+    startsAt: now.toISOString(),
+    expiresAt: expiresAt.toISOString(),
+    cancelledAt: null,
+    billingCycle,
+    autoRenew: params.autoRenew ?? false,
+    updatedAt: now.toISOString(),
+  };
+
+  const [subscription] = current
+    ? await db
+        .update(userSubscriptions)
+        .set(values)
+        .where(eq(userSubscriptions.id, current.id))
+        .returning()
+    : await db
+        .insert(userSubscriptions)
+        .values({ userId, ...values })
+        .returning();
+
+  // Each activation is its own event (the row is reused across renewals).
+  const activationKey = params.paymentId ?? `${subscription.id}:${values.startsAt}`;
+
+  const bonusAmount = (plan.dailyEarnings ?? 0) * 30;
+  if (bonusAmount > 0) {
+    await rewardsService.createReward({
+      userId,
+      type: RewardTypeEnum.SUBSCRIPTION_BONUS,
+      baseAmount: bonusAmount,
+      description: `Welcome to ${plan.name}`,
+      sourceId: plan.id,
+      sourceType: 'subscription',
+      scope: activationKey,
+    });
+  }
+
+  await referralsService.recordPurchaseCommission(userId, {
+    type: QualifyingPurchaseEnum.SUBSCRIPTION_PAYMENT,
+    referenceId: activationKey,
+    netAmount: params.amountPaid,
+    label: `${plan.name} subscription`,
+  });
+
+  await createAuditLog({
+    userId: params.actorId,
+    action: 'SUBSCRIPTION_ACTIVATED',
+    entityType: 'user_subscription',
+    entityId: subscription.id,
+    newData: {
+      memberId: userId,
+      planId: plan.id,
+      billingCycle,
+      source: params.source,
+      paymentId: params.paymentId,
+      expiresAt: values.expiresAt,
+    },
+  });
+
+  await notificationsService
+    .notifySubscriptionStatus(userId, plan.name, stillActive && current?.planId === plan.id ? 'renewed' : 'activated')
+    .catch(() => {});
+
+  return subscription;
+}
+

@@ -11,6 +11,7 @@ import {
   FileText,
   Award,
   Wallet,
+  Smartphone,
   BarChart3,
   Settings,
   Menu,
@@ -103,8 +104,12 @@ const navItems: NavItem[] = [
     href: '/admin/withdrawals',
     icon: <Wallet size={18} />,
     section: 'finance',
-    badge: 3,
-    badgeColor: 'gold',
+  },
+  {
+    name: 'Plan payments',
+    href: '/admin/payments',
+    icon: <Smartphone size={18} />,
+    section: 'finance',
   },
   {
     name: 'Subscriptions',
@@ -118,6 +123,12 @@ const navItems: NavItem[] = [
     name: 'General',
     href: '/admin/settings/general',
     icon: <Settings size={18} />,
+    section: 'settings',
+  },
+  {
+    name: 'Mobile money',
+    href: '/admin/settings/payments',
+    icon: <Smartphone size={18} />,
     section: 'settings',
   },
   {
