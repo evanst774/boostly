@@ -38,10 +38,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import {
-  ArrowLeft,
   Play,
   Clock,
   Award,
@@ -76,6 +73,7 @@ import {
 } from 'lucide-react';
 import { useVideos, type VideoWithProgress } from '@/hooks/useVideos';
 import { useVideoWatch } from '@/hooks/useVideoWatch';
+import { Thumb } from '@/components/app/Thumb';
 import { useSystemCurrency } from '@/hooks/useSystemCurrency';
 import { cn, formatDuration } from '@/lib/utils';
 import { type VideoCategory as SchemaVideoCategory } from '@/lib/db/schema';
@@ -368,7 +366,6 @@ const SEEK_TOLERANCE_SECONDS = 2;
 const POLL_INTERVAL_MS = 500;
 
 export default function VideosPage() {
-  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<UICategory>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedVideo, setSelectedVideo] = useState<VideoWithProgress | null>(
@@ -861,26 +858,9 @@ export default function VideosPage() {
   }, [stopPolling]);
 
   return (
-    <div className="space-y-4 sm:space-y-5 pb-16 sm:pb-20 lg:pb-0 font-outfit max-w-7xl mx-auto px-3 sm:px-4 md:px-6 touch-manipulation">
+    <div className="space-y-4 sm:space-y-5 font-outfit max-w-7xl mx-auto touch-manipulation">
       {/* Header with Stats */}
       <div className="flex flex-col xs:flex-row xs:items-center gap-3 xs:gap-4">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <button
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border border-[#F1F5F9] dark:border-[#334155] flex items-center justify-center hover:border-[#2563EB] hover:bg-[#EFF6FF] dark:hover:bg-[#2563EB]/10 transition-all touch-min-target flex-shrink-0"
-            onClick={() => router.back()}
-          >
-            <ArrowLeft className="w-4 h-4 sm:w-[17px] sm:h-[17px] text-[#64748B] dark:text-[#94A3B8]" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-base sm:text-lg md:text-xl font-bold text-[#0F172A] dark:text-white truncate">
-              Videos
-            </h1>
-            <p className="text-[10px] sm:text-xs md:text-sm text-[#64748B] dark:text-[#94A3B8] truncate">
-              Watch and earn rewards
-            </p>
-          </div>
-        </div>
-
         <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-1 sm:pb-0 flex-nowrap xs:flex-wrap">
           <div className="flex items-center gap-1 bg-[#F0FDF4] dark:bg-[#22C55E]/20 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full flex-shrink-0">
             <Award className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#22C55E] dark:text-[#4ADE80]" />
@@ -966,19 +946,11 @@ export default function VideosPage() {
                 onClick={() => handleWatchVideo(video)}
               >
                 <div className="relative aspect-video bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] overflow-hidden">
-                  {video.thumbnailUrl ? (
-                    <Image
-                      src={video.thumbnailUrl}
-                      alt={video.title}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-3xl sm:text-4xl">
-                      🎬
-                    </div>
-                  )}
+                  <Thumb
+                    src={video.thumbnailUrl}
+                    className="group-hover:scale-105 transition-transform duration-300"
+                    iconClassName="w-8 h-8"
+                  />
                   <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
                       <Play className="w-4 h-4 sm:w-5 sm:h-5 text-[#2563EB] ml-0.5" />
@@ -1084,19 +1056,11 @@ export default function VideosPage() {
                   )}
 
                   <div className="relative w-20 sm:w-24 md:w-28 h-14 sm:h-16 md:h-20 rounded-lg bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] flex-shrink-0 overflow-hidden">
-                    {video.thumbnailUrl ? (
-                      <Image
-                        src={video.thumbnailUrl}
-                        alt={video.title}
-                        width={112}
-                        height={80}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xl sm:text-2xl md:text-3xl">
-                        🎬
-                      </div>
-                    )}
+                    <Thumb
+                      src={video.thumbnailUrl}
+                      className="group-hover:scale-105 transition-transform duration-300"
+                      iconClassName="w-5 h-5"
+                    />
 
                     {isSponsored && (
                       <div className="absolute top-0.5 left-0.5 bg-gradient-to-r from-[#F59E0B] to-[#FBBF24] text-[#0F172A] text-[6px] sm:text-[10px] md:text-[10px] font-bold px-1 sm:px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow-lg">

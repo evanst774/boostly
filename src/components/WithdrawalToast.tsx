@@ -70,7 +70,7 @@ export function WithdrawalToast({
   // ─── Detect mobile ──────────────────────────────
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 640);
+      setIsMobile(window.innerWidth < 1024);
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -235,8 +235,9 @@ export function WithdrawalToast({
 
   // ─── Mobile vs Desktop positioning ──────────────
   // CHANGED: Both mobile and desktop now use left positioning
+  // Phones: float above the 64px tab bar (and the home indicator).
   const positionClasses = isMobile
-    ? 'bottom-4 left-4 right-4 max-w-full'
+    ? 'bottom-[calc(76px+env(safe-area-inset-bottom))] left-4 right-4 max-w-full'
     : 'bottom-6 left-6 max-w-sm';
 
   return (

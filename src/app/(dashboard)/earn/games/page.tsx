@@ -2,10 +2,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
-  ArrowLeft,
   Award,
   Clock,
   Crown,
@@ -482,7 +480,6 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
 // ============================================
 
 export default function GamesPage() {
-  const router = useRouter();
   const { formatAmount } = useSystemCurrency();
 
   const [selectedCategory, setSelectedCategory] = useState<UICategory>('all');
@@ -541,30 +538,9 @@ export default function GamesPage() {
   const featured = allGames[0];
 
   return (
-    <div className="space-y-5 pb-20 lg:pb-0 font-outfit max-w-7xl mx-auto px-3 sm:px-4">
+    <div className="space-y-5 font-outfit max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        <div className="flex items-center gap-3">
-          <button
-            className="w-9 h-9 rounded-xl border border-[#F1F5F9] dark:border-[#334155] flex items-center justify-center hover:border-[#2563EB] hover:bg-[#EFF6FF] dark:hover:bg-[#2563EB]/10 transition-all touch-min-target"
-            onClick={() => router.back()}
-            aria-label="Go back"
-          >
-            <ArrowLeft
-              size={17}
-              className="text-[#64748B] dark:text-[#94A3B8]"
-            />
-          </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-white">
-              Games
-            </h1>
-            <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] truncate">
-              Play and earn rewards
-            </p>
-          </div>
-        </div>
-
         <div className="flex items-center gap-3 overflow-x-auto pb-1 sm:pb-0">
           <div className="flex items-center gap-1.5 bg-[#F5F3FF] dark:bg-[#8B5CF6]/20 px-3 py-1.5 rounded-full flex-shrink-0">
             <Trophy size={14} className="text-[#8B5CF6] dark:text-[#A78BFA]" />

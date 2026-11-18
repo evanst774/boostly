@@ -66,8 +66,7 @@ export const metadata: Metadata = {
     telephone: false,
   },
 
-  // PWA manifest
-  manifest: '/manifest.json',
+  // PWA manifest: generated from src/app/manifest.ts (/manifest.webmanifest).
 
   openGraph: {
     title: 'Boostly - Earn Rewards. Get Paid. Every Day.',
@@ -194,7 +193,6 @@ export default function RootLayout({
         />
 
         {/* PWA Manifest */}
-        <link rel="manifest" href="/manifest.json" />
 
         {/* Theme & PWA */}
         <meta name="theme-color" content="#2563EB" />

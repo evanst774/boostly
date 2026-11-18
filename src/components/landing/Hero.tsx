@@ -44,7 +44,7 @@ export function Hero({ data }: { data: LandingData }) {
   ];
 
   return (
-    <section className="relative overflow-hidden bg-[#070B14] pt-28 sm:pt-32 pb-14">
+    <section id="top" className="relative overflow-hidden bg-[#070B14] pt-24 sm:pt-32 pb-14">
       {/* Soft light, not blobs: one wide glow behind the headline */}
       <div
         aria-hidden

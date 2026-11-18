@@ -48,12 +48,15 @@ export function useSystemCurrency() {
     fetchSystemCurrency();
   }, [fetchSystemCurrency]);
 
+  // One money style app-wide: "1,000 RWF". RWF has no minor unit, so it is
+  // always shown in whole francs whatever decimalPlaces the settings say.
   const formatAmount = (amount: number): string => {
+    const places = currency.code === 'RWF' ? 0 : currency.decimalPlaces;
     const formatter = new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: currency.decimalPlaces,
-      maximumFractionDigits: currency.decimalPlaces,
+      minimumFractionDigits: places,
+      maximumFractionDigits: places,
     });
-    return `${currency.symbol} ${formatter.format(amount)}`;
+    return `${formatter.format(amount)} ${currency.code}`;
   };
 
   return {

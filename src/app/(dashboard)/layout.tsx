@@ -6,15 +6,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  Home,
-  Gamepad2,
   Wallet,
   Settings,
-  Menu,
   ChevronRight,
+  ChevronLeft,
   Users,
-  Search,
-  X,
   Sun,
   Moon,
   HelpCircle,
@@ -34,6 +30,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { TabBar } from '@/components/app/TabBar';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -120,20 +117,36 @@ const navItems: NavItem[] = [
   },
 ];
 
-// Mobile bottom nav items
-const bottomNavItems = [
-  { name: 'Home', href: '/dashboard', icon: Home },
-  { name: 'Videos', href: '/earn/videos', icon: PlayCircle },
-  { name: 'Games', href: '/earn/games', icon: Gamepad2 },
-  { name: 'Withdraw', href: '/wallet/withdraw', icon: Smartphone },
-  { name: 'Wallet', href: '/wallet', icon: Wallet },
-];
 
 // Quick actions
 const quickActions = [
   { icon: <Smartphone size={14} />, label: 'Withdraw', href: '/wallet/withdraw' },
   { icon: <Crown size={14} />, label: 'Plans', href: '/plans' },
 ];
+
+const MOBILE_SCREENS: { prefix: string; title: string; back?: string }[] = [
+  { prefix: '/wallet/withdraw', title: 'Withdraw', back: '/wallet' },
+  { prefix: '/wallet/history', title: 'History', back: '/wallet' },
+  { prefix: '/wallet/earnings', title: 'Earnings', back: '/wallet' },
+  { prefix: '/wallet', title: 'Wallet' },
+  { prefix: '/earn', title: 'Earn' },
+  { prefix: '/plans', title: 'Plans' },
+  { prefix: '/referrals', title: 'Invite friends', back: '/me' },
+  { prefix: '/badges', title: 'Badges', back: '/me' },
+  { prefix: '/notifications', title: 'Notifications', back: '/me' },
+  { prefix: '/settings', title: 'Settings', back: '/me' },
+  { prefix: '/me', title: 'Me' },
+  { prefix: '/dashboard', title: 'Home' },
+];
+
+function getMobileScreen(pathname: string) {
+  return (
+    MOBILE_SCREENS.find((s) => pathname === s.prefix || pathname.startsWith(`${s.prefix}/`)) ?? {
+      title: 'Boostly',
+      back: '/dashboard',
+    }
+  );
+}
 
 export default function DashboardLayout({
   children,
@@ -142,8 +155,6 @@ export default function DashboardLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -176,12 +187,7 @@ export default function DashboardLayout({
   // ─── Keyboard shortcuts ──────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
       if (e.key === 'Escape') {
-        setSearchOpen(false);
         setSidebarOpen(false);
         setIsProfileOpen(false);
       }
@@ -191,13 +197,13 @@ export default function DashboardLayout({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // ─── Lock body scroll while the mobile sidebar/search is open ────
+  // ─── Lock body scroll while the mobile sidebar is open ────
   useEffect(() => {
-    document.body.style.overflow = sidebarOpen || searchOpen ? 'hidden' : '';
+    document.body.style.overflow = sidebarOpen ? 'hidden' : '';
     return () => {
       document.body.style.overflow = '';
     };
-  }, [sidebarOpen, searchOpen]);
+  }, [sidebarOpen]);
 
   // ─── Click outside to close profile dropdown ──────────
   useEffect(() => {
@@ -222,6 +228,10 @@ export default function DashboardLayout({
 
   const getPageTitle = () => activeNavItem?.name || 'Dashboard';
 
+  // Phone title + back target. Tab roots have no back arrow; sub-screens go
+  // back to their tab.
+  const mobileScreen = getMobileScreen(pathname || '/dashboard');
+
   const getInitials = (name: string) =>
     name
       .split(' ')
@@ -238,27 +248,6 @@ export default function DashboardLayout({
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
     document.documentElement.classList.toggle('dark');
-  };
-
-  // Check if current path matches bottom nav.
-  // More specific routes are checked first so a sub-route (e.g. /earn/games)
-  // never lights up its parent tab (e.g. Earn) at the same time.
-  const isBottomNavActive = (href: string) => {
-    if (href === '/dashboard') return pathname === '/dashboard';
-    if (href === '/earn/games')
-      return pathname?.startsWith('/earn/games') ?? false;
-    if (href === '/earn/videos')
-      return pathname?.startsWith('/earn/videos') ?? false;
-    if (href === '/wallet/withdraw')
-      return pathname?.startsWith('/wallet/withdraw') ?? false;
-    if (href === '/wallet')
-      return (
-        (pathname?.startsWith('/wallet') ?? false) &&
-        !pathname?.startsWith('/wallet/withdraw')
-      );
-    if (href === '/settings/profile')
-      return pathname?.startsWith('/settings') ?? false;
-    return pathname === href;
   };
 
   return (
@@ -492,43 +481,46 @@ export default function DashboardLayout({
       {/* ─── Main Content ────────────────────────────────── */}
       <div
         className={cn(
-          'min-h-screen flex flex-col pb-[calc(72px+env(safe-area-inset-bottom))] lg:pb-0 transition-[margin] duration-300 ease-in-out',
+          'min-h-screen flex flex-col pb-[calc(64px+env(safe-area-inset-bottom))] lg:pb-0 transition-[margin] duration-300 ease-in-out',
           isCollapsed ? 'lg:ml-[76px]' : 'lg:ml-[272px]',
         )}
       >
         {/* ─── Topbar ─────────────────────────────────────── */}
         <header
           className={cn(
-            'sticky top-0 z-30 bg-white/90 dark:bg-[#1E293B]/90 backdrop-blur-md border-b border-[#F1F5F9] dark:border-[#334155] px-4 lg:px-8 py-3 flex items-center gap-3 h-[64px] transition-shadow duration-200',
+            'sticky top-0 z-30 bg-white/90 dark:bg-[#1E293B]/90 backdrop-blur-md border-b border-[#F1F5F9] dark:border-[#334155] transition-shadow duration-200',
             isScrolled && 'shadow-sm',
           )}
+          // Notch / status-bar space sits ABOVE the fixed-height row.
           style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
-          {/* Hamburger */}
-          <button
-            type="button"
-            aria-label="Open menu"
-            className="lg:hidden w-10 h-10 rounded-lg border border-[#F1F5F9] dark:border-[#334155] flex items-center justify-center hover:border-[#2563EB] hover:bg-[#EFF6FF] dark:hover:bg-[#2563EB]/10 transition-colors flex-shrink-0"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu size={20} className="text-[#64748B] dark:text-[#94A3B8]" />
-          </button>
+          <div className="h-14 lg:h-16 px-4 lg:px-8 flex items-center gap-3">
+          {/* Phones: back arrow on sub-screens, logo on tab roots */}
+          {mobileScreen.back ? (
+            <Link
+              href={mobileScreen.back}
+              aria-label="Back"
+              className="lg:hidden -ml-2 w-10 h-10 rounded-full flex items-center justify-center text-[#0F172A] dark:text-white active:bg-[#F1F5F9] dark:active:bg-[#334155]"
+            >
+              <ChevronLeft size={24} />
+            </Link>
+          ) : (
+            <div className="lg:hidden relative w-8 h-8 flex-shrink-0">
+              <Image
+                src="/img/logo/icon.png"
+                alt="Boostly"
+                width={32}
+                height={32}
+                className="rounded-lg"
+              />
+            </div>
+          )}
 
-          {/* Logo (mobile only — desktop already shows the sidebar wordmark) */}
-          <div className="lg:hidden relative w-8 h-8 flex-shrink-0">
-            <Image
-              src="/img/logo/icon.png"
-              alt="Boostly"
-              width={32}
-              height={32}
-              className="rounded-lg"
-            />
-          </div>
-
-          {/* Page Title */}
+          {/* Title: screen name on phones, section name on desktop */}
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg lg:text-xl font-bold text-[#0F172A] dark:text-white truncate font-outfit">
-              {getPageTitle()}
+            <h1 className="text-[19px] lg:text-xl font-bold tracking-tight text-[#0F172A] dark:text-white truncate font-outfit">
+              <span className="lg:hidden">{mobileScreen.title}</span>
+              <span className="hidden lg:inline">{getPageTitle()}</span>
             </h1>
           </div>
 
@@ -549,38 +541,6 @@ export default function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Search Button (Mobile) */}
-            <button
-              type="button"
-              aria-label="Search"
-              onClick={() => setSearchOpen(true)}
-              className="md:hidden w-10 h-10 rounded-lg border border-[#F1F5F9] dark:border-[#334155] flex items-center justify-center hover:border-[#2563EB] hover:bg-[#EFF6FF] dark:hover:bg-[#2563EB]/10 transition-colors"
-            >
-              <Search
-                size={18}
-                className="text-[#64748B] dark:text-[#94A3B8]"
-              />
-            </button>
-
-            {/* Search Bar (Desktop) */}
-            <div className="hidden md:flex items-center gap-2 bg-[#F1F5F9] dark:bg-[#334155] border border-transparent rounded-lg px-3.5 py-2 text-sm transition-colors focus-within:border-[#2563EB] focus-within:ring-2 focus-within:ring-[#2563EB]/15 hover:bg-white dark:hover:bg-[#2D3A4F]">
-              <Search
-                size={15}
-                className="text-[#94A3B8] dark:text-[#64748B]"
-              />
-              <input
-                type="search"
-                placeholder="Search…"
-                aria-label="Search"
-                className="bg-transparent border-none outline-none text-sm w-40 text-[#0F172A] dark:text-white placeholder:text-[#94A3B8] dark:placeholder:text-[#64748B]"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <kbd className="text-[10px] font-medium text-[#94A3B8] dark:text-[#64748B] bg-white dark:bg-[#1E293B] px-1.5 py-0.5 rounded border border-[#E2E8F0] dark:border-[#334155]">
-                ⌘K
-              </kbd>
-            </div>
-
             {/* Dark Mode Toggle */}
             <button
               type="button"
@@ -598,8 +558,17 @@ export default function DashboardLayout({
             {/* Notification Bell */}
             <NotificationBell />
 
-            {/* Profile Dropdown */}
-            <div className="relative profile-dropdown">
+            {/* Phones: avatar opens the Me screen */}
+            <Link
+              href="/me"
+              aria-label="Me"
+              className="lg:hidden w-9 h-9 rounded-full bg-[#2563EB] flex items-center justify-center text-white text-xs font-bold"
+            >
+              {user?.name ? getInitials(user.name) : 'U'}
+            </Link>
+
+            {/* Desktop: profile dropdown */}
+            <div className="relative profile-dropdown hidden lg:block">
               <button
                 type="button"
                 aria-label="Account menu"
@@ -706,106 +675,14 @@ export default function DashboardLayout({
               )}
             </div>
           </div>
-        </header>
-
-        {/* ─── Search Overlay ─────────────────────────────── */}
-        {searchOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-md z-50 animate-fade-in"
-            onClick={() => setSearchOpen(false)}
-          >
-            <div
-              className="max-w-2xl mx-auto mt-20 p-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="bg-white dark:bg-[#1E293B] rounded-xl shadow-2xl border border-[#F1F5F9] dark:border-[#334155] overflow-hidden animate-slide-up">
-                <div className="flex items-center gap-3 p-4 border-b border-[#F1F5F9] dark:border-[#334155]">
-                  <Search size={20} className="text-[#94A3B8]" />
-                  <input
-                    type="text"
-                    placeholder="Search videos, games, settings…"
-                    className="flex-1 bg-transparent border-none outline-none text-[#0F172A] dark:text-white placeholder:text-[#94A3B8] text-lg"
-                    autoFocus
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    aria-label="Close search"
-                    onClick={() => setSearchOpen(false)}
-                    className="p-1.5 rounded-lg hover:bg-[#F8FAFC] dark:hover:bg-[#334155] transition-colors"
-                  >
-                    <X size={18} className="text-[#64748B]" />
-                  </button>
-                </div>
-                <div className="p-4 flex items-center justify-between">
-                  <p className="text-sm text-[#64748B] dark:text-[#94A3B8]">
-                    Press{' '}
-                    <kbd className="px-1.5 py-0.5 bg-[#F1F5F9] dark:bg-[#334155] rounded text-xs font-medium">
-                      Esc
-                    </kbd>{' '}
-                    to close
-                  </p>
-                  <div className="flex items-center gap-1 text-xs text-[#94A3B8]">
-                    <span>⌘K to open</span>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
-        )}
+        </header>
 
         {/* ─── Page Content ────────────────────────────────── */}
         <main className="flex-1 p-4 lg:p-8">{children}</main>
 
-        {/* ─── Bottom Navigation (Mobile) ────────────────── */}
-        <nav
-          className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#1E293B]/95 backdrop-blur-md border-t border-[#F1F5F9] dark:border-[#334155] flex items-center justify-around h-[72px] px-2"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-        >
-          {bottomNavItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = isBottomNavActive(item.href);
-            return (
-              <button
-                key={item.name}
-                type="button"
-                onClick={() => router.push(item.href)}
-                className="flex flex-col items-center justify-center gap-0.5 min-w-[56px] min-h-[48px] rounded-lg relative"
-              >
-                <div className="relative">
-                  <Icon
-                    size={22}
-                    className={cn(
-                      'transition-colors duration-150',
-                      isActive
-                        ? 'text-[#2563EB]'
-                        : 'text-[#94A3B8] dark:text-[#64748B]',
-                    )}
-                  />
-                  {item.name === 'Earn' && unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1.5 min-w-[16px] h-4 px-0.5 rounded-full bg-[#EF4444] text-white text-[9px] font-bold flex items-center justify-center border-2 border-white dark:border-[#1E293B]">
-                      {unreadCount}
-                    </span>
-                  )}
-                </div>
-                <span
-                  className={cn(
-                    'text-[10px] font-medium transition-colors duration-150',
-                    isActive
-                      ? 'text-[#2563EB]'
-                      : 'text-[#94A3B8] dark:text-[#64748B]',
-                  )}
-                >
-                  {item.name}
-                </span>
-                {isActive && (
-                  <span className="absolute -top-[9px] left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-[#2563EB]" />
-                )}
-              </button>
-            );
-          })}
-        </nav>
+        {/* ─── Bottom tab bar (phones) ─────────────────────── */}
+        <TabBar variant="app" badges={{ Me: unreadCount }} />
       </div>
     </div>
   );
