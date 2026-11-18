@@ -215,7 +215,7 @@ export default function RootLayout({
         <ClientLayout>{children}</ClientLayout>
 
         {/* Jivo Live Chat Widget */}
-        <script src="//code.jivosite.com/widget/2Ir0MowhfA" async></script>
+        <script src="https://code.jivosite.com/widget/2Ir0MowhfA" async></script>
       </body>
     </html>
   );

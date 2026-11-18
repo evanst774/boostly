@@ -5,13 +5,14 @@ import { db } from '@/lib/db';
 import { withdrawals } from '@/lib/db/schema/wallet';
 import { users } from '@/lib/db/schema/users';
 import { eq, desc, and, sql } from 'drizzle-orm';
+import { clampLimit } from '@/lib/privacy';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limit = clampLimit(searchParams.get('limit'), 10, 50);
 
     // Get recent completed withdrawals with user info
     const recentWithdrawals = await db
@@ -23,7 +24,6 @@ export async function GET(req: NextRequest) {
         method: withdrawals.method,
         completedAt: withdrawals.completedAt,
         userName: users.name,
-        userEmail: users.email,
       })
       .from(withdrawals)
       .leftJoin(users, eq(withdrawals.userId, users.id))

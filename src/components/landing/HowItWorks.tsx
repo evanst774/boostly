@@ -1,81 +1,87 @@
 // src/components/landing/HowItWorks.tsx
-import Link from 'next/link';
-import { ArrowRight, UserPlus, ListChecks, Smartphone, Banknote } from 'lucide-react';
-import { PAYOUT_TIME_LABEL } from '@/lib/constants/payouts';
+import { ListChecks, Smartphone, UserPlus, Wallet } from 'lucide-react';
+import {
+  MIN_WITHDRAWAL,
+  MOBILE_MONEY_PROVIDERS,
+  PAYOUT_TIME_LABEL,
+} from '@/lib/constants/payouts';
 
 const STEPS = [
   {
-    title: 'Create a free account',
-    desc: 'Sign up in under a minute. It costs nothing to join.',
     icon: UserPlus,
-    color: 'bg-primary',
+    title: 'Create a free account',
+    body: 'Sign up in under a minute. Joining costs nothing.',
   },
   {
-    title: 'Complete your daily tasks',
-    desc: 'Watch sponsored videos, play games and answer surveys. Money is added to your balance after each task.',
     icon: ListChecks,
-    color: 'bg-emerald-500',
+    title: 'Complete daily tasks',
+    body: 'Watch sponsored videos, play games, answer surveys. Each finished task adds RWF to your balance.',
   },
   {
+    icon: Wallet,
     title: 'Request a withdrawal',
-    desc: 'Enter the amount and the MTN MoMo or Airtel Money number you want to be paid on.',
-    icon: Smartphone,
-    color: 'bg-amber-500',
+    body: `Pick the amount and the mobile money number to pay. The amount is reserved right away.`,
   },
   {
-    title: `Get paid at ${PAYOUT_TIME_LABEL}`,
-    desc: `All withdrawals are processed every day at ${PAYOUT_TIME_LABEL} and sent to your mobile money account.`,
-    icon: Banknote,
-    color: 'bg-pink-500',
+    icon: Smartphone,
+    title: `Paid at ${PAYOUT_TIME_LABEL}`,
+    body: `Every request is sent in one daily run. Requests after ${PAYOUT_TIME_LABEL} go out the next day.`,
   },
 ];
 
+/** Light, precise explanation of how money moves. */
 export function HowItWorks() {
+  const providers = Object.values(MOBILE_MONEY_PROVIDERS)
+    .map((p) => p.label)
+    .join(' & ');
+
   return (
-    <section id="how-it-works" className="py-20 bg-bg scroll-mt-20">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="text-center mb-12">
-          <p className="text-gold text-xs font-bold tracking-widest uppercase mb-2">
-            How it works
-          </p>
-          <h2 className="text-3xl md:text-4xl font-black text-navy mb-3">
-            From task to <span className="text-gold">mobile money</span>
+    <section id="how-it-works" className="bg-white py-20 sm:py-28 scroll-mt-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="max-w-2xl">
+          <p className="text-sm font-semibold text-primary">How it works</p>
+          <h2 className="mt-2 font-rebond-bold text-3xl sm:text-5xl tracking-[-0.02em] text-slate-900">
+            From a task to your phone, in one day.
           </h2>
-          <p className="text-text-secondary text-sm max-w-md mx-auto">
-            Four steps from signing up to getting paid.
+          <p className="mt-4 text-lg text-slate-600">
+            No points to convert, no gift cards. Your balance is in RWF and it
+            goes straight to your mobile money.
           </p>
         </div>
 
-        <ol className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {STEPS.map(({ title, desc, icon: Icon, color }, i) => (
-            <li
-              key={title}
-              className="relative rounded-3xl bg-white border border-gray-100 p-6 shadow-sm"
-            >
-              <span className="absolute top-5 right-5 w-7 h-7 rounded-full bg-navy text-gold text-xs font-bold flex items-center justify-center">
-                {i + 1}
-              </span>
-              <span
-                className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center mb-4`}
-              >
-                <Icon className="w-6 h-6 text-white" />
-              </span>
-              <h3 className="font-bold text-navy text-base mb-1">{title}</h3>
-              <p className="text-sm text-text-secondary leading-relaxed">
-                {desc}
-              </p>
+        <ol className="relative mt-14 grid gap-10 md:grid-cols-4 md:gap-6">
+          {/* connecting line (desktop) */}
+          <div
+            aria-hidden
+            className="hidden md:block absolute left-0 right-0 top-6 h-px bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200"
+          />
+          {STEPS.map(({ icon: Icon, title, body }, i) => (
+            <li key={title} className="relative flex md:block gap-4">
+              <div className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white ring-8 ring-white">
+                <Icon className="h-5 w-5" />
+              </div>
+              <div className="md:mt-6">
+                <p className="text-xs font-semibold text-slate-400">Step {i + 1}</p>
+                <h3 className="mt-1 text-lg font-semibold text-slate-900">{title}</h3>
+                <p className="mt-1.5 text-[15px] leading-relaxed text-slate-600">{body}</p>
+              </div>
             </li>
           ))}
         </ol>
 
-        <div className="text-center mt-10">
-          <Link
-            href="/register"
-            className="inline-flex items-center gap-2 bg-gold hover:bg-gold-hover text-navy font-bold px-6 py-3 rounded-full transition-all shadow-gold"
-          >
-            Start earning free <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
+        <dl className="mt-16 grid grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200">
+          {[
+            { k: 'Paid to', v: providers },
+            { k: 'Payout time', v: `Every day, ${PAYOUT_TIME_LABEL}` },
+            { k: 'Minimum withdrawal', v: `${MIN_WITHDRAWAL.toLocaleString()} RWF` },
+            { k: 'Withdrawal fee', v: 'Free' },
+          ].map((r) => (
+            <div key={r.k} className="bg-white p-5">
+              <dt className="text-xs font-medium uppercase tracking-wider text-slate-400">{r.k}</dt>
+              <dd className="mt-1.5 text-base font-semibold text-slate-900">{r.v}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
     </section>
   );

@@ -5,13 +5,14 @@ import { db } from '@/lib/db';
 import { withdrawals } from '@/lib/db/schema/wallet';
 import { users } from '@/lib/db/schema/users';
 import { eq, desc, and, sql } from 'drizzle-orm';
+import { clampLimit } from '@/lib/privacy';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get('limit') || '3');
+    const limit = clampLimit(searchParams.get('limit'), 3, 20);
 
     const latestWithdrawals = await db
       .select({

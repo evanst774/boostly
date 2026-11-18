@@ -1,51 +1,34 @@
 // src/app/page.tsx
-
 import {
   Navbar,
   Hero,
-  StatsBar,
-  WaysToEarn,
+  ContentRails,
   HowItWorks,
+  Payouts,
   FAQ,
   FinalCTA,
   Footer,
-  LiveWithdrawalFeed,
-  LiveWithdrawalLeaderboard,
 } from '@/components/landing';
+import { getLandingData } from '@/lib/landing/data';
 
-export default function LandingPage() {
+// Rendered per request from a 5-minute cache (see getLandingData), so the
+// page always shows live content without hitting the DB on every visit.
+export const dynamic = 'force-dynamic';
+
+export default async function LandingPage() {
+  const data = await getLandingData();
+
   return (
-    <div className="min-h-screen bg-white font-sans text-text-primary">
+    <div className="min-h-screen bg-[#070B14] font-sans antialiased">
       <Navbar />
-      <Hero />
-      <StatsBar />
-      <WaysToEarn />
-      <HowItWorks />
-
-      {/* Social proof: real withdrawals */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-12">
-            <p className="text-gold text-xs font-bold tracking-widest uppercase mb-2">
-              Real people. Real payouts.
-            </p>
-            <h2 className="text-3xl font-black text-navy">
-              Recent <span className="text-gold">withdrawals</span>
-            </h2>
-            <p className="text-text-secondary text-sm mt-2 max-w-lg mx-auto">
-              Boostly members being paid to their mobile money.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            <LiveWithdrawalFeed />
-            <LiveWithdrawalLeaderboard />
-          </div>
-        </div>
-      </section>
-
-      <FAQ />
-      <FinalCTA />
+      <main>
+        <Hero data={data} />
+        <ContentRails videos={data.videos} games={data.games} surveys={data.surveys} />
+        <HowItWorks />
+        <Payouts stats={data.stats} payouts={data.payouts} />
+        <FAQ />
+        <FinalCTA />
+      </main>
       <Footer />
     </div>
   );

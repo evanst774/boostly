@@ -117,7 +117,7 @@ export default function CookieConsent({
 
               <div className="relative p-4 md:p-6">
                 {/* Header */}
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between mb-3 sm:mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent-500 flex items-center justify-center shadow-blue">
                       <Shield className="w-4 h-4 text-white" />
@@ -126,7 +126,7 @@ export default function CookieConsent({
                       <h3 className="text-base font-bold text-white">
                         Cookie Preferences
                       </h3>
-                      <p className="text-xs text-white/40">
+                      <p className="hidden sm:block text-xs text-white/40">
                         We value your privacy
                       </p>
                     </div>
@@ -142,7 +142,7 @@ export default function CookieConsent({
                 </div>
 
                 {/* Main content */}
-                <div className="mb-5">
+                <div className="mb-3 sm:mb-5">
                   <p className="text-xs leading-relaxed mb-3 text-white/60">
                     We use cookies to enhance your experience, analyze site
                     traffic, and serve personalized content. By clicking
@@ -235,7 +235,7 @@ export default function CookieConsent({
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                     onClick={() => setShowDetails(!showDetails)}
-                    className="flex items-center gap-1 mt-3 text-xs font-semibold text-gold hover:text-gold-hover transition-colors"
+                    className="hidden sm:flex items-center gap-1 mt-3 text-xs font-semibold text-gold hover:text-gold-hover transition-colors"
                   >
                     <span>
                       {showDetails ? 'Hide details' : 'Customize settings'}
@@ -250,7 +250,7 @@ export default function CookieConsent({
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:gap-3">
                   <motion.button
                     whileHover={{ scale: 1.01, y: -1 }}
                     whileTap={{ scale: 0.99 }}
@@ -285,7 +285,7 @@ export default function CookieConsent({
                       whileHover={{ scale: 1.01, y: -1 }}
                       whileTap={{ scale: 0.99 }}
                       onClick={handleCustomize}
-                      className="px-5 py-2.5 rounded-lg text-xs font-bold border border-white/20 text-white hover:bg-white/5 transition-all"
+                      className="col-span-2 py-1.5 text-xs font-semibold text-gold sm:col-auto sm:px-5 sm:py-2.5 sm:rounded-lg sm:font-bold sm:border sm:border-white/20 sm:text-white sm:hover:bg-white/5 transition-all"
                     >
                       Customize
                     </motion.button>
@@ -293,7 +293,7 @@ export default function CookieConsent({
                 </div>
 
                 {/* Footer note */}
-                <p className="mt-4 text-[10px] text-center text-white/20">
+                <p className="hidden sm:block mt-4 text-[10px] text-center text-white/20">
                   You can change your preferences anytime through your browser
                   settings.
                 </p>

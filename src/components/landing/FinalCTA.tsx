@@ -1,26 +1,33 @@
 // src/components/landing/FinalCTA.tsx
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { PAYOUT_TIME_LABEL } from '@/lib/constants/payouts';
 
 export function FinalCTA() {
   return (
-    <section className="bg-navy py-14">
-      <div className="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-6">
-        <div className="text-center sm:text-left">
-          <h3 className="text-2xl font-black text-white mb-1">
-            Start earning today. It&apos;s free.
-          </h3>
-          <p className="text-white/60 text-sm">
-            Complete simple tasks and get paid to your mobile money every day at
-            3:00 PM.
-          </p>
+    <section className="bg-navy px-4 sm:px-6 pb-20">
+      <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[28px] bg-gold px-6 py-12 sm:px-14 sm:py-16">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full border-[40px] border-white/20"
+        />
+        <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+          <div className="max-w-2xl">
+            <h2 className="font-rebond-bold text-3xl sm:text-5xl tracking-[-0.02em] text-[#111827]">
+              Start earning today.
+            </h2>
+            <p className="mt-3 text-base sm:text-lg text-[#111827]/70">
+              Free to join. Earn from your phone. Withdrawals are paid to mobile
+              money every day at {PAYOUT_TIME_LABEL}.
+            </p>
+          </div>
+          <Link
+            href="/register"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#111827] px-8 py-4 text-[15px] font-bold text-white hover:bg-black transition-colors"
+          >
+            Start earning free <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
-        <Link
-          href="/register"
-          className="inline-flex items-center gap-2 bg-gold hover:bg-gold-hover text-navy font-bold px-6 py-3.5 rounded-full transition whitespace-nowrap shadow-gold"
-        >
-          Start earning free <ArrowRight className="w-4 h-4" />
-        </Link>
       </div>
     </section>
   );

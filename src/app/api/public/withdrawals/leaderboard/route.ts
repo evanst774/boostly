@@ -7,6 +7,7 @@ import { users } from '@/lib/db/schema/users';
 import { userBadges } from '@/lib/db/schema/badges';
 import { badges } from '@/lib/db/schema/badges';
 import { eq, desc, sql, and, gte } from 'drizzle-orm';
+import { clampLimit, publicDisplayName } from '@/lib/privacy';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
     const period = searchParams.get('period') || 'month'; // 'week', 'month', 'all'
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limit = clampLimit(searchParams.get('limit'), 10, 50);
 
     // Calculate date range based on period
     let startDate: Date | null = null;
@@ -76,8 +77,8 @@ export async function GET(req: NextRequest) {
     // Format for leaderboard
     const formatted = topWithdrawers.map((w, index) => ({
       rank: index + 1,
-      userId: w.userId,
-      userName: w.userName || 'Anonymous User',
+      // Public endpoint: masked name only, never the user id or full name.
+      userName: publicDisplayName(w.userName),
       totalWithdrawn: Number(w.totalWithdrawn) || 0,
       currency: w.currency || 'RWF',
       withdrawalsCount: Number(w.withdrawalsCount) || 0,

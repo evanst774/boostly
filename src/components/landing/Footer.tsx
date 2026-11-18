@@ -133,9 +133,9 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-white/40 text-sm leading-relaxed max-w-sm">
-              Boostly is the #1 rewards platform that pays people for doing the
-              things they love. Watch videos, play games, complete surveys, and
-              earn real cash.
+              Boostly pays you in RWF for watching sponsored videos, playing
+              games and answering surveys. Withdrawals go to MTN MoMo and Airtel
+              Money every day at 3:00 PM.
             </p>
             <div className="flex items-center gap-3 mt-4">
               {SOCIAL_LINKS.map(({ icon: Icon, href, label }) => (

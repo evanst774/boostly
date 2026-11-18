@@ -156,7 +156,7 @@ export function FAQ() {
         </div>
 
         {/* FAQ Grid */}
-        <div className="grid sm:grid-cols-2 gap-3 md:gap-4">
+        <div className="grid sm:grid-cols-2 items-start gap-3 md:gap-4">
           {FAQS.map((faq, i) => {
             const isOpen = openIndex === i;
 

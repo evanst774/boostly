@@ -6,7 +6,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Wallet,
   X,
-  Sparkles,
   Clock,
   ChevronLeft,
   ChevronRight,
@@ -38,6 +37,9 @@ interface ApiResponse {
 }
 
 const FADE_MS = 500;
+
+/** Only payouts from the last 7 days are shown. */
+const RECENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function WithdrawalToast({
   interval = 50000,
@@ -106,23 +108,22 @@ export function WithdrawalToast({
       );
       const data = await response.json();
 
-      if (isApiResponse(data) && data.withdrawals.length > 0) {
-        const shuffled = shuffleArray(data.withdrawals);
+      // Real, recent payouts only. Never invent notifications: if there are
+      // none from the last week, show nothing.
+      const weekAgo = Date.now() - RECENT_WINDOW_MS;
+      const recent = isApiResponse(data)
+        ? data.withdrawals.filter(
+            (w) => w.timestamp && new Date(w.timestamp).getTime() >= weekAgo,
+          )
+        : [];
+      if (recent.length > 0) {
+        const shuffled = shuffleArray(recent);
         setToasts(shuffled);
         setCurrentIndex(0);
         setCurrentToast(shuffled[0]);
-      } else {
-        const demoData = generateDemoWithdrawals();
-        setToasts(demoData);
-        setCurrentIndex(0);
-        setCurrentToast(demoData[0]);
       }
     } catch (error) {
       console.error('Failed to fetch withdrawal notifications:', error);
-      const demoData = generateDemoWithdrawals();
-      setToasts(demoData);
-      setCurrentIndex(0);
-      setCurrentToast(demoData[0]);
     } finally {
       setIsLoading(false);
     }
@@ -228,22 +229,9 @@ export function WithdrawalToast({
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
   };
 
-  // ─── Loading state ──────────────────────────────
-  if (isLoading || !currentToast) {
-    return (
-      <div className="fixed bottom-4 sm:bottom-6 left-4 sm:left-6 z-50 max-w-full sm:max-w-sm">
-        <div className="bg-gradient-to-br from-[#0D1835] via-[#111C33] to-[#0D1835] rounded-2xl shadow-xl border border-white/10 p-4 animate-pulse">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white/10" />
-            <div className="flex-1">
-              <div className="h-4 bg-white/10 rounded w-32" />
-              <div className="h-3 bg-white/10 rounded w-20 mt-2" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Nothing to show (loading, between toasts, or no payouts yet): render
+  // nothing. A placeholder here sat permanently in the corner of every page.
+  if (isLoading || !currentToast) return null;
 
   // ─── Mobile vs Desktop positioning ──────────────
   // CHANGED: Both mobile and desktop now use left positioning
@@ -312,15 +300,9 @@ export function WithdrawalToast({
                   {formatTimeAgo(currentToast.timestamp)}
                 </span>
                 <span className="w-1 h-1 rounded-full bg-white/20" />
-                <div className="flex items-center gap-1">
-                  <Sparkles
-                    size={isMobile ? 8 : 10}
-                    className="text-[#FCD34D]"
-                  />
-                  <span className="text-[10px] sm:text-xs text-[#FCD34D] font-medium">
-                    Live
-                  </span>
-                </div>
+                <span className="text-[10px] sm:text-xs text-white/50">
+                  Paid to mobile money
+                </span>
               </div>
             </div>
 
@@ -421,45 +403,3 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-function generateDemoWithdrawals(): WithdrawalNotification[] {
-  const names = [
-    'Alice M.',
-    'Jean N.',
-    'Grace K.',
-    'Patrick M.',
-    'Sarah R.',
-    'David M.',
-    'Brigitte N.',
-    'Emmanuel H.',
-    'Christine U.',
-    'Fidel K.',
-    'Immaculée M.',
-    'John D.',
-    'Jane S.',
-    'Robert W.',
-    'Mary A.',
-    'Peter O.',
-    'Susan K.',
-    'Michael M.',
-    'Elizabeth R.',
-    'William N.',
-  ];
-
-  const withdrawals: WithdrawalNotification[] = [];
-  const now = new Date();
-
-  for (let i = 0; i < 200; i++) {
-    const date = new Date(now);
-    date.setMinutes(date.getMinutes() - (i + 1) * 3);
-
-    withdrawals.push({
-      id: `demo-${i}`,
-      displayName: names[i % names.length],
-      amount: Math.floor(Math.random() * 8000) + 1000,
-      currency: 'RWF',
-      timestamp: date.toISOString(),
-    });
-  }
-
-  return withdrawals;
-}
