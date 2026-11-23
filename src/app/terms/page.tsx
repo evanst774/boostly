@@ -16,6 +16,7 @@ import {
   Zap,
   Smartphone,
   Award,
+  X,
 } from 'lucide-react';
 
 // Clock icon component
@@ -140,7 +141,7 @@ export default function TermsPage() {
                 key={i}
                 className="flex items-start gap-2 p-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/30"
               >
-                <span className="text-red-500 text-sm mt-0.5">✕</span>
+                <X size={14} className="text-red-500 mt-0.5 flex-shrink-0" />
                 <span className="text-xs text-gray-600 dark:text-gray-400">
                   {item}
                 </span>

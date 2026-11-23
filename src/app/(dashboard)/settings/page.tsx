@@ -37,6 +37,12 @@ import {
   Fingerprint,
   Volume2,
   BarChart3,
+  Headphones,
+  Landmark,
+  Laptop,
+  MessageCircle,
+  Monitor,
+  Smartphone,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -338,14 +344,14 @@ export default function SettingsPage() {
       name: 'Mobile Money',
       detail: '+250 780 123 XXX · Airtime / MTN',
       default: true,
-      icon: '📱',
+      icon: Smartphone,
     },
     {
       id: 'bank',
       name: 'Bank Account',
       detail: 'BK · **** **** **** 1234',
       default: false,
-      icon: '🏦',
+      icon: Landmark,
     },
   ];
 
@@ -883,21 +889,21 @@ export default function SettingsPage() {
                 location: 'Kigali, Rwanda',
                 time: 'Just now',
                 current: true,
-                icon: '📱',
+                icon: Smartphone,
               },
               {
                 device: 'MacBook Pro',
                 location: 'Kigali, Rwanda',
                 time: '2 hours ago',
                 current: false,
-                icon: '💻',
+                icon: Laptop,
               },
               {
                 device: 'Windows PC',
                 location: 'Musanze, Rwanda',
                 time: 'Yesterday',
                 current: false,
-                icon: '🖥️',
+                icon: Monitor,
               },
             ].map((session, index) => (
               <div
@@ -908,7 +914,7 @@ export default function SettingsPage() {
                 )}
               >
                 <div className="w-10 h-10 rounded-xl bg-[#F8FAFC] flex items-center justify-center text-xl flex-shrink-0">
-                  {session.icon}
+                  <session.icon size={20} className="text-[#6B7280]" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-bold">{session.device}</p>
@@ -1211,7 +1217,7 @@ export default function SettingsPage() {
               )}
             >
               <div className="flex items-center gap-4">
-                <div className="text-3xl">{method.icon}</div>
+                <method.icon size={30} className="text-[#2563EB] flex-shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm font-bold">{method.name}</p>
                   <p className="text-xs text-[#6B7280]">{method.detail}</p>
@@ -1280,7 +1286,7 @@ export default function SettingsPage() {
 
             <div className="relative z-10">
               <div className="w-16 h-16 rounded-full bg-white/15 border-2 border-white/25 flex items-center justify-center text-3xl mx-auto mb-4">
-                🎧
+                <Headphones size={28} />
               </div>
               <h2 className="text-xl font-bold">How can we help?</h2>
               <p className="text-white/75">Our support team is here 24/7</p>
@@ -1294,19 +1300,19 @@ export default function SettingsPage() {
             </div>
             {[
               {
-                icon: '💬',
+                icon: MessageCircle,
                 title: 'Live Chat',
                 desc: 'Available 24/7 · Avg response: 2 min',
                 badge: 'Online',
                 badgeColor: 'bg-[#22C55E]',
               },
               {
-                icon: '📧',
+                icon: Mail,
                 title: 'Email Support',
                 desc: 'support@boostly.buzz',
               },
               {
-                icon: '📞',
+                icon: Phone,
                 title: 'Call Support',
                 desc: '+250 788 000 000 · Mon–Fri 8am–6pm',
               },
@@ -1325,7 +1331,7 @@ export default function SettingsPage() {
                   });
                 }}
               >
-                <div className="text-2xl">{item.icon}</div>
+                <item.icon size={24} className="text-[#2563EB] flex-shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm font-bold">{item.title}</p>
                   <p className="text-xs text-[#6B7280]">{item.desc}</p>
@@ -1384,8 +1390,8 @@ export default function SettingsPage() {
               <p className="text-sm font-bold">App Version</p>
               <p className="text-xs text-[#6B7280]">v2.4.1 · Up to date</p>
             </div>
-            <span className="text-xs font-bold text-[#22C55E] bg-[#F0FDF4] px-3 py-1 rounded-full">
-              ✓ Latest
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-[#22C55E] bg-[#F0FDF4] px-3 py-1 rounded-full">
+              <Check size={12} /> Latest
             </span>
           </div>
         </div>

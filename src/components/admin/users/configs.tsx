@@ -37,8 +37,8 @@ export const roleConfig: Record<string, RoleConfig> = {
 
 export const statusOptions = [
   { value: '', label: 'All Statuses' },
-  { value: 'active', label: '🟢 Active' },
-  { value: 'inactive', label: '🔴 Inactive' },
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
 ];
 
 export function getModuleIcon(module: string, override = false) {

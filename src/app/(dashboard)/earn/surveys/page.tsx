@@ -21,6 +21,15 @@ import {
   BarChart3,
   User,
   Calendar,
+  ClipboardList,
+  Coins,
+  Landmark,
+  PartyPopper,
+  Pill,
+  ShoppingCart,
+  Signal,
+  Smartphone,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   useSurveys,
@@ -364,7 +373,7 @@ function SurveyComplete({
       className="flex flex-col items-center justify-center text-center py-8 space-y-6"
     >
       <div className="w-24 h-24 rounded-full bg-[#F0FDF4] dark:bg-[#22C55E]/20 border-4 border-[#22C55E] flex items-center justify-center text-5xl animate-scale-in">
-        🎉
+        <PartyPopper size={44} className="text-[#22C55E] dark:text-[#4ADE80]" />
       </div>
       <div className="space-y-2">
         <h2 className="text-2xl font-bold text-[#0F172A] dark:text-white">
@@ -590,16 +599,16 @@ export default function SurveysPage() {
     return colors[brand] || 'from-[#6B7280] to-[#4B5563]';
   };
 
-  const getBrandEmoji = (brand: string) => {
-    const emojis: Record<string, string> = {
-      'MTN Rwanda': '📶',
-      'Bank of Kigali': '🏦',
-      'Carrefour Rwanda': '🛒',
-      RSSB: '💊',
-      'Airtel Rwanda': '📱',
-      BK: '🏦',
+  const getBrandIcon = (brand: string): LucideIcon => {
+    const icons: Record<string, LucideIcon> = {
+      'MTN Rwanda': Signal,
+      'Bank of Kigali': Landmark,
+      'Carrefour Rwanda': ShoppingCart,
+      RSSB: Pill,
+      'Airtel Rwanda': Smartphone,
+      BK: Landmark,
     };
-    return emojis[brand] || '📋';
+    return icons[brand] || ClipboardList;
   };
 
 
@@ -630,11 +639,12 @@ export default function SurveysPage() {
       {/* Stats Banner */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#FFFBEB] to-[#FEF3C7] dark:from-[#F59E0B]/20 dark:to-[#FBBF24]/10 border border-[#FDE68A] dark:border-[#F59E0B]/30 p-5 sm:p-6">
         <div className="absolute right-4 top-1/2 -translate-y-1/2 text-7xl opacity-20 select-none">
-          📋
+          <ClipboardList className="w-20 h-20 text-[#F59E0B]" />
         </div>
         <div className="relative z-10">
           <h2 className="text-base sm:text-lg font-bold text-[#0F172A] dark:text-white">
-            Your Opinion Pays! 💰
+            Your Opinion Pays!{' '}
+            <Coins className="inline w-5 h-5 -mt-1 text-[#F59E0B] dark:text-[#FBBF24]" />
           </h2>
           <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] mt-1">
             Answer short surveys from brands. Each survey pays once and the reward
@@ -721,7 +731,7 @@ export default function SurveysPage() {
         </div>
       ) : allSurveys.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155]">
-          <div className="text-6xl mb-4">📋</div>
+          <ClipboardList size={56} className="mx-auto mb-4 text-[#94A3B8] dark:text-[#64748B]" />
           <p className="text-[#64748B] dark:text-[#94A3B8] font-medium">
             No surveys available
           </p>
@@ -751,8 +761,11 @@ export default function SurveysPage() {
                     `bg-gradient-to-br ${getBrandColor(survey.brand)}`,
                   )}
                 >
-                  <span className="drop-shadow-md">
-                    {getBrandEmoji(survey.brand)}
+                  <span className="drop-shadow-md text-white">
+                    {(() => {
+                      const BrandIcon = getBrandIcon(survey.brand);
+                      return <BrandIcon className="w-6 h-6 sm:w-7 sm:h-7" />;
+                    })()}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">

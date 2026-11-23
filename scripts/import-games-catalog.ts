@@ -5,7 +5,8 @@
 //
 //   dry run:  npx dotenv -e .env.production -- tsx scripts/import-games-catalog.ts
 //   apply:    npx dotenv -e .env.production -- tsx scripts/import-games-catalog.ts --apply
-//   other catalog (e.g. local dev):  ... --catalog=http://localhost:3100/api/v1/games.json
+//   other catalog (e.g. local dev):  ... --catalog=http://localhost:3110/api/v1/games.json
+//   also hide platform games that no longer exist:  ... --retire-missing
 //
 // - Matches existing rows by URL (https://games.boostly.buzz/<slug>/...), so
 //   re-running is safe and old /<slug>/index.html links are upgraded.
@@ -96,7 +97,27 @@ async function main() {
       }
     }
   }
-  console.log(`${created} new, ${updated} updated.${apply ? '' : ' Nothing written.'}`);
+  // --retire-missing: hide games hosted on the platform whose slug is no
+  // longer (or never was) in the catalog, so members never open a dead page.
+  let retired = 0;
+  if (process.argv.includes('--retire-missing')) {
+    const origin = new URL(catalogUrl).origin;
+    const live = new Set(catalog.games.map((g) => g.slug));
+    const hosted = await db.query.games.findMany({ where: like(games.gameUrl, `${origin}/%`) });
+    for (const row of hosted) {
+      const slug = new URL(row.gameUrl!).pathname.split('/').filter(Boolean)[0];
+      if (live.has(slug) || row.status !== 'ACTIVE') continue;
+      retired += 1;
+      console.log(`retire  ${String(slug).padEnd(18)} ${row.name} (not on the platform)`);
+      if (apply) {
+        await db
+          .update(games)
+          .set({ status: 'INACTIVE', updatedAt: new Date().toISOString() })
+          .where(eq(games.id, row.id));
+      }
+    }
+  }
+  console.log(`${created} new, ${updated} updated, ${retired} retired.${apply ? '' : ' Nothing written.'}`);
 }
 
 main()

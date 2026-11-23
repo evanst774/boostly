@@ -81,7 +81,7 @@ export function WithdrawalLeaderboard() {
   if (topWithdrawers.length === 0) {
     return (
       <div className="text-center py-8 bg-white rounded-2xl border border-[#F3F4F6]">
-        <div className="text-4xl mb-3">🏆</div>
+        <Trophy size={36} className="mx-auto mb-3 text-[#F59E0B]" />
         <p className="text-[#6B7280] font-medium">No withdrawals yet</p>
         <p className="text-xs text-[#9CA3AF] mt-1">Be the first to withdraw!</p>
       </div>

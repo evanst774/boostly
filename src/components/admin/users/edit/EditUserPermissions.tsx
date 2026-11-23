@@ -8,6 +8,7 @@ import {
   Info,
   AlertTriangle,
   RotateCcw,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EditUserPermissionModule } from './EditUserPermissionModule';
@@ -98,7 +99,7 @@ export function EditUserPermissions({
         >
           {hasOverride ? (
             <p>
-              ⚠️ <strong>Custom override is active.</strong> This user&apos;s
+              <AlertTriangle className="inline w-3.5 h-3.5 mr-1 -mt-0.5" /><strong>Custom override is active.</strong> This user&apos;s
               permissions no longer follow the <strong>{roleName}</strong> role
               Matrix. Changes to the {roleName} role in the Matrix will NOT
               affect this user. Click{' '}
@@ -106,7 +107,7 @@ export function EditUserPermissions({
             </p>
           ) : hasRoleSelected ? (
             <p>
-              📋 <strong>Inheriting from {roleName} role.</strong> Only
+              <ClipboardList className="inline w-3.5 h-3.5 mr-1 -mt-0.5" /><strong>Inheriting from {roleName} role.</strong> Only
               permissions granted to the <strong>{roleName}</strong> role in the
               Matrix are shown below. You can <strong>uncheck</strong> items to
               create a custom override (remove permissions from this user only).
@@ -115,7 +116,7 @@ export function EditUserPermissions({
             </p>
           ) : (
             <p>
-              ⚠️ <strong>No role assigned.</strong> Select a role above to
+              <AlertTriangle className="inline w-3.5 h-3.5 mr-1 -mt-0.5" /><strong>No role assigned.</strong> Select a role above to
               inherit permissions from the Matrix, or assign custom permissions.
             </p>
           )}

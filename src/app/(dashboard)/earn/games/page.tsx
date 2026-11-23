@@ -24,9 +24,14 @@ import {
   Trophy,
   X,
   Zap,
+  Ban,
+  Gamepad2,
+  PartyPopper,
+  Timer,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { GameCategoryIcon } from '@/components/earn/GameCategoryIcon';
 import { useGames } from '@/hooks/useGames';
 import { useGameSession, type CompletionResult } from '@/hooks/useGameSession';
 import { useEarnToday } from '@/hooks/useEarnToday';
@@ -125,17 +130,6 @@ const categories: ReadonlyArray<{
     color: 'from-violet-500 to-purple-500',
   },
 ];
-
-const CATEGORY_EMOJI: Record<SchemaGameCategory, string> = {
-  PUZZLE: '🧩',
-  ACTION: '⚡',
-  CASUAL: '😊',
-  STRATEGY: '♟️',
-  QUIZ: '🧠',
-  RACING: '🏎️',
-  SPORTS: '🏆',
-  ADVENTURE: '🗺️',
-};
 
 const CATEGORY_GRADIENT: Record<SchemaGameCategory, string> = {
   PUZZLE: 'from-[#8B5CF6] to-[#6D28D9]',
@@ -377,7 +371,7 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
 
         {error && !isStarting && (
           <div className="text-center px-6 max-w-sm">
-            <div className="text-5xl mb-3">🎮</div>
+            <Gamepad2 size={48} className="mx-auto mb-3 text-white/60" />
             <p className="text-white font-semibold mb-1">
               {session ? 'Couldn\'t save your session' : 'Can\'t start this game'}
             </p>
@@ -415,7 +409,7 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
           >
             {result.status === 'REWARDED' ? (
               <>
-                <div className="text-6xl sm:text-7xl">🎉</div>
+                <PartyPopper className="w-14 h-14 sm:w-16 sm:h-16 text-[#F59E0B]" />
                 <h2 className="text-2xl font-extrabold text-white">
                   Nice run!
                 </h2>
@@ -434,9 +428,11 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
               </>
             ) : (
               <>
-                <div className="text-6xl sm:text-7xl">
-                  {result.reason === 'TOO_SHORT' ? '⏱️' : '🚫'}
-                </div>
+                {result.reason === 'TOO_SHORT' ? (
+                  <Timer className="w-14 h-14 sm:w-16 sm:h-16 text-[#F59E0B]" />
+                ) : (
+                  <Ban className="w-14 h-14 sm:w-16 sm:h-16 text-[#EF4444]" />
+                )}
                 <h2 className="text-xl font-extrabold text-white">
                   {result.reason === 'TOO_SHORT' && 'A bit too short'}
                   {result.reason === 'CAP_REACHED' && 'Daily limit reached'}
@@ -623,7 +619,10 @@ export default function GamesPage() {
           onClick={() => setSelectedGame(featured)}
         >
           <div className="absolute right-4 top-1/2 -translate-y-1/2 text-7xl sm:text-8xl opacity-20 select-none">
-            {CATEGORY_EMOJI[featured.category]}
+            <GameCategoryIcon
+              category={featured.category}
+              className="w-20 h-20 sm:w-24 sm:h-24"
+            />
           </div>
           <div className="relative z-10">
             <span className="inline-flex items-center gap-1 bg-[#F59E0B]/20 text-[#FBBF24] text-[10px] font-bold px-3 py-1 rounded-full mb-3">
@@ -662,7 +661,7 @@ export default function GamesPage() {
         </div>
       ) : allGames.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155]">
-          <div className="text-5xl mb-3">🎮</div>
+          <Gamepad2 size={48} className="mx-auto mb-3 text-[#94A3B8] dark:text-[#64748B]" />
           <p className="text-[#64748B] dark:text-[#94A3B8] font-medium">
             No games available
           </p>
@@ -696,8 +695,11 @@ export default function GamesPage() {
                     sizes="(max-width: 640px) 50vw, 25vw"
                   />
                 ) : (
-                  <span className="relative z-10 drop-shadow-lg">
-                    {CATEGORY_EMOJI[game.category]}
+                  <span className="relative z-10 drop-shadow-lg text-white">
+                    <GameCategoryIcon
+                      category={game.category}
+                      className="w-10 h-10 sm:w-12 sm:h-12"
+                    />
                   </span>
                 )}
                 {game.isSponsored && (

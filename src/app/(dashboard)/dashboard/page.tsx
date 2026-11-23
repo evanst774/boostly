@@ -17,6 +17,7 @@ import {
   Smartphone,
   Sparkles,
   Wallet,
+  Hand,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEarnToday, type TaskProgress } from '@/hooks/useEarnToday';
@@ -148,7 +149,8 @@ export default function DashboardPage() {
       <header className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-[#0F172A] dark:text-white truncate">
-            Hi, {firstName} 👋
+            Hi, {firstName}{' '}
+            <Hand className="inline w-5 h-5 -mt-1 text-[#F59E0B]" />
           </h1>
           <p className="text-sm text-[#64748B] dark:text-[#94A3B8]">
             {allDone ? 'All tasks done for today. Great work!' : 'Complete your tasks to grow your balance.'}

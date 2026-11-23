@@ -152,18 +152,18 @@ export const dateRangeOptions = [
 
 export const actionFilterOptions = [
   { value: '', label: 'All Actions' },
-  { value: 'edit', label: '✏️ Edits' },
-  { value: 'delete', label: '🗑️ Deletes' },
-  { value: 'payment', label: '💰 Payments' },
-  { value: 'inventory', label: '📦 Inventory' },
+  { value: 'edit', label: 'Edits' },
+  { value: 'delete', label: 'Deletes' },
+  { value: 'payment', label: 'Payments' },
+  { value: 'inventory', label: 'Inventory' },
 ];
 
 export const moduleFilterOptions = [
   { value: '', label: 'All Modules' },
-  { value: 'user', label: '👤 Users' },
-  { value: 'bike', label: '🏍️ Inventory' },
-  { value: 'sale', label: '🛒 Sales' },
-  { value: 'payment', label: '💳 Finance' },
-  { value: 'customer', label: '👥 Customers' },
-  { value: 'contract', label: '📄 Contracts' },
+  { value: 'user', label: 'Users' },
+  { value: 'bike', label: 'Inventory' },
+  { value: 'sale', label: 'Sales' },
+  { value: 'payment', label: 'Finance' },
+  { value: 'customer', label: 'Customers' },
+  { value: 'contract', label: 'Contracts' },
 ];

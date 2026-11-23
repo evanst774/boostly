@@ -3,7 +3,14 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Edit2, Trash2, Loader2, Users } from 'lucide-react';
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  Loader2,
+  Users,
+  ClipboardList,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
@@ -96,7 +103,7 @@ export default function AdminSurveysPage() {
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#8B5CF6] to-[#7C3AED] flex items-center justify-center text-white text-2xl flex-shrink-0">
-                  📋
+                  <ClipboardList size={24} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm font-bold text-[#0F172A] dark:text-white">

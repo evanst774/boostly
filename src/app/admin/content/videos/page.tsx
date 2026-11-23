@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Play,
   Heart,
+  Clapperboard,
 } from 'lucide-react';
 import { cn, formatDate, formatDuration } from '@/lib/utils';
 import { useSystemCurrency } from '@/hooks/useSystemCurrency';
@@ -329,7 +330,7 @@ export default function AdminVideosPage() {
       <div className="bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155] shadow-sm overflow-hidden">
         {videos.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">🎬</div>
+            <Clapperboard size={56} className="mx-auto mb-4 text-[#94A3B8] dark:text-[#64748B]" />
             <p className="text-[#64748B] dark:text-[#94A3B8] font-medium">
               No videos found
             </p>
@@ -362,7 +363,7 @@ export default function AdminVideosPage() {
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-3xl">
-                        🎬
+                        <Clapperboard size={28} className="text-white/70" />
                       </div>
                     )}
                     <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

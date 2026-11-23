@@ -14,6 +14,8 @@ import {
   Save,
   X,
   Clock,
+  Earth,
+  WavesHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -220,21 +222,6 @@ export default function AdminCurrencySettings() {
     return currencies;
   };
 
-  const getRegionEmoji = (region: string) => {
-    const emojis: Record<string, string> = {
-      'East Africa': '🌍',
-      'West Africa': '🌍',
-      'Central Africa': '🌍',
-      'Southern Africa': '🌍',
-      'North Africa': '🌍',
-      'Indian Ocean': '🌊',
-      Global: '🌐',
-      'Middle East': '🕌',
-      Asia: '🏯',
-    };
-    return emojis[region] || '🌍';
-  };
-
   if (loading || currencyLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -389,9 +376,7 @@ export default function AdminCurrencySettings() {
           >
             {REGIONS.map((region) => (
               <option key={region} value={region}>
-                {region === 'All'
-                  ? '🌐 All Regions'
-                  : `${getRegionEmoji(region)} ${region}`}
+                {region === 'All' ? 'All Regions' : region}
               </option>
             ))}
           </select>
@@ -478,7 +463,7 @@ export default function AdminCurrencySettings() {
                   {info.country.split(',')[0]}
                 </p>
                 <p className="text-[9px] text-[#94A3B8] dark:text-[#64748B] mt-0.5 flex items-center gap-1">
-                  <span className="text-[#94A3B8]">🌍</span>
+                  <Globe size={10} className="text-[#94A3B8]" />
                   {info.region}
                 </p>
               </div>
@@ -536,32 +521,32 @@ export default function AdminCurrencySettings() {
             {
               name: 'East Africa',
               count: getCurrenciesByRegion('East Africa').length,
-              emoji: '🌍',
+              icon: Earth,
             },
             {
               name: 'West Africa',
               count: getCurrenciesByRegion('West Africa').length,
-              emoji: '🌍',
+              icon: Earth,
             },
             {
               name: 'Central Africa',
               count: getCurrenciesByRegion('Central Africa').length,
-              emoji: '🌍',
+              icon: Earth,
             },
             {
               name: 'Southern Africa',
               count: getCurrenciesByRegion('Southern Africa').length,
-              emoji: '🌍',
+              icon: Earth,
             },
             {
               name: 'North Africa',
               count: getCurrenciesByRegion('North Africa').length,
-              emoji: '🌍',
+              icon: Earth,
             },
             {
               name: 'Indian Ocean',
               count: getCurrenciesByRegion('Indian Ocean').length,
-              emoji: '🌊',
+              icon: WavesHorizontal,
             },
           ].map((region) => (
             <button
@@ -570,7 +555,7 @@ export default function AdminCurrencySettings() {
               className="p-3 rounded-xl border border-[#F1F5F9] dark:border-[#334155] hover:border-[#2563EB] dark:hover:border-[#60A5FA] transition-colors text-left"
             >
               <div className="flex items-center gap-2">
-                <span className="text-lg">{region.emoji}</span>
+                <region.icon size={18} className="text-[#2563EB] dark:text-[#60A5FA] flex-shrink-0" />
                 <div>
                   <p className="text-sm font-medium text-[#0F172A] dark:text-white">
                     {region.name}

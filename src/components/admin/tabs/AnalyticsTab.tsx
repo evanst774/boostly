@@ -12,6 +12,10 @@ import {
   Wallet,
   BarChart3,
   PieChart,
+  ChartColumn,
+  Coins,
+  Banknote,
+  Inbox,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSystemCurrency } from '@/hooks/useSystemCurrency';
@@ -138,7 +142,7 @@ export function AnalyticsTab() {
   if (!data) {
     return (
       <div className="text-center py-12">
-        <div className="text-6xl mb-4">📊</div>
+        <ChartColumn size={56} className="mx-auto mb-4 text-[#94A3B8] dark:text-[#64748B]" />
         <p className="text-[#64748B] dark:text-[#94A3B8] font-medium">
           No analytics data available
         </p>
@@ -584,7 +588,7 @@ export function AnalyticsTab() {
                       : 'bg-[#FEF2F2] dark:bg-[#EF4444]/20 text-[#EF4444]',
                   )}
                 >
-                  {activity.type === 'CREDIT' ? '💰' : '💸'}
+                  {activity.type === 'CREDIT' ? <Coins size={18} /> : <Banknote size={18} />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-[#0F172A] dark:text-white truncate">
@@ -615,7 +619,7 @@ export function AnalyticsTab() {
             ))}
             {(!data.recentActivity || data.recentActivity.length === 0) && (
               <div className="text-center py-8">
-                <div className="text-4xl mb-2">📭</div>
+                <Inbox size={36} className="mx-auto mb-2 text-[#94A3B8] dark:text-[#64748B]" />
                 <p className="text-sm text-[#64748B] dark:text-[#94A3B8]">
                   No recent activity
                 </p>

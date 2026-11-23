@@ -3,9 +3,15 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
+import { Info } from 'lucide-react';
 import { NotificationTypeColors, NotificationTypeIcons } from '@/lib/notifications/types';
 import type { Notification } from '@/lib/notifications/types';
 import { cn } from '@/lib/utils';
+
+/** Older notifications were saved with an emoji prefix; the type icon replaces it. */
+function stripLeadingEmoji(title: string) {
+  return title.replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, '');
+}
 
 interface NotificationItemProps {
   notification: Notification;
@@ -15,7 +21,7 @@ interface NotificationItemProps {
 export function NotificationItem({ notification, onClick }: NotificationItemProps) {
   const type = notification.type ?? 'INFO';
   const colorClasses = NotificationTypeColors[type] || NotificationTypeColors.INFO;
-  const icon = NotificationTypeIcons[type] || 'ℹ️';
+  const Icon = NotificationTypeIcons[type] || Info;
 
   const timeAgo = formatDistanceToNow(new Date(notification.createdAt), {
     addSuffix: true,
@@ -34,14 +40,14 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
         'w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-lg',
         colorClasses,
       )}>
-        {icon}
+        <Icon size={18} />
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <p className="text-sm font-medium text-[#111827] truncate">
-            {notification.title}
+            {stripLeadingEmoji(notification.title)}
           </p>
           {!notification.isRead && (
             <span className="w-2 h-2 rounded-full bg-[#2563EB] flex-shrink-0 mt-1.5" />

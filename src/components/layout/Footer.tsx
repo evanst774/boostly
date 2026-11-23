@@ -3,7 +3,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Mail, Phone, MapPin } from 'lucide-react';
+import { Mail, Phone, MapPin, Heart } from 'lucide-react';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -128,7 +128,9 @@ export default function Footer() {
           <p className="text-[10px] text-gray-600">
             &copy; {currentYear} MotoTrack ERP. All rights reserved.
           </p>
-          <p className="text-[10px] text-gray-600">Built with ❤️ in Rwanda</p>
+          <p className="inline-flex items-center gap-1 text-[10px] text-gray-600">
+            Built with <Heart size={10} className="fill-current text-red-500" /> in Rwanda
+          </p>
         </div>
       </div>
     </footer>

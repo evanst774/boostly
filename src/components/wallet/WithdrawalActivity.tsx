@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Clock, CheckCircle2, XCircle, Loader2, RefreshCw } from 'lucide-react';
+import { Clock, CheckCircle2, XCircle, Loader2, RefreshCw, Landmark } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -164,7 +164,7 @@ export function WithdrawalActivity() {
       {/* Activity List */}
       {activities.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border border-[#F3F4F6]">
-          <div className="text-4xl mb-4">🏦</div>
+          <Landmark size={36} className="mx-auto mb-4 text-[#9CA3AF]" />
           <p className="text-[#6B7280] font-medium">No withdrawal activity</p>
           <p className="text-sm text-[#9CA3AF] mt-1">
             Your withdrawals will appear here

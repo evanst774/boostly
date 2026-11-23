@@ -22,6 +22,7 @@ import {
   Maximize2,
   Minimize2,
   AlertCircle,
+  Clapperboard,
 } from 'lucide-react';
 import { cn, formatDuration, formatDateTime } from '@/lib/utils';
 import { useSystemCurrency } from '@/hooks/useSystemCurrency';
@@ -319,7 +320,7 @@ export default function VideoDetailPage() {
   if (!video) {
     return (
       <div className="text-center py-12">
-        <div className="text-6xl mb-4">🎬</div>
+        <Clapperboard size={56} className="mx-auto mb-4 text-[#94A3B8] dark:text-[#64748B]" />
         <p className="text-[#64748B] dark:text-[#94A3B8] font-medium">
           Video not found
         </p>
@@ -554,7 +555,7 @@ export default function VideoDetailPage() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-6xl">
-                      🎬
+                      <Clapperboard size={56} className="text-white/60" />
                     </div>
                   )}
                   <button

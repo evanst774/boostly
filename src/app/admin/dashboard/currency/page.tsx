@@ -8,7 +8,13 @@ import {
   FIAT_CURRENCY_LIST,
   type FiatCurrencyType,
 } from '@/lib/db/schema/currency';
-import { RefreshCw, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import {
+  RefreshCw,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Check,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function AdminCurrencySettings() {
@@ -220,7 +226,11 @@ export default function AdminCurrencySettings() {
             >
               <div className="text-sm font-bold">{currency}</div>
               <div className="text-xs text-[#6B7280]">
-                {currency === baseCurrency && '✓ Base'}
+                {currency === baseCurrency && (
+                  <span className="inline-flex items-center gap-0.5">
+                    <Check size={12} /> Base
+                  </span>
+                )}
               </div>
             </div>
           ))}

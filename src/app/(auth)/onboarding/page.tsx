@@ -5,7 +5,18 @@ import { useState, useEffect } from 'react';
 import { REFERRAL_COMMISSION_LABEL } from '@/lib/constants/referrals';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, ChevronLeft, Sparkles } from 'lucide-react';
+import {
+  ArrowRight,
+  ChevronLeft,
+  Sparkles,
+  Banknote,
+  Clapperboard,
+  ClipboardList,
+  Gamepad2,
+  Lightbulb,
+  Rocket,
+  type LucideIcon,
+} from 'lucide-react';
 import { MIN_WITHDRAWAL, PAYOUT_TIME_LABEL } from '@/lib/constants/payouts';
 
 // Copy must match the real rules: per-plan daily tasks, mobile money payouts
@@ -14,22 +25,24 @@ import { MIN_WITHDRAWAL, PAYOUT_TIME_LABEL } from '@/lib/constants/payouts';
 const STEPS: {
   title: string;
   description: string;
-  icon: string;
+  icon: LucideIcon;
+  iconColor: string;
   bg: string;
   color: string;
-  emojis?: string[];
+  floatIcons?: LucideIcon[];
   labels?: string[];
   subLabels?: string[];
-  badges?: { name: string; reward: string; color: string; icon: string; bonus: string }[];
+  badges?: { name: string; reward: string; color: string; icon: LucideIcon; bonus: string }[];
   stats?: { value: string; label: string }[];
 }[] = [
   {
     title: 'Welcome to Boostly',
     description:
       'Earn real money every day by watching sponsored videos, playing games and answering short surveys. Each finished task adds RWF to your balance.',
-    icon: '💡',
+    icon: Lightbulb,
+    iconColor: 'text-blue-500',
     bg: 'bg-gradient-to-br from-blue-500/10 via-blue-600/5 to-blue-500/10',
-    emojis: ['🎬', '🎮', '📋'],
+    floatIcons: [Clapperboard, Gamepad2, ClipboardList],
     labels: ['Sponsored videos', 'Games', 'Surveys'],
     subLabels: ['Daily tasks', 'Daily tasks', 'Daily tasks'],
     color: 'from-blue-500 to-blue-600',
@@ -37,7 +50,8 @@ const STEPS: {
   {
     title: 'Cash Out to Mobile Money',
     description: `Request a withdrawal to any MTN or Airtel number. All withdrawals are paid every day at ${PAYOUT_TIME_LABEL}. Free members cash out weekly; paid plans cash out every day.`,
-    icon: '💸',
+    icon: Banknote,
+    iconColor: 'text-green-500',
     bg: 'bg-gradient-to-br from-green-500/10 via-green-600/5 to-green-500/10',
     stats: [
       { value: PAYOUT_TIME_LABEL, label: 'Daily payout' },
@@ -49,7 +63,8 @@ const STEPS: {
     title: 'Invite Friends & Earn More',
     description:
       `Share your referral code. Every time a friend you invited buys a plan or badge, you earn ${REFERRAL_COMMISSION_LABEL} of it.`,
-    icon: '🚀',
+    icon: Rocket,
+    iconColor: 'text-purple-500',
     bg: 'bg-gradient-to-br from-purple-500/10 via-purple-600/5 to-purple-500/10',
     stats: [
       { value: REFERRAL_COMMISSION_LABEL, label: 'Commission' },
@@ -118,7 +133,7 @@ export default function OnboardingPage() {
         />
 
         {/* Floating elements - Responsive positioning */}
-        {STEPS[step].emojis?.map((emoji, i) => (
+        {STEPS[step].floatIcons?.map((FloatIcon, i) => (
           <motion.div
             key={i}
             animate={{
@@ -144,7 +159,7 @@ export default function OnboardingPage() {
               className="bg-white/90 backdrop-blur-md rounded-xl sm:rounded-2xl px-2.5 sm:px-4 py-2 sm:py-2.5 shadow-xl border border-white/30"
             >
               <div className="flex items-center gap-1.5 sm:gap-2.5">
-                <span className="text-base sm:text-xl">{emoji}</span>
+                <FloatIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
                 <div className="flex flex-col items-start">
                   <span className="text-[10px] sm:text-xs font-bold text-navy whitespace-nowrap">
                     {STEPS[step].labels?.[i] || ''}
@@ -176,7 +191,7 @@ export default function OnboardingPage() {
             } bg-white rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2 sm:py-3 shadow-xl border-2 ${badge.color} min-w-[100px] sm:min-w-[130px]`}
           >
             <div className="flex items-center gap-2 sm:gap-3">
-              <span className="text-xl sm:text-2xl">{badge.icon}</span>
+              <badge.icon className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs sm:text-sm font-bold text-navy truncate">
                   {badge.name}
@@ -242,7 +257,14 @@ export default function OnboardingPage() {
             transition={{ duration: 2, repeat: Infinity }}
             className="w-20 h-20 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-xl sm:rounded-2xl bg-white shadow-2xl flex items-center justify-center text-4xl sm:text-5xl md:text-6xl border-2 border-white/30"
           >
-            {STEPS[step].icon}
+            {(() => {
+              const StepIcon = STEPS[step].icon;
+              return (
+                <StepIcon
+                  className={`w-9 h-9 sm:w-12 sm:h-12 md:w-14 md:h-14 ${STEPS[step].iconColor}`}
+                />
+              );
+            })()}
           </motion.div>
         </motion.div>
       </motion.div>

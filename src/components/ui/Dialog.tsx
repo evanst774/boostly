@@ -2,7 +2,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { X } from 'lucide-react';
+import { CircleCheck, CircleX, Info, TriangleAlert, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DialogProps {
@@ -119,16 +119,17 @@ export function AlertDialog({
   type = 'info',
 }: AlertDialogProps) {
   const icons = {
-    info: 'ℹ️',
-    success: '✅',
-    warning: '⚠️',
-    error: '❌',
+    info: { Icon: Info, color: 'text-[#2563EB]' },
+    success: { Icon: CircleCheck, color: 'text-[#22C55E]' },
+    warning: { Icon: TriangleAlert, color: 'text-[#F59E0B]' },
+    error: { Icon: CircleX, color: 'text-[#EF4444]' },
   };
+  const { Icon: TypeIcon, color: iconColor } = icons[type];
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title={title}>
       <div className="flex flex-col items-center text-center py-4">
-        <div className="text-5xl mb-4">{icons[type]}</div>
+        <TypeIcon size={48} className={cn('mb-4', iconColor)} />
         <p className="text-[#6B7280]">{message}</p>
         <button
           onClick={onClose}

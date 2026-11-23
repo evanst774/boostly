@@ -263,7 +263,7 @@ export class RewardsService {
                 AND ${rewards.type} = ${input.type}
                 AND ${rewards.status} = ${RewardStatusEnum.CLAIMED}
                 AND ${rewards.createdAt} >= ${dayStart}
-            ) < ${input.dailyCap})`;
+            ) < ${input.dailyCap}`;
 
       const [insertResult] = await db.batch([
         db.run(sql`

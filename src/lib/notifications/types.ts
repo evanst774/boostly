@@ -1,5 +1,6 @@
 // src/lib/notifications/types.ts
 
+import { Bell, CircleCheck, CircleX, Info, TriangleAlert, type LucideIcon } from 'lucide-react';
 import { NotificationTypeEnum } from '@/lib/db/schema/notifications';
 
 export type NotificationType =
@@ -13,12 +14,12 @@ export const NotificationTypeColors: Record<NotificationType, string> = {
   REMINDER: 'bg-[#F5F3FF] text-[#6D28D9] border-[#EDE9FE]',
 };
 
-export const NotificationTypeIcons: Record<NotificationType, string> = {
-  INFO: 'ℹ️',
-  WARNING: '⚠️',
-  SUCCESS: '✅',
-  ERROR: '❌',
-  REMINDER: '🔔',
+export const NotificationTypeIcons: Record<NotificationType, LucideIcon> = {
+  INFO: Info,
+  WARNING: TriangleAlert,
+  SUCCESS: CircleCheck,
+  ERROR: CircleX,
+  REMINDER: Bell,
 };
 
 // ✅ Re-export from schema for consistency

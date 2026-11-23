@@ -192,8 +192,8 @@ export default function BlogPage() {
               animate={{ opacity: 1, y: 0 }}
               className="mb-8 sm:mb-10"
             >
-              <span className="text-[10px] sm:text-xs font-semibold text-accent-400 uppercase tracking-wider mb-3 block">
-                ✨ Featured Article
+              <span className="text-[10px] sm:text-xs font-semibold text-accent-400 uppercase tracking-wider mb-3 flex items-center gap-1">
+                <Sparkles size={12} /> Featured Article
               </span>
               <Link href={`/blog/${featuredPost.slug}`} className="block">
                 <div className="relative rounded-2xl overflow-hidden border border-primary-500/20 bg-gradient-to-br from-primary-500/10 to-accent-500/5 p-5 sm:p-8 group hover:border-primary-500/40 transition-all">

@@ -70,6 +70,8 @@ import {
   Target,
   Loader2,
   ShieldAlert,
+  CircleCheck,
+  Clapperboard,
 } from 'lucide-react';
 import { useVideos, type VideoWithProgress } from '@/hooks/useVideos';
 import { useVideoWatch } from '@/hooks/useVideoWatch';
@@ -80,7 +82,7 @@ import { type VideoCategory as SchemaVideoCategory } from '@/lib/db/schema';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Import missing icons
-import { Music, Newspaper } from 'lucide-react';
+import { Music, Newspaper, TriangleAlert } from 'lucide-react';
 
 // ============================================
 // YouTube IFrame API typings (minimal — only what this page actually calls)
@@ -371,6 +373,11 @@ export default function VideosPage() {
   const [selectedVideo, setSelectedVideo] = useState<VideoWithProgress | null>(
     null,
   );
+  // The video file couldn't be loaded (missing or unsupported).
+  const [videoFailed, setVideoFailed] = useState(false);
+  useEffect(() => {
+    setVideoFailed(false);
+  }, [selectedVideo?.id]);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -929,7 +936,7 @@ export default function VideosPage() {
               <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
             </div>
             <h2 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-white">
-              🔥 Recommended for You
+              Recommended for You
             </h2>
             <span className="text-[10px] sm:text-[10px] text-[#94A3B8] dark:text-[#64748B] hidden sm:inline">
               • Based on your activity
@@ -1016,7 +1023,7 @@ export default function VideosPage() {
           </div>
         ) : allVideos.length === 0 ? (
           <div className="text-center py-8 sm:py-12 bg-white dark:bg-[#1E293B] rounded-xl border border-[#F1F5F9] dark:border-[#334155]">
-            <div className="text-4xl sm:text-5xl mb-2 sm:mb-3">🎬</div>
+            <Clapperboard className="mx-auto w-10 h-10 sm:w-12 sm:h-12 mb-2 sm:mb-3 text-[#94A3B8] dark:text-[#64748B]" />
             <p className="text-sm sm:text-base text-[#64748B] dark:text-[#94A3B8] font-medium">
               No videos found
             </p>
@@ -1137,7 +1144,12 @@ export default function VideosPage() {
                         </div>
                         <p className="text-[10px] sm:text-[11px] text-[#64748B] dark:text-[#94A3B8] mt-0.5">
                           {video.earnedToday
-                            ? '✅ Earned today'
+                            ? (
+                                <span className="inline-flex items-center gap-1">
+                                  <CircleCheck className="w-3 h-3 text-[#22C55E] dark:text-[#4ADE80]" />
+                                  Earned today
+                                </span>
+                              )
                             : isCompleted
                               ? 'Watched before · earn again today'
                               : `${Math.round(progress)}% watched`}
@@ -1234,6 +1246,17 @@ export default function VideosPage() {
               className="flex-1 flex items-center justify-center p-1 sm:p-2 md:p-4 relative bg-gradient-to-b from-[#0F172A] to-[#1E3A8A]"
             >
               <div className="relative w-full max-w-4xl aspect-video bg-black rounded-lg sm:rounded-xl overflow-hidden">
+                {videoFailed && !youtubeId && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/85 p-6 text-center">
+                    <div>
+                      <TriangleAlert className="mx-auto mb-3 h-10 w-10 text-[#FBBF24]" />
+                      <p className="text-sm font-semibold text-white">This video isn&apos;t available right now</p>
+                      <p className="mt-1 text-xs text-white/60">
+                        No reward was used. Please try another video.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 {youtubeId ? (
                   <>
                     {/* YouTube IFrame API mounts here */}
@@ -1256,21 +1279,24 @@ export default function VideosPage() {
                     onPlay={() => setIsPlaying(true)}
                     onPause={() => setIsPlaying(false)}
                     onLoadedMetadata={handleLoadedMetadata}
+                    onError={() => setVideoFailed(true)}
                     onContextMenu={(e) => e.preventDefault()}
                     controlsList="nodownload noremoteplayback"
                     disablePictureInPicture
                     playsInline
                     webkit-playsinline="true"
                   >
-                    <source src={selectedVideo.videoUrl} type="video/mp4" />
+                    <source
+                      src={selectedVideo.videoUrl}
+                      type="video/mp4"
+                      onError={() => setVideoFailed(true)}
+                    />
                     Your browser does not support the video tag.
                   </video>
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
-                      <div className="text-4xl sm:text-5xl md:text-6xl mb-2 sm:mb-3">
-                        🎬
-                      </div>
+                      <Clapperboard className="mx-auto w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 mb-2 sm:mb-3 text-white/60" />
                       <p className="text-white/60 text-[10px] sm:text-xs md:text-sm">
                         {selectedVideo.title}
                       </p>

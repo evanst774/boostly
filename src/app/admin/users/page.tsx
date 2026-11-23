@@ -21,6 +21,8 @@ import {
   Eye,
   RefreshCw,
   ArrowUpDown,
+  CircleCheck,
+  TriangleAlert,
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { StatCard } from '@/components/admin/StatCard';
@@ -550,15 +552,29 @@ export default function AdminUsersPage() {
 
             <div
               className={cn(
-                'text-xs rounded-lg p-3 border',
+                'flex items-start gap-2 text-xs rounded-lg p-3 border',
                 userToToggle?.isActive
                   ? 'bg-red-500/10 border-red-500/20 text-red-400'
                   : 'bg-green-500/10 border-green-500/20 text-green-400',
               )}
             >
-              {userToToggle?.isActive
-                ? '⚠️ This user will lose access to the platform. Any pending withdrawals will be held for review.'
-                : '✅ This user will regain full access to the platform and can log in immediately.'}
+              {userToToggle?.isActive ? (
+                <>
+                  <TriangleAlert className="w-3.5 h-3.5 flex-shrink-0 mt-px" />
+                  <span>
+                    This user will lose access to the platform. Any pending
+                    withdrawals will be held for review.
+                  </span>
+                </>
+              ) : (
+                <>
+                  <CircleCheck className="w-3.5 h-3.5 flex-shrink-0 mt-px" />
+                  <span>
+                    This user will regain full access to the platform and can
+                    log in immediately.
+                  </span>
+                </>
+              )}
             </div>
           </div>
         }

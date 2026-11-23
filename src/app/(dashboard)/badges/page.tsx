@@ -3,7 +3,15 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Check, Loader2, X } from 'lucide-react';
+import {
+  Check,
+  Loader2,
+  X,
+  Award,
+  Gem,
+  Medal,
+  type LucideIcon,
+} from 'lucide-react';
 import { useBadges, type BadgeTier } from '@/hooks/useBadges';
 import { cn } from '@/lib/utils';
 
@@ -11,7 +19,6 @@ interface BadgeCardData {
   id: string | null; // null = fallback display only, not purchasable
   tier: BadgeTier;
   name: string;
-  emoji: string;
   boost: string;
   price: number;
   oneTimeReward: number;
@@ -20,17 +27,32 @@ interface BadgeCardData {
 
 const rwf = (n: number) => `${Math.round(n).toLocaleString('en-US')} RWF`;
 
-const TIER_STYLE: Record<BadgeTier, { border: string; bg: string; emoji: string }> = {
-  SILVER: { border: 'border-[#94A3B8]', bg: 'bg-[#F8FAFC] dark:bg-[#94A3B8]/10', emoji: '🥈' },
-  GOLD: { border: 'border-[#F59E0B]', bg: 'bg-[#FFFBEB] dark:bg-[#F59E0B]/10', emoji: '🥇' },
-  PLATINUM: { border: 'border-[#8B5CF6]', bg: 'bg-[#F5F3FF] dark:bg-[#8B5CF6]/10', emoji: '💎' },
+const TIER_STYLE: Record<
+  BadgeTier,
+  { border: string; bg: string; icon: LucideIcon; iconColor: string }
+> = {
+  SILVER: { border: 'border-[#94A3B8]', bg: 'bg-[#F8FAFC] dark:bg-[#94A3B8]/10', icon: Medal, iconColor: 'text-[#94A3B8] dark:text-[#CBD5E1]' },
+  GOLD: { border: 'border-[#F59E0B]', bg: 'bg-[#FFFBEB] dark:bg-[#F59E0B]/10', icon: Medal, iconColor: 'text-[#F59E0B] dark:text-[#FBBF24]' },
+  PLATINUM: { border: 'border-[#8B5CF6]', bg: 'bg-[#F5F3FF] dark:bg-[#8B5CF6]/10', icon: Gem, iconColor: 'text-[#8B5CF6] dark:text-[#A78BFA]' },
 };
+
+// Badge icons are chosen by tier (the stored emoji `icon` is not rendered).
+function TierIcon({ tier }: { tier: BadgeTier }) {
+  const style = TIER_STYLE[tier];
+  const Icon = style?.icon ?? Award;
+  return (
+    <Icon
+      size={36}
+      className={cn('flex-shrink-0', style?.iconColor ?? 'text-[#64748B] dark:text-[#94A3B8]')}
+    />
+  );
+}
 
 // Shown only when the badges API returns nothing (display only).
 const FALLBACK_BADGES: BadgeCardData[] = [
-  { id: null, tier: 'SILVER', name: 'Silver Badge', emoji: '🥈', boost: '+15%', price: 5000, oneTimeReward: 5000, features: ['+15% earnings boost', 'Priority support'] },
-  { id: null, tier: 'GOLD', name: 'Gold Badge', emoji: '🥇', boost: '+30%', price: 10000, oneTimeReward: 10000, features: ['+30% earnings boost', 'VIP support', 'Exclusive games'] },
-  { id: null, tier: 'PLATINUM', name: 'Platinum Badge', emoji: '💎', boost: '+30%', price: 20000, oneTimeReward: 20000, features: ['+30% earnings boost', 'Premium VIP support', 'Exclusive games', 'Faster withdrawals'] },
+  { id: null, tier: 'SILVER', name: 'Silver Badge', boost: '+15%', price: 5000, oneTimeReward: 5000, features: ['+15% earnings boost', 'Priority support'] },
+  { id: null, tier: 'GOLD', name: 'Gold Badge', boost: '+30%', price: 10000, oneTimeReward: 10000, features: ['+30% earnings boost', 'VIP support', 'Exclusive games'] },
+  { id: null, tier: 'PLATINUM', name: 'Platinum Badge', boost: '+30%', price: 20000, oneTimeReward: 20000, features: ['+30% earnings boost', 'Premium VIP support', 'Exclusive games', 'Faster withdrawals'] },
 ];
 
 export default function BadgesPage() {
@@ -51,7 +73,6 @@ export default function BadgesPage() {
         id: b.id,
         tier,
         name: b.name,
-        emoji: b.icon || TIER_STYLE[tier]?.emoji || '🏅',
         boost: `+${Math.round(b.earningsBoost * 100)}%`,
         price: b.price,
         oneTimeReward: b.oneTimeReward,
@@ -117,9 +138,7 @@ export default function BadgesPage() {
 
       {activeBadge && (
         <div className="flex items-center gap-4 rounded-2xl border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#1E293B] p-4">
-          <span className="text-4xl">
-            {TIER_STYLE[activeBadge.badge.tier as BadgeTier]?.emoji ?? '🏅'}
-          </span>
+          <TierIcon tier={activeBadge.badge.tier as BadgeTier} />
           <div className="min-w-0 flex-1">
             <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">Your active badge</p>
             <p className="font-bold text-[#0F172A] dark:text-white">{activeBadge.badge.name}</p>
@@ -144,7 +163,7 @@ export default function BadgesPage() {
               )}
             >
               <div className="flex items-center gap-4 flex-1 min-w-0">
-                <span className="text-4xl">{badge.emoji}</span>
+                <TierIcon tier={badge.tier} />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-[#0F172A] dark:text-white">{badge.name}</h3>

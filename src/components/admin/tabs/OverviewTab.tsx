@@ -10,6 +10,14 @@ import {
   UserCheck,
   DollarSign,
   Wallet,
+  Tv,
+  Gamepad2,
+  ClipboardList,
+  Coins,
+  Landmark,
+  FileText,
+  Inbox,
+  type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSystemCurrency } from '@/hooks/useSystemCurrency';
@@ -251,21 +259,21 @@ export function OverviewTab({ data }: OverviewTabProps) {
       {/* Content Stats */}
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
         <ContentGlowCard
-          icon="📺"
+          icon={Tv}
           label="Videos"
           value={data.content.videos.total}
           active={data.content.videos.active}
           color="blue"
         />
         <ContentGlowCard
-          icon="🎮"
+          icon={Gamepad2}
           label="Games"
           value={data.content.games.total}
           active={data.content.games.active}
           color="green"
         />
         <ContentGlowCard
-          icon="📋"
+          icon={ClipboardList}
           label="Surveys"
           value={data.content.surveys.total}
           active={data.content.surveys.active}
@@ -339,11 +347,17 @@ export function OverviewTab({ data }: OverviewTabProps) {
               className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-2.5 sm:py-3 hover:bg-[#F8FAFC] dark:hover:bg-[#0F172A]/50 transition-colors group"
             >
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-[#2563EB]/10 dark:bg-[#2563EB]/10 flex items-center justify-center text-base sm:text-xl group-hover:scale-110 transition-transform flex-shrink-0">
-                {item.type === 'EARN'
-                  ? '💰'
-                  : item.type === 'WITHDRAWAL'
-                    ? '🏦'
-                    : '📝'}
+                {(() => {
+                  const ActivityIcon =
+                    item.type === 'EARN'
+                      ? Coins
+                      : item.type === 'WITHDRAWAL'
+                        ? Landmark
+                        : FileText;
+                  return (
+                    <ActivityIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#2563EB] dark:text-[#60A5FA]" />
+                  );
+                })()}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[#0F172A] dark:text-white truncate">
@@ -363,7 +377,7 @@ export function OverviewTab({ data }: OverviewTabProps) {
           ))}
           {(!data.recentActivity || data.recentActivity.length === 0) && (
             <div className="px-4 sm:px-5 py-8 text-center">
-              <div className="text-4xl mb-2">📭</div>
+              <Inbox size={36} className="mx-auto mb-2 text-[#94A3B8] dark:text-[#64748B]" />
               <p className="text-sm text-[#64748B] dark:text-[#94A3B8]">
                 No recent activity
               </p>
@@ -479,7 +493,7 @@ function GlowStatCard({
 
 // ContentGlowCard with CSS dark mode
 interface ContentGlowCardProps {
-  icon: string;
+  icon: LucideIcon;
   label: string;
   value: number;
   active: number;
@@ -487,7 +501,7 @@ interface ContentGlowCardProps {
 }
 
 function ContentGlowCard({
-  icon,
+  icon: Icon,
   label,
   value,
   active,
@@ -509,7 +523,7 @@ function ContentGlowCard({
       )}
     >
       <div className="relative">
-        <div className="text-3xl sm:text-4xl mb-1 sm:mb-2">{icon}</div>
+        <Icon className="mx-auto mb-1 sm:mb-2 w-7 h-7 sm:w-9 sm:h-9" />
         <p className="text-xl sm:text-2xl font-extrabold text-[#0F172A] dark:text-white">
           {value}
         </p>

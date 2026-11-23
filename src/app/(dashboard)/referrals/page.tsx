@@ -13,6 +13,15 @@ import {
   Link2,
   Send,
   BarChart3,
+  Coins,
+  Gem,
+  Handshake,
+  Medal,
+  Rocket,
+  Share2,
+  Star,
+  UserPlus,
+  Users,
 } from 'lucide-react';
 import { useReferrals } from '@/hooks/useReferrals';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -130,7 +139,11 @@ export default function ReferralsPage() {
       case 'pending':
         return 'Pending';
       case 'completed':
-        return '✓ Completed';
+        return (
+          <span className="inline-flex items-center gap-0.5">
+            <Check size={10} /> Completed
+          </span>
+        );
       default:
         return status;
     }
@@ -145,7 +158,7 @@ export default function ReferralsPage() {
       reward: 1000,
       progress: 5,
       target: 5,
-      icon: '🏅',
+      icon: Medal,
     },
     {
       id: 2,
@@ -154,7 +167,7 @@ export default function ReferralsPage() {
       reward: 2500,
       progress: 10,
       target: 10,
-      icon: '🌟',
+      icon: Star,
     },
     {
       id: 3,
@@ -163,7 +176,7 @@ export default function ReferralsPage() {
       reward: 5000,
       progress: 12,
       target: 25,
-      icon: '🚀',
+      icon: Rocket,
     },
     {
       id: 4,
@@ -172,7 +185,7 @@ export default function ReferralsPage() {
       reward: 15000,
       progress: 12,
       target: 50,
-      icon: '💎',
+      icon: Gem,
     },
   ];
 
@@ -259,7 +272,7 @@ export default function ReferralsPage() {
 
         <div className="relative z-10">
           <div className="w-20 h-20 rounded-full bg-white/15 border-2 border-white/25 flex items-center justify-center text-4xl mx-auto mb-4 shadow-lg">
-            👥
+            <Users size={36} />
           </div>
           <h2 className="text-2xl font-extrabold">Invite Friends &amp; Earn</h2>
           <p className="text-white/80 text-sm mt-2 max-w-sm mx-auto">
@@ -388,19 +401,19 @@ export default function ReferralsPage() {
               {[
                 {
                   step: 1,
-                  icon: '📤',
+                  icon: Share2,
                   title: 'Share Your Code',
                   desc: 'Send your unique referral code to friends via WhatsApp, SMS, or any platform.',
                 },
                 {
                   step: 2,
-                  icon: '📝',
+                  icon: UserPlus,
                   title: 'Friend Signs Up',
                   desc: 'Your friend creates an account using your referral code during registration.',
                 },
                 {
                   step: 3,
-                  icon: '💰',
+                  icon: Coins,
                   title: `You Earn ${REFERRAL_COMMISSION_LABEL}`,
                   desc: `Each time your friend buys or renews a plan (or buys a badge), ${REFERRAL_COMMISSION_LABEL} of it is added to your balance once the payment is confirmed.`,
                 },
@@ -411,7 +424,7 @@ export default function ReferralsPage() {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">{item.icon}</span>
+                      <item.icon size={18} className="text-[#8B5CF6]" />
                       <p className="text-sm font-bold">{item.title}</p>
                     </div>
                     <p className="text-sm text-[#6B7280]">{item.desc}</p>
@@ -428,7 +441,7 @@ export default function ReferralsPage() {
         <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm overflow-hidden">
           {friends.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-6xl mb-4">👥</div>
+              <Users size={56} className="mx-auto mb-4 text-[#D1D5DB]" />
               <p className="text-[#6B7280] font-medium">No friends yet</p>
               <p className="text-sm text-[#9CA3AF] mt-1">
                 Share your referral code to get started
@@ -505,7 +518,13 @@ export default function ReferralsPage() {
                     !milestone.achieved && 'border-b border-[#F3F4F6]',
                   )}
                 >
-                  <span className="text-3xl">{milestone.icon}</span>
+                  <milestone.icon
+                    size={30}
+                    className={cn(
+                      'flex-shrink-0',
+                      milestone.achieved ? 'text-[#22C55E]' : 'text-[#8B5CF6]',
+                    )}
+                  />
                   <div className="flex-1">
                     <p className="text-sm font-bold">{milestone.title}</p>
                     <p className="text-xs text-[#6B7280]">
@@ -519,8 +538,8 @@ export default function ReferralsPage() {
                       +{milestone.reward} RWF
                     </p>
                     {milestone.achieved ? (
-                      <span className="text-[10px] font-semibold text-[#22C55E] bg-[#DCFCE7] px-2 py-0.5 rounded-full">
-                        ✓ Done
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-[#22C55E] bg-[#DCFCE7] px-2 py-0.5 rounded-full">
+                        <Check size={10} /> Done
                       </span>
                     ) : (
                       <span className="text-[10px] font-semibold text-[#6B7280]">
@@ -564,7 +583,7 @@ export default function ReferralsPage() {
                     className="flex items-center gap-4 px-5 py-3 border-b border-[#F3F4F6] last:border-b-0"
                   >
                     <div className="w-10 h-10 rounded-xl bg-[#F0FDF4] flex items-center justify-center text-lg flex-shrink-0">
-                      🤝
+                      <Handshake size={18} className="text-[#22C55E]" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-[#111827] truncate">

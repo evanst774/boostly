@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Award, Loader2, Users, DollarSign } from 'lucide-react';
+import { Award, Loader2, Users, DollarSign, Trophy } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 
 interface RewardSummary {
@@ -80,7 +80,7 @@ export function RewardsTab() {
               className="flex items-center gap-4 px-5 py-3 hover:bg-[#F8FAFC] dark:hover:bg-[#0F172A] transition-colors"
             >
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#F59E0B] to-[#D97706] flex items-center justify-center text-white text-xl flex-shrink-0">
-                🏆
+                <Trophy size={20} />
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-[#0F172A] dark:text-white">

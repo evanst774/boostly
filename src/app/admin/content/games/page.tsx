@@ -3,7 +3,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, Gamepad2 } from 'lucide-react';
+import { GameCategoryIcon } from '@/components/earn/GameCategoryIcon';
 import { cn } from '@/lib/utils';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
@@ -95,7 +96,7 @@ export default function AdminGamesPage() {
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#22C55E] to-[#16A34A] flex items-center justify-center text-white text-2xl flex-shrink-0">
-                  🎮
+                  <GameCategoryIcon category={game.category} size={24} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm font-bold text-[#0F172A] dark:text-white">
@@ -105,8 +106,8 @@ export default function AdminGamesPage() {
                     <span className="text-xs text-[#64748B] dark:text-[#94A3B8]">
                       {game.category}
                     </span>
-                    <span className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-                      👾 {game.totalPlays || 0} plays
+                    <span className="inline-flex items-center gap-1 text-xs text-[#64748B] dark:text-[#94A3B8]">
+                      <Gamepad2 size={12} /> {game.totalPlays || 0} plays
                     </span>
                     <span className="text-xs font-bold text-[#22C55E] bg-[#F0FDF4] dark:bg-[#22C55E]/20 px-2 py-0.5 rounded-full">
                       +{game.baseReward} RWF

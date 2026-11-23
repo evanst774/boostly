@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Wallet } from 'lucide-react';
+import { Wallet, Check } from 'lucide-react';
 
 interface PublicWithdrawal {
   id: string;
@@ -87,8 +87,8 @@ export function WithdrawalActivityFeed({ limit = 5 }: { limit?: number }) {
                 <p className="text-xs text-[#6B7280]">{w.timeAgo}</p>
               </div>
             </div>
-            <span className="text-xs font-semibold text-[#22C55E]">
-              ✓ Completed
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#22C55E]">
+              <Check size={12} /> Completed
             </span>
           </div>
         ))}

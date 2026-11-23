@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Lock,
+  TriangleAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SUDO_CONFIG } from '@/lib/constants/sudo';
@@ -210,7 +211,7 @@ export function SudoModal({
             {/* Why 2FA */}
             <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
               <p className="text-[10px] text-gray-500">
-                <span className="text-amber-400">🔒</span> Two-factor
+                <Lock className="inline w-3 h-3 -mt-0.5 mr-0.5 text-amber-400" /> Two-factor
                 authentication adds an extra layer of security to your account
                 by requiring a verification code in addition to your password
                 when performing sensitive actions like changing passwords,
@@ -441,7 +442,7 @@ export function SudoModal({
 
           <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
             <p className="text-[10px] text-gray-500">
-              <span className="text-amber-400">⚠️</span> Sudo mode grants
+              <TriangleAlert className="inline w-3 h-3 -mt-0.5 mr-0.5 text-amber-400" /> Sudo mode grants
               elevated permissions for sensitive actions. This session will
               expire after{' '}
               <span className="text-white font-medium">

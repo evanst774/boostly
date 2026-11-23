@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { ClipboardList, Gamepad2, Tv } from 'lucide-react';
 
 export function ContentTab() {
   const router = useRouter();
@@ -28,21 +29,24 @@ export function ContentTab() {
       <div className="grid grid-cols-3 gap-4">
         {[
           {
-            icon: '📺',
+            icon: Tv,
+            iconColor: 'text-[#2563EB] dark:text-[#60A5FA]',
             label: 'Videos',
             value: stats.videos,
             color: 'from-[#2563EB] to-[#1D4ED8]',
             href: '/admin/content/videos',
           },
           {
-            icon: '🎮',
+            icon: Gamepad2,
+            iconColor: 'text-[#22C55E] dark:text-[#4ADE80]',
             label: 'Games',
             value: stats.games,
             color: 'from-[#22C55E] to-[#16A34A]',
             href: '/admin/content/games',
           },
           {
-            icon: '📋',
+            icon: ClipboardList,
+            iconColor: 'text-[#8B5CF6] dark:text-[#A78BFA]',
             label: 'Surveys',
             value: stats.surveys,
             color: 'from-[#8B5CF6] to-[#6D28D9]',
@@ -54,7 +58,7 @@ export function ContentTab() {
             className="bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155] shadow-sm p-5 text-center cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => router.push(item.href)}
           >
-            <div className="text-3xl mb-2">{item.icon}</div>
+            <item.icon size={30} className={cn('mx-auto mb-2', item.iconColor)} />
             <p className="text-2xl font-extrabold text-[#0F172A] dark:text-white">
               {item.value}
             </p>
@@ -72,7 +76,7 @@ export function ContentTab() {
         <div className="grid grid-cols-3 gap-3">
           {[
             {
-              icon: '📺',
+              icon: Tv,
               label: 'Add Video',
               desc: 'Upload new video',
               href: '/admin/content/videos/create',
@@ -80,7 +84,7 @@ export function ContentTab() {
                 'bg-[#EFF6FF] dark:bg-[#2563EB]/20 text-[#2563EB] dark:text-[#60A5FA]',
             },
             {
-              icon: '🎮',
+              icon: Gamepad2,
               label: 'Add Game',
               desc: 'Add new game',
               href: '/admin/content/games/create',
@@ -88,7 +92,7 @@ export function ContentTab() {
                 'bg-[#F0FDF4] dark:bg-[#22C55E]/20 text-[#22C55E] dark:text-[#4ADE80]',
             },
             {
-              icon: '📋',
+              icon: ClipboardList,
               label: 'Add Survey',
               desc: 'Create new survey',
               href: '/admin/content/surveys/create',
@@ -107,7 +111,7 @@ export function ContentTab() {
                   item.color,
                 )}
               >
-                {item.icon}
+                <item.icon size={20} />
               </div>
               <div>
                 <p className="text-sm font-bold text-[#0F172A] dark:text-white">

@@ -10,6 +10,9 @@ import {
   Loader2,
   Users,
   DollarSign,
+  Clock,
+  CircleCheck,
+  Trophy,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { StatCard } from '@/components/admin/StatCard';
@@ -120,7 +123,7 @@ export default function AdminRewardsPage() {
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#F59E0B] to-[#D97706] flex items-center justify-center text-white text-2xl flex-shrink-0">
-                  🏆
+                  <Trophy size={24} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm font-bold text-[#0F172A] dark:text-white">
@@ -133,8 +136,16 @@ export default function AdminRewardsPage() {
                     <span className="text-xs font-bold text-[#F59E0B] bg-[#FFFBEB] dark:bg-[#F59E0B]/20 px-2 py-0.5 rounded-full">
                       {formatCurrency(reward.amount)}
                     </span>
-                    <span className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-                      {reward.claimed ? '✅ Claimed' : '⏳ Pending'}
+                    <span className="inline-flex items-center gap-1 text-xs text-[#64748B] dark:text-[#94A3B8]">
+                      {reward.claimed ? (
+                        <>
+                          <CircleCheck size={12} className="text-[#22C55E]" /> Claimed
+                        </>
+                      ) : (
+                        <>
+                          <Clock size={12} className="text-[#F59E0B]" /> Pending
+                        </>
+                      )}
                     </span>
                   </div>
                 </div>

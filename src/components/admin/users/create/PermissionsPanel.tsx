@@ -1,7 +1,7 @@
 // src/components/admin/users/PermissionsPanel.tsx
 'use client';
 
-import { Search, X, Info, Shield } from 'lucide-react';
+import { Search, X, Info, Shield, ClipboardList, TriangleAlert } from 'lucide-react';
 import { PermissionModule } from './PermissionModule';
 import { PermissionOption } from '@/app/admin/types';
 
@@ -60,14 +60,14 @@ export function PermissionsPanel({
         <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300">
           {hasRoleSelected ? (
             <p>
-              📋 Showing permissions from the <strong>{roleName}</strong> role
+              <ClipboardList className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />Showing permissions from the <strong>{roleName}</strong> role
               Matrix. You can <strong>uncheck</strong> items to create a subset
               override for this user. You <strong>cannot grant</strong>{' '}
               permissions the role doesn&apos;t have.
             </p>
           ) : (
             <p>
-              ⚠️ <strong>Select a role above</strong> to auto-fill permissions
+              <TriangleAlert className="inline w-3.5 h-3.5 mr-1 -mt-0.5" /><strong>Select a role above</strong> to auto-fill permissions
               from the Matrix.
             </p>
           )}

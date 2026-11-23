@@ -169,7 +169,7 @@ export class NotificationsService {
   ): Promise<Notification> {
     return await this.createNotificationForUser(
       userId,
-      `💰 Reward Earned!`,
+      `Reward Earned!`,
       `You earned ${amount.toLocaleString()} RWF from ${type.toLowerCase()}`,
       {
         type: 'SUCCESS',
@@ -188,7 +188,7 @@ export class NotificationsService {
   ): Promise<Notification> {
     return await this.createNotificationForUser(
       userId,
-      `🎁 Daily Bonus Claimed!`,
+      `Daily Bonus Claimed!`,
       `You claimed ${amount.toLocaleString()} RWF for Day ${streakDay} of your streak!`,
       {
         type: 'SUCCESS',
@@ -206,7 +206,7 @@ export class NotificationsService {
   ): Promise<Notification> {
     return await this.createNotificationForUser(
       userId,
-      `👥 Referral Success!`,
+      `Referral Success!`,
       `${friendName} joined using your code! You earned ${amount.toLocaleString()} RWF.`,
       {
         type: 'SUCCESS',
@@ -239,7 +239,7 @@ export class NotificationsService {
 
     return await this.createNotificationForUser(
       userId,
-      `💸 Withdrawal ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+      `Withdrawal ${status.charAt(0).toUpperCase() + status.slice(1)}`,
       messages[status],
       {
         type: types[status],
@@ -257,7 +257,7 @@ export class NotificationsService {
   ): Promise<Notification> {
     return await this.createNotificationForUser(
       userId,
-      `🏅 Badge Unlocked!`,
+      `Badge Unlocked!`,
       `You purchased the ${badgeName}! Your earnings are now boosted by ${boost}%.`,
       {
         type: 'SUCCESS',
@@ -289,7 +289,7 @@ export class NotificationsService {
 
     return await this.createNotificationForUser(
       userId,
-      `📋 Subscription ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+      `Subscription ${status.charAt(0).toUpperCase() + status.slice(1)}`,
       messages[status],
       {
         type: types[status],
@@ -306,7 +306,7 @@ export class NotificationsService {
   ): Promise<Notification> {
     return await this.createNotificationForUser(
       userId,
-      '📧 Verify Your Email',
+      'Verify Your Email',
       `We sent a verification link to ${email}. Please check your inbox.`,
       {
         type: 'INFO',

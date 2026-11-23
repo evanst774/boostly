@@ -65,7 +65,7 @@ export default function VerifyEmailPage() {
 
       setAutoSent(true);
       toast.success('Verification code sent to your email', {
-        icon: '📧',
+        icon: <Mail size={18} className="text-[#2563EB]" />,
         duration: 4000,
       });
 
@@ -183,7 +183,7 @@ export default function VerifyEmailPage() {
       }
 
       toast.success('A new code has been sent to your email', {
-        icon: '📧',
+        icon: <Mail size={18} className="text-[#2563EB]" />,
         duration: 4000,
       });
 

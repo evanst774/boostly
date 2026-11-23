@@ -15,6 +15,7 @@ import {
   Flame,
   Star,
   Trophy,
+  ChartColumn,
 } from 'lucide-react';
 import { useEarningsStats } from '@/hooks/useEarningsStats';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -228,7 +229,7 @@ export default function EarningsStatsPage() {
                   style={{ backgroundColor: colors[index % colors.length] }}
                 />
                 <span className="text-lg">
-                  {icons[item.type as keyof typeof icons] || '📊'}
+                  {icons[item.type as keyof typeof icons] || <ChartColumn size={18} />}
                 </span>
                 <span className="flex-1 text-sm font-medium capitalize">
                   {item.type || 'Other'}
@@ -278,7 +279,7 @@ export default function EarningsStatsPage() {
             <div>
               <p className="text-xs text-[#6B7280]">Current Streak</p>
               <p className="text-lg font-extrabold">{streak} days</p>
-              <p className="text-xs text-[#6B7280]">Keep going! 🔥</p>
+              <p className="text-xs text-[#6B7280]">Keep going!</p>
             </div>
           </div>
         </div>
