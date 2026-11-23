@@ -188,9 +188,8 @@ export default function ClientLayout({
     return () => clearTimeout(timer);
   }, []);
 
-  return (
-    <div
-      className={`
+  // Also on <body>, so content portaled there (game/video players) gets the app fonts.
+  const fontClasses = `
         ${manrope.variable}
         ${plusJakartaSans.variable}
         ${spaceGrotesk.variable}
@@ -213,7 +212,16 @@ export default function ClientLayout({
         ${fkGroteskMedium.variable}
         ${fkGroteskBold.variable}
         ${fkGroteskLight.variable}
-      `}
+      `;
+  useEffect(() => {
+    const list = fontClasses.split(/\s+/).filter(Boolean);
+    document.body.classList.add(...list);
+    return () => document.body.classList.remove(...list);
+  }, [fontClasses]);
+
+  return (
+    <div
+      className={fontClasses}
     >
       {/* Page Loader */}
       <PageLoader isLoading={isLoading} />

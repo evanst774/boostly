@@ -80,6 +80,7 @@ import { useSystemCurrency } from '@/hooks/useSystemCurrency';
 import { cn, formatDuration } from '@/lib/utils';
 import { type VideoCategory as SchemaVideoCategory } from '@/lib/db/schema';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 
 // Import missing icons
 import { Music, Newspaper, TriangleAlert } from 'lucide-react';
@@ -1208,13 +1209,16 @@ export default function VideosPage() {
       </div>
 
       {/* Video Player Modal */}
+      {/* Player on <body>: nothing in the app shell can cover or clip it. */}
+      {typeof document !== 'undefined' &&
+        createPortal(
       <AnimatePresence>
         {isPlayerOpen && selectedVideo && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/95 flex flex-col safe-top safe-bottom"
+            className="fixed inset-0 z-[100] bg-black/95 flex flex-col safe-top safe-bottom font-outfit antialiased"
           >
             {/* Player Header */}
             <div className="flex items-center justify-between p-2 sm:p-3 md:p-4 bg-black/50 backdrop-blur-sm safe-top">
@@ -1486,7 +1490,9 @@ export default function VideosPage() {
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+          document.body,
+        )}
     </div>
   );
 }

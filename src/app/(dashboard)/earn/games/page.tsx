@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import Image from 'next/image';
+import { createPortal } from 'react-dom';
 import {
   Award,
   Clock,
@@ -32,6 +33,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { GameCategoryIcon } from '@/components/earn/GameCategoryIcon';
+import { GameLoader } from '@/components/earn/GameLoader';
 import { useGames } from '@/hooks/useGames';
 import { useGameSession, type CompletionResult } from '@/hooks/useGameSession';
 import { useEarnToday } from '@/hooks/useEarnToday';
@@ -190,6 +192,8 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
 
   const [result, setResult] = useState<CompletionResult | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // The loader stays up until the game inside the frame has finished loading.
+  const [frameLoaded, setFrameLoaded] = useState(false);
   const [liveScore, setLiveScore] = useState(0);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -248,10 +252,19 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
     if (outcome) setResult(outcome);
   }, [complete, liveScore, onClose, session]);
 
+  // iPhone Safari can't make a page element full screen; hide the button there.
+  const [canFullscreen, setCanFullscreen] = useState(false);
+  useEffect(() => {
+    setCanFullscreen(Boolean(document.fullscreenEnabled));
+    const sync = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', sync);
+    return () => document.removeEventListener('fullscreenchange', sync);
+  }, []);
+
   const toggleFullscreen = useCallback(() => {
     if (!containerRef.current) return;
     if (!document.fullscreenElement) {
-      void containerRef.current.requestFullscreen();
+      void (containerRef.current.parentElement ?? containerRef.current).requestFullscreen();
       setIsFullscreen(true);
     } else {
       void document.exitFullscreen();
@@ -271,103 +284,98 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-[#0F172A] flex flex-col safe-top safe-bottom"
+      className="fixed inset-0 z-[100] bg-[#0F172A] flex flex-col safe-top safe-bottom font-outfit antialiased"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 bg-black/40 backdrop-blur-md border-b border-white/5">
+      {/* Slim bar: exit · play time and reward · finish. Kept to one row so
+          the game gets nearly the whole screen. */}
+      <div className="relative flex h-12 shrink-0 items-center gap-2 border-b border-white/5 bg-black/50 px-2 sm:h-14 sm:px-4">
         <button
           onClick={result ? onClose : handleFinish}
-          className="text-white/70 hover:text-white transition-colors touch-min-target"
+          className="flex h-9 w-9 items-center justify-center rounded-xl text-white/70 transition-colors hover:bg-white/10 hover:text-white"
           aria-label="Exit game"
         >
-          <X className="w-5 h-5 sm:w-6 sm:h-6" />
+          <X className="h-5 w-5" />
         </button>
 
-        <div className="flex items-center gap-4 sm:gap-6">
-          <div className="text-center">
-            <p className="text-[10px] sm:text-[10px] text-white/50 uppercase tracking-wider">
-              Played
-            </p>
-            <p className="text-lg sm:text-xl font-extrabold text-white tabular-nums">
-              {formatClock(verified)}
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-[10px] sm:text-[10px] text-white/50 uppercase tracking-wider">
-              Earning
-            </p>
-            <p
-              className={cn(
-                'text-lg sm:text-xl font-extrabold tabular-nums',
-                progress?.qualified ? 'text-[#22C55E]' : 'text-white/50',
-              )}
-            >
-              {formatAmount(progress?.projectedReward ?? 0)}
-            </p>
-          </div>
-          {game.isSponsored && (
-            <span className="hidden sm:flex bg-gradient-to-r from-[#F59E0B] to-[#FBBF24] text-[#0F172A] text-[9px] font-bold px-2 py-0.5 rounded-full items-center gap-0.5">
-              <Star size={10} className="fill-current" />
-              Sponsored
-            </span>
-          )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-bold text-white sm:text-sm">{game.name}</p>
+          <p className="truncate text-[11px] text-white/55 tabular-nums">
+            {result
+              ? 'Session saved'
+              : progress?.qualified
+                ? `Reward unlocked · ${formatAmount(progress.projectedReward)} · keep playing to earn more`
+                : `${formatClock(verified)} played · ${formatClock(Math.max(minSeconds - verified, 0))} to unlock your reward`}
+          </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        {game.isSponsored && (
+          <span className="hidden items-center gap-0.5 rounded-full bg-gradient-to-r from-[#F59E0B] to-[#FBBF24] px-2 py-0.5 text-[9px] font-bold text-[#0F172A] md:flex">
+            <Star size={10} className="fill-current" />
+            Sponsored
+          </span>
+        )}
+
+        <span
+          className={cn(
+            'hidden rounded-lg px-2 py-1 text-xs font-extrabold tabular-nums sm:block',
+            progress?.qualified ? 'bg-[#22C55E]/15 text-[#22C55E]' : 'bg-white/5 text-white/50',
+          )}
+        >
+          {formatAmount(progress?.projectedReward ?? 0)}
+        </span>
+
+        {canFullscreen && (
           <button
             onClick={toggleFullscreen}
-            className="text-white/50 hover:text-white transition-colors touch-min-target hidden sm:flex"
-            aria-label="Toggle fullscreen"
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+            aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}
           >
             {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
           </button>
-          <button
-            onClick={result ? onClose : handleFinish}
-            disabled={isCompleting}
-            className="bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-colors touch-min-target"
-          >
-            {isCompleting ? 'Saving…' : 'Finish'}
-          </button>
-        </div>
-      </div>
+        )}
+        <button
+          onClick={result ? onClose : handleFinish}
+          disabled={isCompleting}
+          className={cn(
+            'h-9 rounded-xl px-3 text-xs font-bold transition-colors disabled:opacity-50 sm:px-4 sm:text-sm',
+            progress?.qualified
+              ? 'bg-[#22C55E] text-[#052E16] hover:bg-[#16A34A]'
+              : 'bg-white/10 text-white hover:bg-white/20',
+          )}
+        >
+          {isCompleting ? 'Saving…' : progress?.qualified ? 'Claim' : 'Finish'}
+        </button>
 
-      {/* Qualifying progress */}
-      {!result && (
-        <div className="px-3 sm:px-4 py-2 bg-black/20 border-b border-white/5">
-          <div className="flex items-center justify-between text-[10px] sm:text-xs text-white/60 mb-1">
-            <span>
-              {progress?.qualified
-                ? 'Reward unlocked — keep playing to earn more'
-                : `Play ${formatClock(Math.max(minSeconds - verified, 0))} more to unlock your reward`}
-            </span>
-            <span className="tabular-nums">{Math.round(qualifyProgress)}%</span>
-          </div>
-          <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+        {/* Progress towards the reward, as a thin line under the bar */}
+        {!result && (
+          <div className="absolute inset-x-0 -bottom-px h-[3px] bg-white/5">
             <motion.div
               animate={{ width: `${qualifyProgress}%` }}
               transition={{ duration: 0.4 }}
-              className={cn(
-                'h-full rounded-full',
-                progress?.qualified
-                  ? 'bg-[#22C55E]'
-                  : 'bg-gradient-to-r from-[#2563EB] to-[#22C55E]',
-              )}
+              className={cn('h-full', progress?.qualified ? 'bg-[#22C55E]' : 'bg-gradient-to-r from-[#2563EB] to-[#22C55E]')}
             />
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Play area */}
       <div
         ref={containerRef}
-        className="flex-1 flex items-center justify-center p-2 sm:p-4 relative overflow-hidden"
+        className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-black sm:p-3"
       >
-        {isStarting && (
-          <div className="flex flex-col items-center gap-3 text-white/60">
-            <Loader2 className="w-8 h-8 animate-spin" />
-            <p className="text-sm">Loading {game.name}…</p>
-          </div>
-        )}
+        <AnimatePresence>
+          {!error && !result && (isStarting || !session || !frameLoaded) && (
+            <motion.div
+              key="loader"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, transition: { duration: 0.35 } }}
+              className="absolute inset-0 z-10 flex items-center justify-center bg-[radial-gradient(120%_80%_at_50%_30%,#172554_0%,#0B1120_55%,#000_100%)]"
+            >
+              <GameLoader name={game.name} category={game.category} />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {error && !isStarting && (
           <div className="text-center px-6 max-w-sm">
@@ -389,7 +397,7 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
           <iframe
             src={session.embedUrl}
             title={game.name}
-            className="w-full h-full rounded-xl border border-white/5 bg-black"
+            className="h-full w-full bg-black sm:rounded-xl sm:border sm:border-white/5"
             /* allow-same-origin only for HTTPS games on another origin: they get
                their own storage, never ours (see lib/games/embed-policy.ts). */
             sandbox={gameSandbox(
@@ -397,6 +405,7 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
             )}
             allow="autoplay; fullscreen; gamepad; accelerometer; gyroscope"
             referrerPolicy="no-referrer"
+            onLoad={() => setFrameLoaded(true)}
           />
         )}
 
@@ -752,12 +761,17 @@ export default function GamesPage() {
         </div>
       )}
 
-      {/* Player */}
-      <AnimatePresence>
-        {selectedGame && (
-          <GameFrame game={selectedGame} onClose={handleCloseGame} />
+      {/* Player: rendered on <body> so no app container (header, transformed
+          page wrappers) can sit on top of it or clip it. */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {selectedGame && (
+              <GameFrame game={selectedGame} onClose={handleCloseGame} />
+            )}
+          </AnimatePresence>,
+          document.body,
         )}
-      </AnimatePresence>
     </div>
   );
 }

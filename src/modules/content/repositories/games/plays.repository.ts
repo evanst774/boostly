@@ -118,7 +118,11 @@ export class GamePlaysRepository {
   // DAILY CAPS
   // ============================================
 
-  /** Sessions the user actually finished today for this game. */
+  /**
+   * Rewarded plays of this game today. Sessions that ended too short (or
+   * earned nothing) don't count, so opening and closing a game by mistake
+   * never uses up one of the day's plays.
+   */
   async getCompletedPlayCountToday(
     userId: string,
     gameId: string,
@@ -133,6 +137,7 @@ export class GamePlaysRepository {
           eq(gamePlays.gameId, gameId),
           eq(gamePlays.periodDate, periodDate),
           eq(gamePlays.status, GamePlayStatusEnum.COMPLETED),
+          sql`coalesce(${gamePlays.rewardEarned}, 0) > 0`,
         ),
       );
     return Number(result[0]?.count ?? 0);

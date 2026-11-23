@@ -80,6 +80,8 @@ export function useGameSession(): UseGameSessionReturn {
   const lastBeatAtRef = useRef(0);
   const sessionIdRef = useRef<string | null>(null);
   const completedRef = useRef(false);
+  // Whether the server says this session already earned its reward.
+  const qualifiedRef = useRef(false);
 
   const stopHeartbeat = useCallback(() => {
     if (timerRef.current) {
@@ -110,6 +112,7 @@ export function useGameSession(): UseGameSessionReturn {
         reason?: string;
       } = await response.json();
 
+      qualifiedRef.current = result.qualified;
       setProgress({
         verifiedSeconds: result.verifiedSeconds,
         qualified: result.qualified,
@@ -131,6 +134,7 @@ export function useGameSession(): UseGameSessionReturn {
       setIsStarting(true);
       setError(null);
       completedRef.current = false;
+      qualifiedRef.current = false;
 
       try {
         const response = await fetch(`/api/content/games/${gameId}/session`, {
@@ -235,6 +239,25 @@ export function useGameSession(): UseGameSessionReturn {
     return () =>
       document.removeEventListener('visibilitychange', onVisibilityChange);
   }, [sendHeartbeat]);
+
+  // Closing the tab (or navigating away) after the reward was unlocked still
+  // pays it: finish the session in the background. Sessions that haven't
+  // qualified are left open so the player can come back and continue.
+  useEffect(() => {
+    const onPageHide = () => {
+      const sessionId = sessionIdRef.current;
+      if (!sessionId || completedRef.current || !qualifiedRef.current) return;
+      completedRef.current = true;
+      void fetch(`/api/content/games/sessions/${sessionId}/complete`, {
+        method: 'POST',
+        keepalive: true,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ score: 0 }),
+      }).catch(() => undefined);
+    };
+    window.addEventListener('pagehide', onPageHide);
+    return () => window.removeEventListener('pagehide', onPageHide);
+  }, []);
 
   useEffect(() => stopHeartbeat, [stopHeartbeat]);
 
