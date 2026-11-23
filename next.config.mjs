@@ -133,6 +133,18 @@ const pwaConfig = withPWA({
 });
 
 /** @type {import('next').NextConfig} */
+/** Origins allowed to be framed as games (the Boostly Games platform). */
+const GAMES_FRAME_ORIGINS = (() => {
+  const origins = new Set(['https://games.boostly.buzz']);
+  try {
+    if (process.env.NEXT_PUBLIC_GAMES_CDN_URL) origins.add(new URL(process.env.NEXT_PUBLIC_GAMES_CDN_URL).origin);
+  } catch {
+    /* ignore a malformed URL */
+  }
+  if (process.env.NODE_ENV !== 'production') origins.add('http://localhost:3110');
+  return [...origins].join(' ');
+})();
+
 const nextConfig = {
   reactStrictMode: true,
   trailingSlash: false,
@@ -317,12 +329,13 @@ const nextConfig = {
               "font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://*.jivosite.com",
               "img-src 'self' data: https: http: https://cdn.themototrack.com https://cdn.shared.schoolhub.rw https://*.r2.cloudflarestorage.com https://images.unsplash.com https://cdn.vivens.pro https://cdn.boostly.buzz https://thumbs.dreamstime.com https://img.dreamstime.com https://img.youtube.com https://i.ytimg.com https://www.google.com https://*.jivosite.com",
               "connect-src 'self' https: http: ws: wss: https://www.youtube.com https://www.youtube-nocookie.com https://*.jivosite.com wss://*.jivosite.com",
-              "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com https://www.youtube.com/embed/* https://*.jivosite.com",
+              // Games platform (games.boostly.buzz, or NEXT_PUBLIC_GAMES_CDN_URL's origin).
+              `frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com https://www.youtube.com/embed/* https://*.jivosite.com ${GAMES_FRAME_ORIGINS}`,
               "frame-ancestors 'none'",
               "worker-src 'self' blob:",
               "manifest-src 'self'",
               "media-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://www.youtube.com/embed/*",
-              "child-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://*.jivosite.com",
+              `child-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://*.jivosite.com ${GAMES_FRAME_ORIGINS}`,
             ].join('; '),
           },
         ],
