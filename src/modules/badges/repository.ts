@@ -223,11 +223,25 @@ export class SubscriptionPlansRepository {
     });
   }
 
-  async getAll(): Promise<SubscriptionPlan[]> {
+  /** Plans in display order (admin sortOrder, then price). */
+  async getAll(options: { includeInactive?: boolean } = {}): Promise<SubscriptionPlan[]> {
     return await db.query.subscriptionPlans.findMany({
-      where: eq(subscriptionPlans.isActive, true),
-      orderBy: [subscriptionPlans.priceMonthly],
+      where: options.includeInactive ? undefined : eq(subscriptionPlans.isActive, true),
+      orderBy: [
+        sql`coalesce(${subscriptionPlans.sortOrder}, 100000)`,
+        subscriptionPlans.priceMonthly,
+      ],
     });
+  }
+
+  /** Active subscriber count per plan id (for the admin editor). */
+  async getSubscriberCounts(): Promise<Record<string, number>> {
+    const rows = await db
+      .select({ planId: userSubscriptions.planId, n: sql<number>`count(*)` })
+      .from(userSubscriptions)
+      .where(eq(userSubscriptions.status, 'ACTIVE'))
+      .groupBy(userSubscriptions.planId);
+    return Object.fromEntries(rows.map((r) => [r.planId, Number(r.n)]));
   }
 
   async update(

@@ -267,7 +267,7 @@ export default function AdminDashboard() {
             <button
               key={tab.id}
               className={cn(
-                'relative flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 whitespace-nowrap font-outfit touch-min-target',
+                'relative flex shrink-0 items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 whitespace-nowrap font-outfit touch-min-target',
                 activeTab === tab.id
                   ? 'text-white bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] shadow-lg shadow-blue-500/25'
                   : 'text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white hover:bg-gray-100/50 dark:hover:bg-white/5',

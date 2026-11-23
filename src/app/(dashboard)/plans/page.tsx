@@ -4,7 +4,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
+  AlertTriangle,
   Check,
+  CheckCircle2,
   ChevronDown,
   Clock,
   Crown,
@@ -12,8 +14,10 @@ import {
   ClipboardList,
   Loader2,
   PlayCircle,
+  RefreshCw,
   Smartphone,
   Sparkles,
+  TrendingUp,
   Wallet,
   X,
 } from 'lucide-react';
@@ -21,21 +25,15 @@ import { cn } from '@/lib/utils';
 import { useBadges, type SubscriptionPlan } from '@/hooks/useBadges';
 import { MomoCheckout } from '@/components/app/MomoCheckout';
 import {
-  RECOMMENDED_TIER,
-  TIERS,
-  TIER_ORDER,
-  TIER_PRICES,
-} from '@/lib/constants/tiers';
-import {
   FREE_WITHDRAWAL_INTERVAL_DAYS,
   PAYOUT_TIME_LABEL,
-  describeWithdrawalFrequency,
+  describeIntervalDays,
 } from '@/lib/constants/payouts';
 
 type BillingCycle = 'MONTHLY' | 'YEARLY';
 
 interface PlanView {
-  id: string | null; // null = fallback plan, not purchasable
+  id: string;
   tier: string;
   name: string;
   description: string;
@@ -47,76 +45,46 @@ interface PlanView {
   games: number;
   surveys: number;
   features: string[];
+  /** Max RWF a member can earn from tasks per day; 0 = no maximum. */
+  dailyMax: number;
+  withdrawLabel: string;
+  isPopular: boolean;
 }
+
+const MEMBERSHIP_BENEFITS = [
+  "Earn every day by completing your plan's tasks.",
+  'Access earning opportunities based on your membership level.',
+  'Track your daily earnings on your dashboard.',
+  "Upgrade your plan whenever you're ready.",
+];
 
 const rwf = (n: number) => `${Math.round(n).toLocaleString('en-US')} RWF`;
 /** 1 -> "Standard", 1.3 -> "+30%", 2.5 -> "2.5x" */
 function formatRate(rate: number) {
   if (rate <= 1.001) return 'Standard';
-  if (rate < 2) return `+${Math.round((rate - 1) * 100)}%`;
-  return `${Number(rate.toFixed(1))}x`;
+  return `+${Math.round((rate - 1) * 100)}%`;
 }
 
-function tierRank(tier: string) {
-  const i = (TIER_ORDER as readonly string[]).indexOf(tier);
-  return i === -1 ? 99 : i;
-}
-
-/** DB plans first; TIERS + fallback prices only if the API returned nothing. */
+/** Plans exactly as the API returns them (admin-managed, display order). */
 function buildPlans(apiPlans: SubscriptionPlan[]): PlanView[] {
-  const fromApi = apiPlans.map<PlanView>((p) => ({
+  return apiPlans.map<PlanView>((p) => ({
     id: p.id,
     tier: p.tier,
     name: p.name.replace(/\s*Plan$/i, ''),
-    description: p.description ?? TIERS[p.tier]?.description ?? '',
+    description: p.description ?? '',
     priceMonthly: p.priceMonthly ?? 0,
     priceYearly: p.priceYearly ?? 0,
-    rate: 1 + (p.badgeBoost ?? TIERS[p.tier]?.metadata.badgeBoost ?? 0),
-    videos: p.maxDailyVideos,
-    games: p.maxDailyGames,
-    surveys: p.maxDailySurveys,
-    features: (p.features ?? []) as string[],
+    rate: 1 + (p.badgeBoost ?? 0),
+    videos: p.maxDailyVideos ?? 0,
+    games: p.maxDailyGames ?? 0,
+    surveys: p.maxDailySurveys ?? 0,
+    features: Array.isArray(p.features) ? (p.features as string[]) : [],
+    dailyMax: p.dailyEarnings ?? 0,
+    withdrawLabel: describeIntervalDays(
+      p.withdrawalIntervalDays ?? (p.tier === 'FREE' ? 7 : 1),
+    ),
+    isPopular: p.isPopular === true,
   }));
-
-  const list =
-    fromApi.length > 0
-      ? fromApi
-      : TIER_ORDER.map((tier) => {
-          const t = TIERS[tier];
-          return {
-            id: null,
-            tier,
-            name: t.label,
-            description: t.description,
-            priceMonthly: TIER_PRICES[tier].monthly,
-            priceYearly: TIER_PRICES[tier].yearly,
-            rate: 1 + t.metadata.badgeBoost,
-            videos: t.metadata.maxDailyVideos,
-            games: t.metadata.maxDailyGames,
-            surveys: t.metadata.maxDailySurveys,
-            features: t.features,
-          };
-        });
-
-  // Free is always shown, even if it isn't stored as a DB plan.
-  if (!list.some((p) => p.tier === 'FREE')) {
-    const t = TIERS.FREE;
-    list.push({
-      id: null,
-      tier: 'FREE',
-      name: t.label,
-      description: t.description,
-      priceMonthly: 0,
-      priceYearly: 0,
-      rate: 1 + t.metadata.badgeBoost,
-      videos: t.metadata.maxDailyVideos,
-      games: t.metadata.maxDailyGames,
-      surveys: t.metadata.maxDailySurveys,
-      features: t.features,
-    });
-  }
-
-  return list.sort((a, b) => tierRank(a.tier) - tierRank(b.tier));
 }
 
 function priceFor(plan: PlanView, cycle: BillingCycle) {
@@ -140,7 +108,7 @@ interface PlanPaymentView {
 }
 
 export default function PlansPage() {
-  const { data, isLoading, refetch } = useBadges();
+  const { data, isLoading, error: loadError, refetch } = useBadges();
   const [cycle, setCycle] = useState<BillingCycle>('MONTHLY');
   const [checkoutPlan, setCheckoutPlan] = useState<PlanView | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
@@ -165,7 +133,17 @@ export default function PlansPage() {
   const plans = useMemo(() => buildPlans(data?.allPlans ?? []), [data]);
   const subscription = data?.subscription ?? null;
   const currentTier = subscription?.plan?.tier ?? 'FREE';
-  const currentPlan = plans.find((p) => p.tier === currentTier) ?? plans[0];
+  const currentPlanId = subscription?.plan?.id ?? null;
+  // Match the member's plan by id first, then by tier (Free has no subscription).
+  const currentIndex = (() => {
+    const byId = currentPlanId ? plans.findIndex((p) => p.id === currentPlanId) : -1;
+    if (byId !== -1) return byId;
+    return plans.findIndex((p) => p.tier === currentTier);
+  })();
+  const currentPlan: PlanView | undefined =
+    plans[currentIndex] ?? plans.find((p) => p.tier === 'FREE') ?? plans[0];
+  const currentPrice = subscription?.plan?.priceMonthly ?? currentPlan?.priceMonthly ?? 0;
+  const plansUnavailable = !isLoading && (!!loadError || plans.length === 0);
 
   const loadBalance = async () => {
     try {
@@ -259,6 +237,36 @@ export default function PlansPage() {
     );
   }
 
+  if (plansUnavailable) {
+    return (
+      <div className="space-y-4 font-outfit">
+        <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] dark:text-white">
+          Choose your plan
+        </h1>
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#1E293B] p-8 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FEF3C7] text-[#B45309] dark:bg-[#F59E0B]/15 dark:text-[#FBBF24]">
+            <AlertTriangle size={22} />
+          </div>
+          <div>
+            <p className="font-bold text-[#0F172A] dark:text-white">
+              We couldn&apos;t load the plans
+            </p>
+            <p className="mt-1 text-sm text-[#64748B] dark:text-[#94A3B8]">
+              Check your connection and try again.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#1D4ED8]"
+          >
+            <RefreshCw size={16} /> Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const checkoutPrice = checkoutPlan ? priceFor(checkoutPlan, cycle) : 0;
   const notEnough =
     checkoutPlan !== null && balance !== null && balance < checkoutPrice;
@@ -271,17 +279,36 @@ export default function PlansPage() {
           Choose your plan
         </h1>
         <p className="mt-1 text-sm text-[#64748B] dark:text-[#94A3B8] max-w-2xl">
-          Lower plans give you more tasks every day. Higher plans give fewer
-          tasks that pay more each. Paid plans withdraw every day (Free: once
-          every {FREE_WITHDRAWAL_INTERVAL_DAYS} days), paid to mobile money at{' '}
-          {PAYOUT_TIME_LABEL}.
+          Each plan sets how many tasks you can do a day, the most you can earn
+          from them, and how often you can withdraw (Free: once every{' '}
+          {FREE_WITHDRAWAL_INTERVAL_DAYS} days). Withdrawals are paid to mobile
+          money at {PAYOUT_TIME_LABEL} Kigali time.
         </p>
         <p className="mt-2 max-w-2xl rounded-xl border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#1E293B] p-3 text-xs text-[#475569] dark:text-[#CBD5E1]">
           <strong className="text-[#0F172A] dark:text-white">How rewards are funded:</strong>{' '}
           every task reward is paid from real sponsor and advertising budgets.
-          There are no fixed or guaranteed daily earnings: when a sponsor&apos;s
-          budget is used up, its tasks stop paying until new budget is added.
+          There are no fixed or guaranteed daily earnings: each plan&apos;s daily
+          amount is a maximum, and when a sponsor&apos;s budget is used up, its
+          tasks pause until new budget is added.
         </p>
+      </div>
+
+      {/* Membership benefits */}
+      <div className="rounded-2xl border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#1E293B] p-4 sm:p-5">
+        <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">
+          Membership benefits
+        </h2>
+        <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+          {MEMBERSHIP_BENEFITS.map((b) => (
+            <li
+              key={b}
+              className="flex items-start gap-2 text-sm text-[#475569] dark:text-[#CBD5E1]"
+            >
+              <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0 text-[#22C55E]" />
+              {b}
+            </li>
+          ))}
+        </ul>
       </div>
 
       {/* Feedback */}
@@ -347,7 +374,7 @@ export default function PlansPage() {
               </p>
               <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
                 {currentPlan
-                  ? `${currentPlan.videos} videos · ${currentPlan.games} games · ${currentPlan.surveys} surveys a day · Withdraw ${describeWithdrawalFrequency(currentTier).toLowerCase()}`
+                  ? `${currentPlan.videos} videos · ${currentPlan.games} games · ${currentPlan.surveys} surveys a day · Withdraw ${currentPlan.withdrawLabel.toLowerCase()}`
                   : ''}
                 {subscription?.expiresAt &&
                   ` · Renews or ends ${new Date(subscription.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
@@ -420,17 +447,20 @@ export default function PlansPage() {
 
       {/* Plan cards */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {plans.map((plan) => {
-          const isCurrent = plan.tier === currentTier;
-          const isRecommended = plan.tier === RECOMMENDED_TIER && !isCurrent;
+        {plans.map((plan, index) => {
+          const isCurrent = currentIndex !== -1 ? index === currentIndex : plan.tier === currentTier;
+          const isRecommended = plan.isPopular && !isCurrent;
           const isFree = plan.tier === 'FREE';
           const price = priceFor(plan, cycle);
           const savings = cycle === 'YEARLY' ? yearlySavings(plan) : 0;
-          const isDowngrade = tierRank(plan.tier) < tierRank(currentTier);
+          // Plans are in admin display order; fall back to price if the
+          // member's plan is no longer listed.
+          const isDowngrade =
+            currentIndex !== -1 ? index < currentIndex : plan.priceMonthly < currentPrice;
 
           return (
             <div
-              key={plan.tier}
+              key={plan.id}
               className={cn(
                 'relative flex flex-col rounded-2xl border bg-white dark:bg-[#1E293B] p-5 transition-shadow hover:shadow-md',
                 isRecommended
@@ -483,6 +513,19 @@ export default function PlansPage() {
                 )}
               </div>
 
+              {plan.dailyMax > 0 && (
+                <div className="mt-3 rounded-xl border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 dark:border-[#F59E0B]/30 dark:bg-[#F59E0B]/10">
+                  <p className="flex items-center gap-1.5 text-sm font-bold text-[#0F172A] dark:text-white">
+                    <TrendingUp size={15} className="flex-shrink-0 text-[#F59E0B]" />
+                    Earn up to{' '}
+                    <span className="tabular-nums">{rwf(plan.dailyMax)}</span>/day
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-[#64748B] dark:text-[#94A3B8]">
+                    Daily maximum · paid from sponsor budgets
+                  </p>
+                </div>
+              )}
+
               {/* Daily tasks */}
               <div className="mt-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0F172A] p-3 space-y-2 text-sm">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">
@@ -503,13 +546,13 @@ export default function PlansPage() {
                         : 'text-[#2563EB] dark:text-[#60A5FA]',
                     )}
                   >
-                    {describeWithdrawalFrequency(plan.tier)}
+                    {plan.withdrawLabel}
                   </span>
                 </div>
               </div>
 
               <ul className="mt-4 space-y-1.5 text-xs text-[#475569] dark:text-[#CBD5E1] flex-1">
-                {plan.features.slice(0, 3).map((f) => (
+                {plan.features.map((f) => (
                   <li key={f} className="flex items-start gap-2">
                     <Check size={14} className="mt-0.5 flex-shrink-0 text-[#22C55E]" />
                     {f}
@@ -584,10 +627,10 @@ export default function PlansPage() {
                   <th className="p-3 font-semibold">Per day</th>
                   {plans.map((p) => (
                     <th
-                      key={p.tier}
+                      key={p.id}
                       className={cn(
                         'p-3 text-center font-semibold',
-                        p.tier === currentTier && 'text-[#22C55E]',
+                        p === currentPlan && 'text-[#22C55E]',
                       )}
                     >
                       {p.name}
@@ -597,11 +640,12 @@ export default function PlansPage() {
               </thead>
               <tbody className="text-[#0F172A] dark:text-white tabular-nums">
                 <CompareRow label={cycle === 'MONTHLY' ? 'Price / month' : 'Price / year'} plans={plans} render={(p) => (p.tier === 'FREE' ? 'Free' : rwf(priceFor(p, cycle)))} />
+                <CompareRow label="Max per day" plans={plans} render={(p) => (p.dailyMax > 0 ? rwf(p.dailyMax) : 'No maximum')} />
                 <CompareRow label="Reward per task" plans={plans} render={(p) => formatRate(p.rate)} />
                 <CompareRow label="Sponsored videos" plans={plans} render={(p) => p.videos} />
                 <CompareRow label="Games" plans={plans} render={(p) => p.games} />
                 <CompareRow label="Surveys" plans={plans} render={(p) => p.surveys} />
-                <CompareRow label="Withdraw" plans={plans} render={(p) => describeWithdrawalFrequency(p.tier)} />
+                <CompareRow label="Withdraw" plans={plans} render={(p) => p.withdrawLabel} />
               </tbody>
             </table>
           </div>
@@ -609,8 +653,8 @@ export default function PlansPage() {
       </div>
 
       <p className="text-center text-xs text-[#94A3B8]">
-        Earning potential is an estimate if you complete all daily tasks; it is
-        not guaranteed.{' '}
+        &ldquo;Earn up to&rdquo; is a daily maximum, not a guaranteed amount: what
+        you earn depends on the tasks you complete and available sponsor budgets.{' '}
         <Link href="/badges" className="font-semibold text-[#2563EB] dark:text-[#60A5FA]">
           Looking for earning boost badges? →
         </Link>
@@ -792,7 +836,7 @@ function CompareRow({
         {label}
       </td>
       {plans.map((p) => (
-        <td key={p.tier} className="p-3 text-center">
+        <td key={p.id} className="p-3 text-center">
           {render(p)}
         </td>
       ))}

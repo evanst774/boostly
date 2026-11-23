@@ -33,6 +33,7 @@ import {
   Moon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { cn } from '@/lib/utils';
 
@@ -177,7 +178,8 @@ export default function AdminLayout({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  // Shared, saved theme (also used by Settings).
+  const { dark: isDarkMode, toggleTheme } = useTheme();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const pathname = usePathname();
@@ -264,14 +266,13 @@ export default function AdminLayout({
   };
 
   const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-    document.documentElement.classList.toggle('dark');
+    toggleTheme();
   };
 
   return (
     <div
       className={cn(
-        'min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] font-outfit antialiased',
+        'app-theme min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] text-[#111827] dark:text-[#F1F5F9] font-outfit antialiased',
       )}
     >
       {/* ─── Sidebar Overlay ─────────────────────────────── */}

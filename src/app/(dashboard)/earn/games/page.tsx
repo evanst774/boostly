@@ -440,10 +440,9 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
                 <h2 className="text-xl font-extrabold text-white">
                   {result.reason === 'TOO_SHORT' && 'A bit too short'}
                   {result.reason === 'CAP_REACHED' && 'Daily limit reached'}
-                  {result.reason === 'BUDGET_EXHAUSTED' &&
-                    "This game's sponsored rewards are used up for now. Try another game or come back later."}
                   {result.reason === 'PLAN_LIMIT' && "Today's games are used up"}
                   {result.reason === 'BUDGET_EXHAUSTED' && 'Sponsored rewards used up'}
+                  {result.reason === 'DAILY_MAX' && "Today's earning maximum reached"}
                   {result.reason === 'FLAGGED' && 'Session not counted'}
                   {result.reason === 'ALREADY_CLAIMED' && 'Already claimed'}
                 </h2>
@@ -456,6 +455,10 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
                     "You've reached your plan's rewarded games for today. Come back tomorrow or upgrade for more."}
                   {result.reason === 'FLAGGED' &&
                     "We couldn't verify this play session. Try playing again normally."}
+                  {result.reason === 'BUDGET_EXHAUSTED' &&
+                    "This game's sponsored rewards are used up for now. Try another game or come back later."}
+                  {result.reason === 'DAILY_MAX' &&
+                    "You've earned your plan's maximum for today. Come back tomorrow, or upgrade to earn more each day."}
                   {result.reason === 'ALREADY_CLAIMED' &&
                     'This session was already added to your wallet.'}
                 </p>

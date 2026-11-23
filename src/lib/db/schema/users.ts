@@ -32,6 +32,8 @@ export const users = sqliteTable("users", {
     twoFADefaultMethod: text("twoFADefaultMethod").$type<"EMAIL" | "TOTP">(),
     totpSecret: text("totpSecret"),
     totpBackupCodes: text("totpBackupCodes", { mode: "json" }),
+    /** Member preferences (see lib/constants/preferences.ts). NULL = defaults. */
+    preferences: text("preferences", { mode: "json" }).$type<Record<string, unknown>>(),
     createdAt: text("createdAt").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
     updatedAt: text("updatedAt").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 }, (table) => [

@@ -40,6 +40,7 @@ export type CompletionResult =
         | 'CAP_REACHED'
         | 'PLAN_LIMIT'
         | 'BUDGET_EXHAUSTED'
+        | 'DAILY_MAX'
         | 'ALREADY_CLAIMED';
       minPlaySeconds: number;
     };

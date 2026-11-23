@@ -66,14 +66,10 @@ export default function ReferralsPage() {
         const response = await fetch('/api/referrals/code');
         if (response.ok) {
           const data = await response.json();
-          setReferralCode(data.code || 'BOOSTLY123');
-        } else {
-          // Fallback
-          setReferralCode('BOOSTLY123');
+          setReferralCode(data.referralCode?.code || '');
         }
       } catch {
-        // Fallback
-        setReferralCode('BOOSTLY123');
+        /* code stays empty; the copy button is disabled */
       }
     };
     fetchReferralCode();
@@ -236,7 +232,7 @@ export default function ReferralsPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
-          className="w-10 h-10 rounded-xl border border-[#F3F4F6] flex items-center justify-center hover:border-[#2563EB] transition-colors"
+          className="hidden lg:flex w-10 h-10 rounded-xl border border-[#F3F4F6] items-center justify-center hover:border-[#2563EB] transition-colors" aria-label="Back"
           onClick={() => router.back()}
         >
           <ArrowLeft size={18} />
@@ -283,7 +279,7 @@ export default function ReferralsPage() {
           <p className="text-2xl font-extrabold">{stats.total}</p>
           <p className="text-xs text-[#6B7280]">Total Referrals</p>
           <p className="text-[10px] text-[#22C55E] font-semibold mt-1">
-            ↑ +3 this month
+            {stats.pending} pending
           </p>
         </div>
         <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
@@ -292,14 +288,14 @@ export default function ReferralsPage() {
           </p>
           <p className="text-xs text-[#6B7280]">Total Earned</p>
           <p className="text-[10px] text-[#22C55E] font-semibold mt-1">
-            ↑ +400 RWF
+            {REFERRAL_COMMISSION_LABEL} commission
           </p>
         </div>
         <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
           <p className="text-2xl font-extrabold">{stats.active}</p>
           <p className="text-xs text-[#6B7280]">Active Friends</p>
           <p className="text-[10px] text-[#22C55E] font-semibold mt-1">
-            ↑ 78% active
+            {stats.completed} paid a plan
           </p>
         </div>
       </div>
@@ -425,42 +421,6 @@ export default function ReferralsPage() {
             </div>
           </div>
 
-          {/* Sale Benefits */}
-          <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-5">
-            <h3 className="text-sm font-bold mb-4">Sale Benefits</h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-4 p-4 bg-[#F0FDF4] rounded-xl border border-[#BBF7D0]">
-                <span className="text-3xl">🤝</span>
-                <div className="flex-1">
-                  <p className="text-sm font-bold">Friend Joined</p>
-                  <p className="text-xs text-[#6B7280]">
-                    2 friends joined today
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-[#22C55E]">+400 RWF</p>
-                  <span className="text-[10px] font-semibold text-[#22C55E] bg-[#DCFCE7] px-2 py-0.5 rounded-full">
-                    Today
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 p-4 bg-[#EFF6FF] rounded-xl border border-[#BFDBFE]">
-                <span className="text-3xl">💎</span>
-                <div className="flex-1">
-                  <p className="text-sm font-bold">Friend Paid</p>
-                  <p className="text-xs text-[#6B7280]">
-                    1 friend upgraded to Gold Plan
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-[#2563EB]">+500 RWF</p>
-                  <span className="text-[10px] font-semibold text-[#2563EB] bg-[#DBEAFE] px-2 py-0.5 rounded-full">
-                    Bonus
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 

@@ -33,6 +33,7 @@ export async function GET() {
       streak,
       recent,
       todayBonus,
+      todayTaskEarnings,
     ] = await Promise.all([
       getUserPlan(user.id),
       db.query.wallets.findFirst({ where: eq(wallets.userId, user.id) }),
@@ -50,6 +51,7 @@ export async function GET() {
         .orderBy(desc(transactions.createdAt))
         .limit(6),
       dailyBonusesService.getOrCreateTodayBonus(user.id).catch(() => null),
+      rewardsService.getTodayTaskEarnings(user.id),
     ]);
 
     const tierMeta = TIERS[plan.tier]?.metadata ?? TIERS.FREE.metadata;
@@ -85,7 +87,12 @@ export async function GET() {
         isFree: plan.isFree,
         expiresAt: plan.expiresAt,
         estimatedDailyEarnings: tierMeta.estimatedDailyEarnings,
+        // Admin-set ceiling for task earnings per day (0 = no maximum).
+        dailyEarningsMax: plan.dailyEarningsMax,
+        withdrawalIntervalDays: plan.withdrawalIntervalDays,
       },
+      // Task earnings today, measured against dailyEarningsMax.
+      todayTaskEarnings,
       tasks,
       totals: {
         done: tasks.reduce((s, t) => s + t.done, 0),

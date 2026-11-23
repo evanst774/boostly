@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth/session.server';
 import { requirePermission } from '@/lib/auth/permissions';
 import { badgesService } from '@/modules/badges/service';
 import { BadgesPermissions } from '@/modules/badges/permissions';
+import { planErrorResponse } from '@/lib/api/plan-errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,9 +27,8 @@ export async function PATCH(
     return NextResponse.json({ plan: updated });
   } catch (error) {
     console.error('Subscription plan PATCH error:', error);
-    const message =
-      error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    const { status, error: message } = planErrorResponse(error);
+    return NextResponse.json({ error: message }, { status });
   }
 }
 
@@ -49,8 +49,7 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Subscription plan DELETE error:', error);
-    const message =
-      error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    const { status, error: message } = planErrorResponse(error);
+    return NextResponse.json({ error: message }, { status });
   }
 }

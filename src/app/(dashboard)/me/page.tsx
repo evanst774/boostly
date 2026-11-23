@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import {
   Bell,
   BadgeCheck,
+  Compass,
   ChevronRight,
   Crown,
   HelpCircle,
@@ -22,6 +23,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
+import { startProductTour } from '@/components/app/ProductTour';
 
 const initials = (name?: string | null) =>
   (name || 'U')
@@ -117,7 +119,7 @@ export default function MePage() {
             {isFree ? 'Free plan' : `${user?.plan} plan`}
           </span>
           <span className="block text-xs text-[#64748B] dark:text-[#94A3B8]">
-            {isFree ? 'Upgrade to earn more and withdraw every day' : 'You can withdraw every day'}
+            {isFree ? 'Upgrade for a higher daily maximum' : 'See your plan and limits'}
           </span>
         </span>
         <ChevronRight size={18} className="text-[#94A3B8]" />
@@ -138,6 +140,17 @@ export default function MePage() {
           { href: '/help', label: 'Help & support', icon: HelpCircle, tint: 'bg-[#F1F5F9] text-[#475569] dark:bg-[#334155] dark:text-[#CBD5E1]' },
         ]}
       />
+
+      <button
+        type="button"
+        onClick={() => {
+          router.push('/dashboard');
+          setTimeout(startProductTour, 400);
+        }}
+        className="w-full flex items-center justify-center gap-2 rounded-2xl border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#1E293B] py-3.5 text-[15px] font-semibold text-[#0F172A] dark:text-white"
+      >
+        <Compass size={18} /> Replay the app tour
+      </button>
 
       <button
         type="button"

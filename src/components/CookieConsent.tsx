@@ -101,7 +101,7 @@ export default function CookieConsent({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 100 }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="fixed bottom-0 left-0 right-0 z-[9999] p-3 md:p-4"
+          className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] lg:bottom-0 left-0 right-0 z-[9999] p-3 md:p-4"
         >
           <div className="max-w-7xl mx-auto">
             <motion.div

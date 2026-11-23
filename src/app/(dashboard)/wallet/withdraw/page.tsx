@@ -306,7 +306,7 @@ export default function WithdrawPage() {
             )}
             {elig.plan.isFree && (
               <Link href="/plans" className="inline-flex items-center gap-1 mt-2 font-bold text-[#B45309] dark:text-[#FBBF24]">
-                <Crown size={14} /> See plans that withdraw daily
+                <Crown size={14} /> See plans that withdraw more often
               </Link>
             )}
           </div>

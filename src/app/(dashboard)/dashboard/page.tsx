@@ -23,6 +23,7 @@ import { useEarnToday, type TaskProgress } from '@/hooks/useEarnToday';
 import { PayoutCountdown } from '@/components/earn/PayoutCountdown';
 import { LedgerRow } from '@/components/earn/LedgerRow';
 import { DailyBonusCard } from '@/components/earn/DailyBonusCard';
+import { ProductTour } from '@/components/app/ProductTour';
 import { cn } from '@/lib/utils';
 
 const rwf = (n: number) =>
@@ -137,6 +138,9 @@ export default function DashboardPage() {
   const firstName = (user?.name || '').split(' ')[0] || 'there';
   const allDone = totals.limit > 0 && totals.done >= totals.limit;
   const totalPct = totals.limit > 0 ? Math.round((totals.done / totals.limit) * 100) : 0;
+  const dailyMax = plan.dailyEarningsMax ?? 0;
+  const earnedToday = data.todayTaskEarnings ?? 0;
+  const maxPct = dailyMax > 0 ? Math.min(100, Math.round((earnedToday / dailyMax) * 100)) : 0;
 
   return (
     <div className="space-y-4 sm:space-y-5 pb-4 font-outfit max-w-4xl mx-auto">
@@ -165,7 +169,7 @@ export default function DashboardPage() {
       </header>
 
       {/* Balance + withdraw */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0F172A] via-[#1E3A8A] to-[#2563EB] p-5 sm:p-6 text-white">
+      <section data-tour="balance" className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0F172A] via-[#1E3A8A] to-[#2563EB] p-5 sm:p-6 text-white">
         <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-white/5 blur-2xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-end justify-between gap-5">
           <div>
@@ -219,7 +223,7 @@ export default function DashboardPage() {
 
 
       {/* Today's tasks */}
-      <section className={cn(card, 'p-4 sm:p-5')}>
+      <section data-tour="tasks" className={cn(card, 'p-4 sm:p-5')}>
         <div className="flex items-end justify-between gap-3 mb-2">
           <div>
             <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">Today&apos;s tasks</h2>
@@ -242,6 +246,25 @@ export default function DashboardPage() {
             <TaskRow key={t.key} task={t} />
           ))}
         </div>
+        {dailyMax > 0 && (
+          <div className="mt-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0F172A]/60 border border-[#E2E8F0] dark:border-[#334155] p-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-xs font-semibold text-[#0F172A] dark:text-white">Earned from tasks today</p>
+              <p className="text-xs tabular-nums text-[#64748B] dark:text-[#94A3B8]">
+                <span className="font-bold text-[#16A34A] dark:text-[#4ADE80]">{rwf(earnedToday)}</span>
+                {' '}of up to {rwf(dailyMax)}
+              </p>
+            </div>
+            <div className="mt-2 h-1.5 rounded-full bg-[#E2E8F0] dark:bg-[#334155] overflow-hidden">
+              <div className="h-full rounded-full bg-[#22C55E] transition-all" style={{ width: `${maxPct}%` }} />
+            </div>
+            <p className="mt-1.5 text-[11px] text-[#64748B] dark:text-[#94A3B8]">
+              {earnedToday >= dailyMax
+                ? `You've reached your ${plan.name.replace(/ Plan$/, '')} plan's maximum for today. It resets at midnight.`
+                : 'Your plan\'s daily maximum. Rewards are paid from sponsor budgets while they last.'}
+            </p>
+          </div>
+        )}
       </section>
 
       {/* Upgrade nudge for free users */}
@@ -255,10 +278,10 @@ export default function DashboardPage() {
           </span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-[#0F172A] dark:text-white">
-              Earn more and withdraw every day
+              Earn more each day
             </p>
             <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-              Free plan: more tasks unlock with an upgrade, and withdrawals are once a week.
+              {plan.name.replace(/ Plan$/, '')} plan: withdraw {withdrawal.frequencyLabel.toLowerCase()}. Upgrade for a higher daily maximum and more frequent withdrawals.
             </p>
           </div>
           <ChevronRight size={18} className="text-[#B45309] shrink-0" />
@@ -312,6 +335,7 @@ export default function DashboardPage() {
           )}
         </section>
       </div>
+      <ProductTour />
     </div>
   );
 }

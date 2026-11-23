@@ -204,9 +204,9 @@ export async function emailPlanActivated(p: { userId: string; planName: string; 
     p.userId,
     `${p.planName} is active`,
     'Your plan is active',
-    `<p class="text">Your payment is confirmed and ${esc(p.planName)} is now active. You have more daily tasks and can withdraw every day.</p>
+    `<p class="text">Your payment is confirmed and ${esc(p.planName)} is now active. Your new daily limits and withdrawal schedule apply right away.</p>
      ${until ? rows([['Plan', p.planName], ['Active until', until]]) : ''}
-     ${buildInfoBox('What changes now', ['More videos, games and surveys every day', `Withdraw every day, paid at ${PAYOUT_TIME_LABEL}`])}
+     ${buildInfoBox('What changes now', ['Your plan\'s daily tasks and earning maximum', `Withdrawals paid at ${PAYOUT_TIME_LABEL}`])}
      ${button('/dashboard', 'Start earning')}`,
     'PLAN_PAYMENT',
   );

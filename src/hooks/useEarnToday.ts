@@ -42,7 +42,11 @@ export interface EarnToday {
     isFree: boolean;
     expiresAt: string | null;
     estimatedDailyEarnings: number;
+    /** Most RWF a member can earn from tasks per day (0 = no maximum). */
+    dailyEarningsMax: number;
+    withdrawalIntervalDays: number;
   };
+  todayTaskEarnings: number;
   tasks: TaskProgress[];
   totals: { done: number; limit: number };
   wallet: {

@@ -32,7 +32,10 @@ interface User {
   phone?: string | null;
   plan?: string | null;
   planTier?: string | null;
+  hasPassword?: boolean;
+  linkedProviders?: string[];
   badge?: string | null;
+  createdAt?: string | null;
   streak?: number;
   totalEarned?: number;
 }

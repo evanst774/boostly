@@ -39,6 +39,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useSettings } from '@/hooks/useSettings';
 import { cn, formatCurrency } from '@/lib/utils';
 import { ConfirmDialog, AlertDialog } from '@/components/ui/Dialog';
@@ -67,7 +68,11 @@ interface DialogState {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
+  const { dark, toggleTheme } = useTheme();
+  // Accounts created with Google have no password until they set one.
+  const hasPassword = user?.hasPassword !== false;
+  const viaGoogle = user?.linkedProviders?.includes('google') ?? false;
   const { data, updateProfile, updatePassword, updatePreferences } =
     useSettings();
 
@@ -197,9 +202,10 @@ export default function SettingsPage() {
     setIsSaving(true);
     try {
       await updatePassword({
-        currentPassword: passwordData.currentPassword,
+        currentPassword: hasPassword ? passwordData.currentPassword : undefined,
         newPassword: passwordData.newPassword,
       });
+      if (!hasPassword) await refreshUser();
       setShowPasswordChange(false);
       setPasswordData({
         currentPassword: '',
@@ -208,13 +214,15 @@ export default function SettingsPage() {
       });
       showAlert({
         title: 'Success',
-        message: 'Password updated successfully!',
+        message: hasPassword
+          ? 'Password updated successfully!'
+          : 'Password set. You can now also sign in with your email and password.',
         variant: 'success',
       });
-    } catch {
+    } catch (e) {
       showAlert({
         title: 'Error',
-        message: 'Failed to update password. Please try again.',
+        message: e instanceof Error ? e.message : 'Failed to update password. Please try again.',
         variant: 'error',
       });
     } finally {
@@ -347,7 +355,7 @@ export default function SettingsPage() {
       id: 1,
       question: 'How do I withdraw my earnings?',
       answer:
-        'Go to Withdraw, enter the MTN or Airtel number you want to be paid on and the amount, then confirm. All withdrawals are paid daily at 3:00 PM. Free plan members can withdraw once a week; paid plans can withdraw every day.',
+        'Go to Withdraw, enter the MTN or Airtel number you want to be paid on and the amount, then confirm. All withdrawals are paid daily at 3:00 PM. How often you can withdraw depends on your plan (see Plans).',
     },
     {
       id: 2,
@@ -405,7 +413,7 @@ export default function SettingsPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
-          className="w-10 h-10 rounded-xl border border-[#F3F4F6] flex items-center justify-center hover:border-[#2563EB] transition-colors"
+          className="hidden lg:flex w-10 h-10 rounded-xl border border-[#F3F4F6] items-center justify-center hover:border-[#2563EB] transition-colors" aria-label="Back"
           onClick={() => router.back()}
         >
           <ArrowLeft size={18} />
@@ -463,7 +471,7 @@ export default function SettingsPage() {
               </div>
               <h2 className="text-xl font-bold mt-4">{user?.name || 'User'}</h2>
               <p className="text-white/75">
-                {user?.email || 'user@example.com'}
+                {user?.email ?? ''}
               </p>
               <button
                 className="mt-4 inline-flex items-center gap-2 bg-white/15 border border-white/30 text-white text-sm font-semibold px-5 py-2 rounded-full hover:bg-white/25 transition-colors"
@@ -479,17 +487,19 @@ export default function SettingsPage() {
           <div className="grid grid-cols-3 gap-4 -mt-6 relative z-10">
             <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
               <p className="text-lg font-extrabold text-[#2563EB]">
-                {formatCurrency(data?.totalEarned || 45750)}
+                {formatCurrency(data?.totalEarned ?? 0)}
               </p>
               <p className="text-xs text-[#6B7280]">Total Earned</p>
             </div>
             <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
-              <p className="text-lg font-extrabold text-[#F59E0B]">Gold</p>
-              <p className="text-xs text-[#6B7280]">Badge Tier</p>
+              <p className="text-lg font-extrabold text-[#F59E0B]">{user?.plan ?? 'Free'}</p>
+              <p className="text-xs text-[#6B7280]">{user?.badge ? `${user.badge} badge` : 'Plan'}</p>
             </div>
             <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
               <p className="text-lg font-extrabold text-[#6B7280]">
-                May 15, 2024
+                {user?.createdAt
+                  ? new Date(user.createdAt).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+                  : '—'}
               </p>
               <p className="text-xs text-[#6B7280]">Member Since</p>
             </div>
@@ -607,8 +617,8 @@ export default function SettingsPage() {
                 title: 'My Plan',
                 subtitle:
                   !user?.plan || user.plan === 'Free'
-                    ? 'Free — upgrade to withdraw daily'
-                    : `${user.plan} plan · withdraw every day`,
+                    ? 'Free — upgrade to earn more each day'
+                    : `${user.plan} plan`,
                 badge: undefined as string | undefined,
                 badgeColor: undefined as string | undefined,
                 onClick: () => router.push('/plans'),
@@ -685,9 +695,15 @@ export default function SettingsPage() {
                 <Key size={18} />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-bold">Change Password</p>
-                <p className="text-xs text-[#6B7280]">
-                  Last changed 30 days ago
+                <p className="text-sm font-bold">
+                  {hasPassword ? 'Change Password' : 'Set a Password'}
+                </p>
+                <p className="text-xs text-[#6B7280] dark:text-[#94A3B8]">
+                  {hasPassword
+                    ? viaGoogle
+                      ? 'You can sign in with Google or your password'
+                      : 'Use a strong password you don’t use elsewhere'
+                    : 'You sign in with Google. Add a password to also sign in with email.'}
                 </p>
               </div>
               <ChevronDown
@@ -702,6 +718,7 @@ export default function SettingsPage() {
             {showPasswordChange && (
               <div className="px-5 py-4 border-b border-[#F3F4F6] bg-[#F8FAFC]">
                 <div className="space-y-4">
+                  {hasPassword && (
                   <div>
                     <label className="text-sm font-medium text-[#6B7280]">
                       Current Password
@@ -730,6 +747,7 @@ export default function SettingsPage() {
                       </button>
                     </div>
                   </div>
+                  )}
                   <div>
                     <label className="text-sm font-medium text-[#6B7280]">
                       New Password
@@ -830,7 +848,7 @@ export default function SettingsPage() {
               >
                 <div
                   className={cn(
-                    'absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-sm transition-transform',
+                    'absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-sm transition-transform keep-light',
                     show2FA ? 'right-0.5' : 'left-0.5',
                   )}
                 />
@@ -1009,7 +1027,7 @@ export default function SettingsPage() {
                 >
                   <div
                     className={cn(
-                      'absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-sm transition-transform',
+                      'absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-sm transition-transform keep-light',
                       preferences[item.id as keyof typeof preferences]
                         ? 'right-0.5'
                         : 'left-0.5',
@@ -1027,7 +1045,7 @@ export default function SettingsPage() {
             </div>
             <div className="flex items-center gap-4 px-5 py-4 border-b border-[#F3F4F6]">
               <div className="w-10 h-10 rounded-xl bg-[#1E293B] flex items-center justify-center text-white">
-                {preferences.darkMode ? <Moon size={18} /> : <Sun size={18} />}
+                {dark ? <Moon size={18} /> : <Sun size={18} />}
               </div>
               <div className="flex-1">
                 <p className="text-sm font-bold">Dark Mode</p>
@@ -1036,19 +1054,21 @@ export default function SettingsPage() {
               <button
                 className={cn(
                   'w-12 h-7 rounded-full transition-colors relative',
-                  preferences.darkMode ? 'bg-[#22C55E]' : 'bg-[#D1D5DB]',
+                  dark ? 'bg-[#22C55E]' : 'bg-[#D1D5DB]',
                 )}
-                onClick={() =>
-                  setPreferences({
-                    ...preferences,
-                    darkMode: !preferences.darkMode,
-                  })
-                }
+                aria-label="Dark mode"
+                aria-pressed={dark}
+                onClick={() => {
+                  // Applies immediately and is remembered on this device; the
+                  // top-bar toggle uses the same setting.
+                  toggleTheme();
+                  setPreferences({ ...preferences, darkMode: !dark });
+                }}
               >
                 <div
                   className={cn(
-                    'absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-sm transition-transform',
-                    preferences.darkMode ? 'right-0.5' : 'left-0.5',
+                    'keep-light absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-sm transition-transform',
+                    dark ? 'right-0.5' : 'left-0.5',
                   )}
                 />
               </button>
@@ -1139,7 +1159,7 @@ export default function SettingsPage() {
                 >
                   <div
                     className={cn(
-                      'absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-sm transition-transform',
+                      'absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-sm transition-transform keep-light',
                       preferences[item.id as keyof typeof preferences]
                         ? 'right-0.5'
                         : 'left-0.5',

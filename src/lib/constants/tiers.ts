@@ -357,6 +357,22 @@ export const TIER_ORDER = [
  * Fallback prices (RWF) used only when the plans API returns nothing.
  * Must match src/lib/db/seeds/gamification/badges-subscriptions.seed.ts.
  */
+/**
+ * Default maximum a member can earn from tasks per day (RWF), by plan.
+ * A ceiling, not a promise: every reward is still paid from sponsor
+ * campaign budgets and the admin's daily reward budget. Admins can change
+ * each plan's value in Admin > Subscriptions; these are the starting values.
+ */
+export const TIER_DAILY_MAX: Record<string, number> = {
+  FREE: 50,
+  BASIC: 500,
+  STARTER: 900,
+  SILVER: 1400,
+  GOLD: 2800,
+  PLATINUM: 5800,
+  PREMIUM: 11800,
+};
+
 export const TIER_PRICES: Record<string, { monthly: number; yearly: number }> =
   {
     FREE: { monthly: 0, yearly: 0 },

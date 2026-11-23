@@ -28,6 +28,8 @@ export async function GET(req: NextRequest) {
       .where(
         and(
           eq(withdrawals.status, 'COMPLETED'),
+          // Members can opt out of public lists (Settings > Privacy).
+          sql`coalesce(json_extract(${users.preferences}, '$.showOnLeaderboard'), 1) != 0`,
           sql`${withdrawals.completedAt} IS NOT NULL`,
         ),
       )

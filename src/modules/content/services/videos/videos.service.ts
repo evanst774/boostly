@@ -491,6 +491,8 @@ export class VideosService {
             ? "You've already earned this video's reward today. Try another video!"
             : credit.reason === 'DAILY_LIMIT'
               ? `You've used today's ${limits.maxDailyVideos} rewarded videos. Come back tomorrow or upgrade your plan for more.`
+              : credit.reason === 'DAILY_EARNINGS_MAX'
+                ? "You've reached today's earning maximum for your plan. Come back tomorrow, or upgrade to earn more each day."
               : credit.reason === 'BUDGET_EXHAUSTED'
                 ? "This video's sponsored rewards are used up for now. Try another video!"
                 : 'This video has no reward.',

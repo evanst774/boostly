@@ -276,6 +276,7 @@ export class BadgesService {
     if (!user) throw new Error('Unauthorized');
 
     const validated = createSubscriptionPlanSchema.parse(input);
+    await this.assertPlanRules(validated);
 
     const plan = await subscriptionPlansRepository.create(validated);
 
@@ -297,8 +298,43 @@ export class BadgesService {
     return plan;
   }
 
+  /** Active plans for members (public). */
   async getAllSubscriptionPlans() {
     return await subscriptionPlansRepository.getAll();
+  }
+
+  /** Every plan, hidden ones included, with subscriber counts (admin). */
+  async getAllSubscriptionPlansForAdmin() {
+    await requirePermission(BadgesPermissions.SUBSCRIPTIONS_READ);
+    const [plans, counts] = await Promise.all([
+      subscriptionPlansRepository.getAll({ includeInactive: true }),
+      subscriptionPlansRepository.getSubscriberCounts(),
+    ]);
+    return plans.map((p) => ({ ...p, activeSubscribers: counts[p.id] ?? 0 }));
+  }
+
+  /**
+   * Rules that keep admin-made plans workable: unique keys, the FREE plan
+   * stays free and visible (it's the default for everyone), paid plans cost
+   * something (a 0 RWF payment can't be verified).
+   */
+  private async assertPlanRules(
+    next: { tier?: string; priceMonthly?: number; isActive?: boolean },
+    existing?: { id: string; tier: string; priceMonthly: number; isActive: boolean },
+  ) {
+    const tier = next.tier ?? existing?.tier;
+    const price = next.priceMonthly ?? existing?.priceMonthly ?? 0;
+    if (next.tier && next.tier !== existing?.tier) {
+      const clash = await subscriptionPlansRepository.getByTier(next.tier);
+      if (clash) throw new Error(`A plan with key ${next.tier} already exists`);
+      if (existing?.tier === 'FREE') throw new Error("The FREE plan's key can't be changed");
+    }
+    if (tier === 'FREE') {
+      if (price !== 0) throw new Error('The FREE plan must cost 0 RWF');
+      if (next.isActive === false) throw new Error("The FREE plan can't be hidden: it's the default plan");
+    } else if (price <= 0) {
+      throw new Error('Paid plans need a monthly price above 0 RWF');
+    }
   }
 
   async updateSubscriptionPlan(id: string, input: UpdateSubscriptionPlanInput) {
@@ -310,6 +346,7 @@ export class BadgesService {
     if (!existing) throw new Error('Subscription plan not found');
 
     const validated = updateSubscriptionPlanSchema.parse(input);
+    await this.assertPlanRules(validated, existing);
     const updated = await subscriptionPlansRepository.update(id, validated);
 
     await createAuditLog({
@@ -331,6 +368,9 @@ export class BadgesService {
 
     const existing = await subscriptionPlansRepository.getById(id);
     if (!existing) throw new Error('Subscription plan not found');
+    if (existing.tier === 'FREE') {
+      throw new Error("The FREE plan can't be deleted: it's the default plan");
+    }
 
     try {
       await subscriptionPlansRepository.delete(id);

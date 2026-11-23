@@ -30,25 +30,54 @@ export type PurchaseBadgeInput = z.infer<typeof purchaseBadgeSchema>;
 // ============================================
 // SUBSCRIPTION PLAN VALIDATION
 // ============================================
-export const createSubscriptionPlanSchema = z.object({
+// Every plan field is admin-editable. 0 is valid for the Free plan's price
+// and for "no daily maximum".
+const planFields = {
   name: z.string().min(1).max(100),
   description: z.string().optional(),
-  tier: z.string().min(1),
-  priceMonthly: z.number().positive(),
-  priceYearly: z.number().positive().optional(),
-  dailyEarnings: z.number().positive(),
+  /** Unique plan key, e.g. GOLD or STUDENT_PLUS. 'FREE' is the default plan. */
+  tier: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z][A-Z0-9_]{1,31}$/, 'Use 2-32 letters, numbers or _ (e.g. GOLD_PLUS)'),
+  priceMonthly: z.number().min(0),
+  priceYearly: z.number().min(0).optional(),
+  /** Most a member on this plan can earn from tasks per day (RWF). 0 = no maximum. */
+  dailyEarnings: z.number().min(0).max(10_000_000),
   features: z.array(z.string()),
-  maxDailyVideos: z.number().int().positive().default(10),
-  maxDailyGames: z.number().int().positive().default(5),
-  maxDailyAds: z.number().int().positive().default(10),
-  maxDailySurveys: z.number().int().positive().default(3),
-  badgeBoost: z.number().min(0).max(1).default(0),
-  priorityWithdrawal: z.boolean().default(false),
-  vipSupport: z.boolean().default(false),
+  maxDailyVideos: z.number().int().min(0).max(10_000),
+  maxDailyGames: z.number().int().min(0).max(10_000),
+  maxDailyAds: z.number().int().min(0).max(10_000),
+  maxDailySurveys: z.number().int().min(0).max(10_000),
+  /** Extra reward per task: 0.3 = +30%. */
+  badgeBoost: z.number().min(0).max(5),
+  priorityWithdrawal: z.boolean(),
+  vipSupport: z.boolean(),
+  /** Days between withdrawals (1 = daily, 7 = weekly). Null = plan default. */
+  withdrawalIntervalDays: z.number().int().min(1).max(90).nullable(),
+  isActive: z.boolean(),
+  sortOrder: z.number().int().min(0).max(10_000).nullable(),
+  isPopular: z.boolean().nullable(),
+};
+
+export const createSubscriptionPlanSchema = z.object({
+  ...planFields,
+  maxDailyVideos: planFields.maxDailyVideos.default(10),
+  maxDailyGames: planFields.maxDailyGames.default(5),
+  maxDailyAds: planFields.maxDailyAds.default(10),
+  maxDailySurveys: planFields.maxDailySurveys.default(3),
+  badgeBoost: planFields.badgeBoost.default(0),
+  priorityWithdrawal: planFields.priorityWithdrawal.default(false),
+  vipSupport: planFields.vipSupport.default(false),
+  withdrawalIntervalDays: planFields.withdrawalIntervalDays.optional(),
+  isActive: planFields.isActive.default(true),
+  sortOrder: planFields.sortOrder.optional(),
+  isPopular: planFields.isPopular.optional(),
 });
 
-export const updateSubscriptionPlanSchema =
-  createSubscriptionPlanSchema.partial();
+// No defaults here: a PATCH must only change the fields it sends.
+export const updateSubscriptionPlanSchema = z.object(planFields).partial();
 
 export const subscribeToPlanSchema = z.object({
   planId: z.uuid(),

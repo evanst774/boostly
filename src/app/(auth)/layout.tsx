@@ -1,6 +1,7 @@
 // src/app/(auth)/layout.tsx
 'use client';
 
+import { Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AuthLayout({
@@ -18,7 +19,8 @@ export default function AuthLayout({
           transition={{ duration: 0.3, ease: 'easeOut' }}
           className="w-full"
         >
-          {children}
+          {/* Pages read the URL (?ref, ?email, ?token): needed for prerender. */}
+          <Suspense fallback={null}>{children}</Suspense>
         </motion.div>
       </AnimatePresence>
     </div>

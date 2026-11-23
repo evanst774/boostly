@@ -141,6 +141,13 @@ export const subscriptionPlans = sqliteTable(
     vipSupport: integer('vipSupport', { mode: 'boolean' })
       .notNull()
       .default(false),
+    // Days between withdrawals (1 = daily, 7 = weekly). NULL = default for
+    // the tier (Free weekly, paid daily). Nullable so adding it is safe.
+    withdrawalIntervalDays: integer('withdrawalIntervalDays'),
+    // Display order on the Plans page (lowest first; NULL = by price) and
+    // the "Most popular" highlight. Both admin-set; nullable for safe adds.
+    sortOrder: integer('sortOrder'),
+    isPopular: integer('isPopular', { mode: 'boolean' }),
 
     // Status
     isActive: integer('isActive', { mode: 'boolean' }).notNull().default(true),

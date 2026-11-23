@@ -19,11 +19,8 @@ import {
   safeEquals,
   type OAuthProfile,
 } from '@/lib/auth/oauth';
-import {
-  create2FASession,
-  createAuthToken,
-  getUserById,
-} from '@/lib/db/auth-utils';
+import { createAuthToken, getUserById } from '@/lib/db/auth-utils';
+import { startTwoFactorChallenge, twoFactorPageUrl } from '@/lib/auth/two-factor';
 import { JWT_COOKIE_NAME } from '@/lib/jwt';
 import { referralsService } from '@/modules/referrals/service';
 
@@ -129,17 +126,14 @@ export async function GET(
     // Check for 2FA
     const user = await getUserById(userId);
     if (user?.is2FAEnabled) {
-      const twoFASessionId = await create2FASession(userId);
-      const response = NextResponse.redirect(new URL('/2fa', request.url));
-
-      response.cookies.set('boostly_2fa_session', twoFASessionId, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 15 * 60,
-      });
-
+      // Same challenge as password login: opens the 2FA session and emails
+      // the code for EMAIL 2FA. The /2fa page reads email + session from the
+      // link (a cookie alone left Google users stuck on "Session expired").
+      const challenge = await startTwoFactorChallenge(user);
+      if (!challenge) return fail(request, 'oauth_failed');
+      const response = NextResponse.redirect(
+        new URL(twoFactorPageUrl(user.email, challenge), request.url),
+      );
       clearOAuthCookies(response);
       return response;
     }

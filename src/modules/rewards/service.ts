@@ -1,5 +1,5 @@
 // src/modules/rewards/service.ts
-import { and, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db';
 import {
@@ -31,7 +31,7 @@ import {
   userBadgesRepository,
   userSubscriptionsRepository,
 } from '@/modules/badges/repository';
-import { getUserDailyLimits } from '@/modules/rewards/plan-limits';
+import { getUserDailyLimits, getUserPlan } from '@/modules/rewards/plan-limits';
 import { kigaliDayStartIso } from '@/lib/constants/payouts';
 
 // ============================================
@@ -61,6 +61,12 @@ export interface CreateRewardInput {
    */
   dailyCap?: number;
   /**
+   * Most RWF the member may earn from tasks today. Defaults to their plan's
+   * daily maximum (Admin > Subscriptions); 0 = none. The last reward of the day is trimmed to
+   * fit, and the check runs in the same atomic INSERT.
+   */
+  dailyEarningsMax?: number;
+  /**
    * Apply the member's badge/plan boost (default true). Commissions set this
    * to false so they pay exactly the advertised percentage.
    */
@@ -80,6 +86,14 @@ const BUDGET_TABLES = {
 } as const;
 
 /** Reward types paid from the daily reward budget (real revenue). */
+/** Task rewards that count toward a plan's daily earning maximum. */
+export const DAILY_MAX_TYPES: RewardType[] = [
+  RewardTypeEnum.VIDEO,
+  RewardTypeEnum.GAME,
+  RewardTypeEnum.SURVEY,
+  RewardTypeEnum.AD_WATCH,
+];
+
 const BUDGETED_TYPES: RewardType[] = [
   RewardTypeEnum.VIDEO,
   RewardTypeEnum.GAME,
@@ -99,7 +113,12 @@ export type CreateRewardResult =
     }
   | {
       credited: false;
-      reason: 'ALREADY_CREDITED' | 'ZERO_AMOUNT' | 'DAILY_LIMIT' | 'BUDGET_EXHAUSTED';
+      reason:
+        | 'ALREADY_CREDITED'
+        | 'ZERO_AMOUNT'
+        | 'DAILY_LIMIT'
+        | 'DAILY_EARNINGS_MAX'
+        | 'BUDGET_EXHAUSTED';
       amount: 0;
     };
 
@@ -153,10 +172,29 @@ export class RewardsService {
       input.applyBoost === false
         ? { badgeBoost: 0, planBoost: 0, total: 1 }
         : await this.getEarningsMultiplier(input.userId);
-    const amount = roundReward(input.baseAmount * multiplier.total);
+    let amount = roundReward(input.baseAmount * multiplier.total);
 
     if (amount <= 0) {
       return { credited: false, reason: 'ZERO_AMOUNT', amount: 0 };
+    }
+
+    // Plan's daily earning maximum: trim the last reward of the day to fit.
+    // Resolved from the member's plan unless the caller passes it.
+    let dailyMax: number | null = null;
+    if (DAILY_MAX_TYPES.includes(input.type)) {
+      const max = input.dailyEarningsMax ?? (await getUserPlan(input.userId)).dailyEarningsMax;
+      dailyMax = max > 0 ? max : null;
+    }
+    let trimmed = false;
+    if (dailyMax !== null) {
+      const remaining = dailyMax - (await this.getTodayTaskEarnings(input.userId));
+      if (remaining <= 0) {
+        return { credited: false, reason: 'DAILY_EARNINGS_MAX', amount: 0 };
+      }
+      if (amount > remaining) {
+        amount = Math.floor(remaining);
+        trimmed = true;
+      }
     }
 
     const wallet = await walletRepository.getOrCreate(input.userId);
@@ -177,6 +215,7 @@ export class RewardsService {
         ...input.metadata,
         badgeBoost: multiplier.badgeBoost,
         planBoost: multiplier.planBoost,
+        ...(trimmed ? { trimmedToDailyMax: dailyMax } : {}),
       });
       const dayStart = kigaliDayStartIso();
       const budgetTable = input.budget ? BUDGET_TABLES[input.budget.table] : null;
@@ -203,10 +242,22 @@ export class RewardsService {
           )`
         : sql`1 = 1`;
 
+      // Member's daily earning maximum (re-checked atomically).
+      const dailyMaxCondition =
+        dailyMax === null
+          ? sql`1 = 1`
+          : sql`(
+              SELECT coalesce(sum(${rewards.amount}), 0) FROM ${rewards}
+              WHERE ${rewards.userId} = ${input.userId}
+                AND ${rewards.status} = ${RewardStatusEnum.CLAIMED}
+                AND ${rewards.createdAt} >= ${dayStart}
+                AND ${rewards.type} IN (${sql.join(DAILY_MAX_TYPES.map((t) => sql`${t}`), sql`, `)})
+            ) + ${amount} <= ${dailyMax}`;
+
       const capCondition =
         input.dailyCap === undefined
-          ? sql`${dailyBudgetCondition} AND ${campaignCondition}`
-          : sql`${dailyBudgetCondition} AND ${campaignCondition} AND (
+          ? sql`${dailyBudgetCondition} AND ${campaignCondition} AND ${dailyMaxCondition}`
+          : sql`${dailyBudgetCondition} AND ${campaignCondition} AND ${dailyMaxCondition} AND (
               SELECT count(*) FROM ${rewards}
               WHERE ${rewards.userId} = ${input.userId}
                 AND ${rewards.type} = ${input.type}
@@ -271,6 +322,9 @@ export class RewardsService {
           if (done >= input.dailyCap) {
             return { credited: false, reason: 'DAILY_LIMIT', amount: 0 };
           }
+        }
+        if (dailyMax !== null && (await this.getTodayTaskEarnings(input.userId)) + amount > dailyMax) {
+          return { credited: false, reason: 'DAILY_EARNINGS_MAX', amount: 0 };
         }
         return { credited: false, reason: 'BUDGET_EXHAUSTED', amount: 0 };
       }
@@ -406,6 +460,22 @@ export class RewardsService {
       columns: { id: true },
     });
     return !!row;
+  }
+
+  /** RWF earned today (Kigali) from tasks that count toward the daily maximum. */
+  async getTodayTaskEarnings(userId: string): Promise<number> {
+    const [row] = await db
+      .select({ n: sql<number>`coalesce(sum(${rewards.amount}), 0)` })
+      .from(rewards)
+      .where(
+        and(
+          eq(rewards.userId, userId),
+          eq(rewards.status, RewardStatusEnum.CLAIMED),
+          gte(rewards.createdAt, kigaliDayStartIso()),
+          inArray(rewards.type, DAILY_MAX_TYPES),
+        ),
+      );
+    return Number(row?.n ?? 0);
   }
 
   /** How many rewards of a given type the user has earned today. Backs per-plan daily quotas. */

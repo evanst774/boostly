@@ -28,8 +28,15 @@ export function getWithdrawalIntervalDays(tier: string | null | undefined) {
     : PAID_WITHDRAWAL_INTERVAL_DAYS;
 }
 
+/** "Every day", "Once a week" or "Every N days". */
+export function describeIntervalDays(days: number) {
+  if (days <= 1) return 'Every day';
+  if (days === 7) return 'Once a week';
+  return `Every ${days} days`;
+}
+
 export function describeWithdrawalFrequency(tier: string | null | undefined) {
-  return getWithdrawalIntervalDays(tier) === 1 ? 'Every day' : 'Once a week';
+  return describeIntervalDays(getWithdrawalIntervalDays(tier));
 }
 
 // ─── Time helpers ──────────────────────────────────────────────────

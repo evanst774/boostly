@@ -28,6 +28,7 @@ import {
   LogOut as LogOutIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { TabBar } from '@/components/app/TabBar';
@@ -124,6 +125,14 @@ const quickActions = [
   { icon: <Crown size={14} />, label: 'Plans', href: '/plans' },
 ];
 
+/** Desktop sidebar items that the welcome tour points at. */
+const DESKTOP_TOUR_IDS: Record<string, string> = {
+  'Sponsored Videos': 'nav-earn',
+  Wallet: 'nav-wallet',
+  Plans: 'nav-plans',
+  Settings: 'nav-me',
+};
+
 const MOBILE_SCREENS: { prefix: string; title: string; back?: string }[] = [
   { prefix: '/wallet/withdraw', title: 'Withdraw', back: '/wallet' },
   { prefix: '/wallet/history', title: 'History', back: '/wallet' },
@@ -155,7 +164,8 @@ export default function DashboardLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  // Shared, saved theme (also used by Settings).
+  const { dark: isDarkMode, toggleTheme } = useTheme();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const pathname = usePathname();
@@ -246,15 +256,13 @@ export default function DashboardLayout({
   };
 
   const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-    document.documentElement.classList.toggle('dark');
+    toggleTheme();
   };
 
   return (
     <div
       className={cn(
-        'min-h-screen bg-[#F8FAFC] font-outfit antialiased',
-        isDarkMode && 'dark:bg-[#0F172A]',
+        'app-theme min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] text-[#111827] dark:text-[#F1F5F9] font-outfit antialiased',
       )}
     >
       {/* ─── Sidebar Overlay ─────────────────────────────── */}
@@ -371,6 +379,7 @@ export default function DashboardLayout({
                     <Link
                       key={item.name}
                       href={item.href}
+                      data-tour={DESKTOP_TOUR_IDS[item.name]}
                       title={isCollapsed ? item.name : undefined}
                       className={cn(
                         'flex items-center rounded-lg text-sm font-medium transition-colors duration-150 group relative',
@@ -599,7 +608,7 @@ export default function DashboardLayout({
                         {user?.name || 'User'}
                       </p>
                       <p className="text-xs text-[#64748B] dark:text-[#94A3B8] truncate">
-                        {user?.email || 'user@example.com'}
+                        {user?.email ?? ''}
                       </p>
                     </div>
                     <span className="w-2 h-2 rounded-full bg-[#22C55E]" />

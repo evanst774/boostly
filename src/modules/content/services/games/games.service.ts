@@ -112,6 +112,7 @@ export type CompleteSessionResult =
         | 'CAP_REACHED'
         | 'PLAN_LIMIT'
         | 'BUDGET_EXHAUSTED'
+        | 'DAILY_MAX'
         | 'ALREADY_CLAIMED';
       minPlaySeconds: number;
     };
@@ -647,7 +648,9 @@ export class GamesService {
             ? 'PLAN_LIMIT'
             : credit.reason === 'BUDGET_EXHAUSTED'
               ? 'BUDGET_EXHAUSTED'
-              : 'ALREADY_CLAIMED',
+              : credit.reason === 'DAILY_EARNINGS_MAX'
+                ? 'DAILY_MAX'
+                : 'ALREADY_CLAIMED',
         minPlaySeconds: game.minPlayDuration,
       };
     }

@@ -1,16 +1,15 @@
 // src/modules/wallet/withdrawal-policy.ts
 //
-// Who may request a withdrawal, and when. Free users cash out once a week;
-// paid plans once a day. Every request is paid at the next 3:00 PM run.
+// Who may request a withdrawal, and when. Each plan sets its own interval in
+// Admin (defaults: Free weekly, paid daily). Every request is paid at the next 3:00 PM run.
 import { db } from '@/lib/db';
 import { withdrawals, wallets, WithdrawalStatusEnum } from '@/lib/db/schema';
 import { and, desc, eq, ne } from 'drizzle-orm';
 import { getUserPlan } from '@/modules/rewards/plan-limits';
 import {
   MIN_WITHDRAWAL,
-  describeWithdrawalFrequency,
+  describeIntervalDays,
   getNextPayoutAt,
-  getWithdrawalIntervalDays,
   kigaliDateKey,
 } from '@/lib/constants/payouts';
 
@@ -60,7 +59,7 @@ export async function getWithdrawalEligibility(
   ]);
 
   const balance = wallet?.balance ?? 0;
-  const intervalDays = getWithdrawalIntervalDays(plan.tier);
+  const intervalDays = plan.withdrawalIntervalDays; // set per plan in Admin
 
   let nextAllowedAt = now;
   if (last) {
@@ -78,9 +77,11 @@ export async function getWithdrawalEligibility(
 
   let reason: string | null = null;
   if (nextAllowedAt > now) {
-    reason = plan.isFree
-      ? 'Free plan members can withdraw once a week. Upgrade to withdraw every day.'
-      : 'You have already requested a withdrawal today. You can request again tomorrow.';
+    const freq = describeIntervalDays(intervalDays).toLowerCase();
+    reason =
+      intervalDays <= 1
+        ? 'You have already requested a withdrawal today. You can request again tomorrow.'
+        : `Your ${plan.name.replace(/ Plan$/, '')} plan can withdraw ${freq}. Upgrade to withdraw more often.`;
   } else if (balance < MIN_WITHDRAWAL) {
     reason = `You need at least ${MIN_WITHDRAWAL.toLocaleString()} RWF to withdraw. Keep completing tasks!`;
   }
@@ -93,7 +94,7 @@ export async function getWithdrawalEligibility(
     minAmount: MIN_WITHDRAWAL,
     plan: { tier: plan.tier, name: plan.name, isFree: plan.isFree },
     intervalDays,
-    frequencyLabel: describeWithdrawalFrequency(plan.tier),
+    frequencyLabel: describeIntervalDays(intervalDays),
     nextAllowedAt: nextAllowedAt.toISOString(),
     nextPayoutAt: getNextPayoutAt(now).toISOString(),
     lastPhoneNumber: last?.phoneNumber ?? null,

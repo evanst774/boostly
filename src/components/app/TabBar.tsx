@@ -131,6 +131,7 @@ export function TabBar({
             <li key={t.label}>
               <Link
                 href={t.href}
+                data-tour={variant === 'app' ? `nav-${t.label.toLowerCase()}` : undefined}
                 aria-current={active ? 'page' : undefined}
                 className="group relative flex h-full flex-col items-center justify-center gap-1 active:scale-95 transition-transform"
               >

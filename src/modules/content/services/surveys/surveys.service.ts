@@ -402,6 +402,10 @@ export class SurveysService {
       );
     }
 
+    if (!credit.credited && credit.reason === 'DAILY_EARNINGS_MAX') {
+      throw new SurveyTaskError(429, 'DAILY_EARNINGS_MAX', "You've reached today's earning maximum for your plan. Come back tomorrow, or upgrade to earn more each day. Your answers weren't saved.");
+    }
+
     if (!credit.credited && credit.reason === 'DAILY_LIMIT') {
       throw new SurveyTaskError(
         429,

@@ -57,7 +57,7 @@ export function useSettings() {
   };
 
   const updatePassword = async (passwordData: {
-    currentPassword: string;
+    currentPassword?: string;
     newPassword: string;
   }) => {
     const response = await fetch('/api/user/password', {
@@ -65,8 +65,10 @@ export function useSettings() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(passwordData),
     });
-    if (!response.ok) throw new Error('Failed to update password');
-    return response.json();
+    const json = await response.json().catch(() => ({}));
+    // Surface the server's reason (e.g. "Current password is incorrect").
+    if (!response.ok) throw new Error(json.error || 'Failed to update password');
+    return json;
   };
 
   const updatePreferences = async (preferences: Record<string, unknown>) => {

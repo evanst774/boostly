@@ -47,7 +47,7 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
-          className="w-10 h-10 rounded-xl border border-[#F3F4F6] flex items-center justify-center hover:border-[#2563EB] transition-colors"
+          className="hidden lg:flex w-10 h-10 rounded-xl border border-[#F3F4F6] items-center justify-center hover:border-[#2563EB] transition-colors" aria-label="Back"
           onClick={() => router.back()}
         >
           <ArrowLeft size={18} />

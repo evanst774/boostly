@@ -1,6 +1,10 @@
 // src/modules/rewards/plan-limits.ts
+import { eq } from 'drizzle-orm';
+import { db } from '@/lib/db';
+import { subscriptionPlans } from '@/lib/db/schema';
 import { userSubscriptionsRepository } from '@/modules/badges/repository';
-import { TIERS } from '@/lib/constants/tiers';
+import { TIERS, TIER_DAILY_MAX } from '@/lib/constants/tiers';
+import { getWithdrawalIntervalDays } from '@/lib/constants/payouts';
 
 export interface DailyLimits {
   maxDailyVideos: number;
@@ -15,26 +19,40 @@ export interface UserPlanInfo {
   isFree: boolean;
   expiresAt: string | null;
   limits: DailyLimits;
+  /** Most RWF this member can earn from tasks today. 0 = no maximum. */
+  dailyEarningsMax: number;
+  /** Days between withdrawals (1 = every day). */
+  withdrawalIntervalDays: number;
+}
+
+type PlanRow = typeof subscriptionPlans.$inferSelect;
+
+function fromRow(plan: PlanRow, expiresAt: string | null): UserPlanInfo {
+  const { maxDailyVideos, maxDailyGames, maxDailyAds, maxDailySurveys } = plan;
+  return {
+    tier: plan.tier,
+    name: plan.name,
+    isFree: plan.tier === 'FREE',
+    expiresAt,
+    limits: { maxDailyVideos, maxDailyGames, maxDailyAds, maxDailySurveys },
+    dailyEarningsMax: Math.max(0, Number(plan.dailyEarnings) || 0),
+    withdrawalIntervalDays: plan.withdrawalIntervalDays ?? getWithdrawalIntervalDays(plan.tier),
+  };
 }
 
 /**
- * The user's active plan and its per-day caps.
- * Users with no active subscription are implicitly FREE-tier.
+ * The user's active plan, its per-day caps and withdrawal frequency, all as
+ * set in Admin > Subscriptions. Users with no active subscription get the
+ * Free plan row (falling back to built-in defaults if it doesn't exist).
  */
 export async function getUserPlan(userId: string): Promise<UserPlanInfo> {
   const active = await userSubscriptionsRepository.getActiveByUserId(userId);
+  if (active?.plan) return fromRow(active.plan as PlanRow, active.expiresAt ?? null);
 
-  if (active?.plan) {
-    const { maxDailyVideos, maxDailyGames, maxDailyAds, maxDailySurveys } =
-      active.plan;
-    return {
-      tier: active.plan.tier,
-      name: active.plan.name,
-      isFree: active.plan.tier === 'FREE',
-      expiresAt: active.expiresAt ?? null,
-      limits: { maxDailyVideos, maxDailyGames, maxDailyAds, maxDailySurveys },
-    };
-  }
+  const freeRow = await db.query.subscriptionPlans.findFirst({
+    where: eq(subscriptionPlans.tier, 'FREE'),
+  });
+  if (freeRow) return { ...fromRow(freeRow, null), name: freeRow.name || 'Free Plan' };
 
   const free = TIERS.FREE.metadata;
   return {
@@ -48,6 +66,8 @@ export async function getUserPlan(userId: string): Promise<UserPlanInfo> {
       maxDailyAds: free.maxDailyAds,
       maxDailySurveys: free.maxDailySurveys,
     },
+    dailyEarningsMax: TIER_DAILY_MAX.FREE,
+    withdrawalIntervalDays: getWithdrawalIntervalDays('FREE'),
   };
 }
 

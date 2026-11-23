@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 // import Script from 'next/script';
 import './globals.css';
 import ClientLayout from './ClientLayout';
+import { THEME_INIT_SCRIPT } from '@/contexts/ThemeContext';
 
 // ============================================
 // THIRD-PARTY WIDGETS
@@ -152,6 +153,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Apply the saved/system theme before first paint (no flash). */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         {/* Preconnect for external resources */}
         <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
         <link

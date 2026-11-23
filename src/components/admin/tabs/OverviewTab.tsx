@@ -179,6 +179,9 @@ export function OverviewTab({ data }: OverviewTabProps) {
         },
       },
       y: {
+        // Revenue is never negative; keep a sane scale when it's all zero.
+        beginAtZero: true,
+        suggestedMax: 1000,
         grid: {
           color: gridColor,
         },

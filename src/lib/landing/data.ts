@@ -136,7 +136,13 @@ const load = unstable_cache(
         })
         .from(withdrawals)
         .leftJoin(users, eq(withdrawals.userId, users.id))
-        .where(eq(withdrawals.status, 'COMPLETED'))
+        .where(
+          and(
+            eq(withdrawals.status, 'COMPLETED'),
+            // Members can opt out of public lists (Settings > Privacy).
+            sql`coalesce(json_extract(${users.preferences}, '$.showOnLeaderboard'), 1) != 0`,
+          ),
+        )
         .orderBy(desc(withdrawals.completedAt))
         .limit(6),
       db
