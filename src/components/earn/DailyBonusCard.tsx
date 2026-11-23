@@ -25,7 +25,9 @@ export function DailyBonusCard({
     try {
       const res = await fetch('/api/daily-bonus', { method: 'POST' });
       const json = await res.json().catch(() => ({}));
-      if (res.ok || res.status === 409) {
+      if (res.status === 409 && json.code === 'BUDGET_EXHAUSTED') {
+        setError(json.error || "Today's rewards are used up. Try again tomorrow.");
+      } else if (res.ok || res.status === 409) {
         setClaimed(true);
         onClaimed();
       } else {

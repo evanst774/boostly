@@ -111,6 +111,7 @@ export type CompleteSessionResult =
         | 'FLAGGED'
         | 'CAP_REACHED'
         | 'PLAN_LIMIT'
+        | 'BUDGET_EXHAUSTED'
         | 'ALREADY_CLAIMED';
       minPlaySeconds: number;
     };
@@ -632,15 +633,21 @@ export class GamesService {
         score,
       },
       dailyCap: limits.maxDailyGames,
+      budget: { table: 'games', id: game.id },
     });
 
     if (!credit.credited) {
-      await closeSession(credit.reason !== 'DAILY_LIMIT', 0);
+      await closeSession(credit.reason === 'ALREADY_CREDITED', 0);
       return {
         status: 'NO_REWARD',
         rewardEarned: 0,
         verifiedSeconds: session.verifiedSeconds,
-        reason: credit.reason === 'DAILY_LIMIT' ? 'PLAN_LIMIT' : 'ALREADY_CLAIMED',
+        reason:
+          credit.reason === 'DAILY_LIMIT'
+            ? 'PLAN_LIMIT'
+            : credit.reason === 'BUDGET_EXHAUSTED'
+              ? 'BUDGET_EXHAUSTED'
+              : 'ALREADY_CLAIMED',
         minPlaySeconds: game.minPlayDuration,
       };
     }

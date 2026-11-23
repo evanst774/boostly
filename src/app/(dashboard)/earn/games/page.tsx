@@ -440,7 +440,10 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
                 <h2 className="text-xl font-extrabold text-white">
                   {result.reason === 'TOO_SHORT' && 'A bit too short'}
                   {result.reason === 'CAP_REACHED' && 'Daily limit reached'}
+                  {result.reason === 'BUDGET_EXHAUSTED' &&
+                    "This game's sponsored rewards are used up for now. Try another game or come back later."}
                   {result.reason === 'PLAN_LIMIT' && "Today's games are used up"}
+                  {result.reason === 'BUDGET_EXHAUSTED' && 'Sponsored rewards used up'}
                   {result.reason === 'FLAGGED' && 'Session not counted'}
                   {result.reason === 'ALREADY_CLAIMED' && 'Already claimed'}
                 </h2>

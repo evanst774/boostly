@@ -66,6 +66,14 @@ export const surveys = sqliteTable(
     // Reward
     rewardAmount: real('rewardAmount').notNull().default(200), // Rwf
 
+    // Sponsor-funded reward budget (RWF). Rewards for this item stop once
+    // rewardSpent reaches it. NULL = no campaign budget: paid only within the
+    // platform's daily reward budget.
+    rewardBudget: real('rewardBudget'),
+    // Nullable on purpose: drizzle-kit push emits `DELETE FROM <table>` before
+    // adding a NOT NULL column, which would wipe live content. Treat NULL as 0.
+    rewardSpent: real('rewardSpent').default(0),
+
     // ✅ Sponsored content - ADD THESE
     isSponsored: integer('isSponsored', { mode: 'boolean' })
       .notNull()

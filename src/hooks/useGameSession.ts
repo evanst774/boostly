@@ -39,6 +39,7 @@ export type CompletionResult =
         | 'FLAGGED'
         | 'CAP_REACHED'
         | 'PLAN_LIMIT'
+        | 'BUDGET_EXHAUSTED'
         | 'ALREADY_CLAIMED';
       minPlaySeconds: number;
     };

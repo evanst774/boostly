@@ -64,6 +64,8 @@ const videoBaseSchema = z.object({
   videoKey: z.string().optional(),
   thumbnailKey: z.string().optional(),
   rewardAmount: z.number().positive().default(40),
+  // Sponsor-funded reward budget in RWF; null = no campaign budget.
+  rewardBudget: z.number().positive().nullable().optional(),
   bonusReward: z.number().positive().optional(),
   isSponsored: z.boolean().default(false),
   sponsorName: z.string().optional(),
@@ -99,6 +101,8 @@ const gameBaseSchema = z.object({
   provider: z.enum(GameProviderEnum).default('SELF_HOSTED'),
   orientation: z.enum(GameOrientationEnum).default('BOTH'),
   baseReward: z.number().positive().default(50),
+  // Sponsor-funded reward budget in RWF; null = no campaign budget.
+  rewardBudget: z.number().positive().nullable().optional(),
   maxReward: z.number().positive().default(150),
   maxPlaysPerDay: z.number().int().positive().max(100).default(10),
   minPlayDuration: z.number().int().positive().max(3600).default(30),
@@ -216,6 +220,8 @@ const surveyBaseSchema = z.object({
   questionsCount: z.number().int().positive().default(5),
   estimatedTime: z.number().int().positive().default(5),
   rewardAmount: z.number().positive().default(200),
+  // Sponsor-funded reward budget in RWF; null = no campaign budget.
+  rewardBudget: z.number().positive().nullable().optional(),
   maxParticipants: z.number().int().positive().optional(),
   isSponsored: z.boolean().default(false),
   sponsorName: z.string().optional(),

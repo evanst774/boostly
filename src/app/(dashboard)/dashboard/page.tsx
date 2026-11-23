@@ -1,7 +1,7 @@
 // src/app/(dashboard)/dashboard/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   CheckCircle2,
@@ -17,14 +17,12 @@ import {
   Smartphone,
   Sparkles,
   Wallet,
-  X,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEarnToday, type TaskProgress } from '@/hooks/useEarnToday';
 import { PayoutCountdown } from '@/components/earn/PayoutCountdown';
 import { LedgerRow } from '@/components/earn/LedgerRow';
 import { DailyBonusCard } from '@/components/earn/DailyBonusCard';
-import { PAYOUT_TIME_LABEL } from '@/lib/constants/payouts';
 import { cn } from '@/lib/utils';
 
 const rwf = (n: number) =>
@@ -64,57 +62,6 @@ function Skeleton() {
       <div className={`${b} h-56`} />
       <div className={`${b} h-40`} />
     </div>
-  );
-}
-
-// ─── How it works (dismissable) ───────────────────────────────────
-const GUIDE_KEY = 'boostly:guide-dismissed';
-
-function EarnGuide({ onClose }: { onClose: () => void }) {
-  const steps = [
-    { title: 'Do your daily tasks', body: 'Watch sponsored videos, play games and answer surveys.' },
-    { title: 'Your balance grows', body: 'Each completed task adds RWF to your balance instantly.' },
-    { title: 'Request a withdrawal', body: 'Choose the mobile money number to be paid on.' },
-    { title: `Get paid at ${PAYOUT_TIME_LABEL}`, body: 'All withdrawals are sent to MTN MoMo / Airtel Money daily.' },
-  ];
-  return (
-    <section className={cn(card, 'p-4 sm:p-5')}>
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div>
-          <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">
-            How you earn on Boostly
-          </h2>
-          <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-            Four steps from task to mobile money.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Hide guide"
-          className="p-1.5 rounded-lg text-[#94A3B8] hover:bg-[#F1F5F9] dark:hover:bg-[#334155]"
-        >
-          <X size={16} />
-        </button>
-      </div>
-      <ol className="grid gap-3 sm:grid-cols-4">
-        {steps.map((s, i) => (
-          <li key={s.title} className="flex sm:flex-col gap-3 sm:gap-2">
-            <span className="w-7 h-7 shrink-0 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center">
-              {i + 1}
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-[#0F172A] dark:text-white">
-                {s.title}
-              </p>
-              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] mt-0.5">
-                {s.body}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ol>
-    </section>
   );
 }
 
@@ -167,24 +114,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { data, isLoading, error, refetch } = useEarnToday();
   const [hidden, setHidden] = useState(false);
-  const [showGuide, setShowGuide] = useState(false);
 
-  useEffect(() => {
-    try {
-      setShowGuide(localStorage.getItem(GUIDE_KEY) !== '1');
-    } catch {
-      setShowGuide(true);
-    }
-  }, []);
-
-  const closeGuide = () => {
-    setShowGuide(false);
-    try {
-      localStorage.setItem(GUIDE_KEY, '1');
-    } catch {
-      /* ignore */
-    }
-  };
 
   if (isLoading) return <Skeleton />;
 
@@ -287,7 +217,6 @@ export default function DashboardPage() {
         <DailyBonusCard bonus={data.dailyBonus} onClaimed={refetch} />
       )}
 
-      {showGuide && <EarnGuide onClose={closeGuide} />}
 
       {/* Today's tasks */}
       <section className={cn(card, 'p-4 sm:p-5')}>

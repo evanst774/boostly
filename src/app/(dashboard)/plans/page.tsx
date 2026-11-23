@@ -41,7 +41,8 @@ interface PlanView {
   description: string;
   priceMonthly: number;
   priceYearly: number;
-  dailyEarnings: number;
+  /** Reward per task multiplier: 1 + plan boost. */
+  rate: number;
   videos: number;
   games: number;
   surveys: number;
@@ -49,6 +50,12 @@ interface PlanView {
 }
 
 const rwf = (n: number) => `${Math.round(n).toLocaleString('en-US')} RWF`;
+/** 1 -> "Standard", 1.3 -> "+30%", 2.5 -> "2.5x" */
+function formatRate(rate: number) {
+  if (rate <= 1.001) return 'Standard';
+  if (rate < 2) return `+${Math.round((rate - 1) * 100)}%`;
+  return `${Number(rate.toFixed(1))}x`;
+}
 
 function tierRank(tier: string) {
   const i = (TIER_ORDER as readonly string[]).indexOf(tier);
@@ -64,8 +71,7 @@ function buildPlans(apiPlans: SubscriptionPlan[]): PlanView[] {
     description: p.description ?? TIERS[p.tier]?.description ?? '',
     priceMonthly: p.priceMonthly ?? 0,
     priceYearly: p.priceYearly ?? 0,
-    dailyEarnings:
-      p.dailyEarnings ?? TIERS[p.tier]?.metadata.estimatedDailyEarnings ?? 0,
+    rate: 1 + (p.badgeBoost ?? TIERS[p.tier]?.metadata.badgeBoost ?? 0),
     videos: p.maxDailyVideos,
     games: p.maxDailyGames,
     surveys: p.maxDailySurveys,
@@ -84,7 +90,7 @@ function buildPlans(apiPlans: SubscriptionPlan[]): PlanView[] {
             description: t.description,
             priceMonthly: TIER_PRICES[tier].monthly,
             priceYearly: TIER_PRICES[tier].yearly,
-            dailyEarnings: t.metadata.estimatedDailyEarnings,
+            rate: 1 + t.metadata.badgeBoost,
             videos: t.metadata.maxDailyVideos,
             games: t.metadata.maxDailyGames,
             surveys: t.metadata.maxDailySurveys,
@@ -102,7 +108,7 @@ function buildPlans(apiPlans: SubscriptionPlan[]): PlanView[] {
       description: t.description,
       priceMonthly: 0,
       priceYearly: 0,
-      dailyEarnings: t.metadata.estimatedDailyEarnings,
+      rate: 1 + t.metadata.badgeBoost,
       videos: t.metadata.maxDailyVideos,
       games: t.metadata.maxDailyGames,
       surveys: t.metadata.maxDailySurveys,
@@ -265,10 +271,16 @@ export default function PlansPage() {
           Choose your plan
         </h1>
         <p className="mt-1 text-sm text-[#64748B] dark:text-[#94A3B8] max-w-2xl">
-          The Free plan earns a little every day and withdraws once every{' '}
-          {FREE_WITHDRAWAL_INTERVAL_DAYS} days. Any paid plan unlocks more daily
-          tasks and lets you withdraw every day. Payouts go to your mobile
-          money at {PAYOUT_TIME_LABEL}.
+          Lower plans give you more tasks every day. Higher plans give fewer
+          tasks that pay more each. Paid plans withdraw every day (Free: once
+          every {FREE_WITHDRAWAL_INTERVAL_DAYS} days), paid to mobile money at{' '}
+          {PAYOUT_TIME_LABEL}.
+        </p>
+        <p className="mt-2 max-w-2xl rounded-xl border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#1E293B] p-3 text-xs text-[#475569] dark:text-[#CBD5E1]">
+          <strong className="text-[#0F172A] dark:text-white">How rewards are funded:</strong>{' '}
+          every task reward is paid from real sponsor and advertising budgets.
+          There are no fixed or guaranteed daily earnings: when a sponsor&apos;s
+          budget is used up, its tasks stop paying until new budget is added.
         </p>
       </div>
 
@@ -444,7 +456,7 @@ export default function PlansPage() {
                   {plan.name}
                 </h3>
                 <span className="text-xs font-semibold text-[#22C55E] dark:text-[#4ADE80]">
-                  ≈ {rwf(plan.dailyEarnings)}/day
+                  {formatRate(plan.rate)} per task
                 </span>
               </div>
               <p className="mt-0.5 text-xs text-[#64748B] dark:text-[#94A3B8]">
@@ -585,7 +597,7 @@ export default function PlansPage() {
               </thead>
               <tbody className="text-[#0F172A] dark:text-white tabular-nums">
                 <CompareRow label={cycle === 'MONTHLY' ? 'Price / month' : 'Price / year'} plans={plans} render={(p) => (p.tier === 'FREE' ? 'Free' : rwf(priceFor(p, cycle)))} />
-                <CompareRow label="Earning potential" plans={plans} render={(p) => `≈ ${rwf(p.dailyEarnings)}`} />
+                <CompareRow label="Reward per task" plans={plans} render={(p) => formatRate(p.rate)} />
                 <CompareRow label="Sponsored videos" plans={plans} render={(p) => p.videos} />
                 <CompareRow label="Games" plans={plans} render={(p) => p.games} />
                 <CompareRow label="Surveys" plans={plans} render={(p) => p.surveys} />

@@ -126,6 +126,12 @@ const navItems: NavItem[] = [
     section: 'settings',
   },
   {
+    name: 'Reward budget',
+    href: '/admin/settings/rewards',
+    icon: <Award size={18} />,
+    section: 'settings',
+  },
+  {
     name: 'Mobile money',
     href: '/admin/settings/payments',
     icon: <Smartphone size={18} />,

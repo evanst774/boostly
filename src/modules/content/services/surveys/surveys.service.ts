@@ -391,7 +391,16 @@ export class SurveysService {
       sourceType: 'survey',
       scope: 'once',
       dailyCap: limits.maxDailySurveys,
+      budget: { table: 'surveys', id: survey.id },
     });
+
+    if (!credit.credited && credit.reason === 'BUDGET_EXHAUSTED') {
+      throw new SurveyTaskError(
+        429,
+        'BUDGET_EXHAUSTED',
+        "This survey's sponsored rewards are used up. Your answers weren't saved, so you can try another survey.",
+      );
+    }
 
     if (!credit.credited && credit.reason === 'DAILY_LIMIT') {
       throw new SurveyTaskError(

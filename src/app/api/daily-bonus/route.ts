@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth/session.server';
 import {
   dailyBonusesService,
   DailyBonusClaimedError,
+  DailyBonusUnavailableError,
 } from '@/modules/rewards/service';
 
 export const dynamic = 'force-dynamic';
@@ -37,6 +38,9 @@ export async function POST() {
 
     return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof DailyBonusUnavailableError) {
+      return NextResponse.json({ error: error.message, code: 'BUDGET_EXHAUSTED' }, { status: 409 });
+    }
     if (error instanceof DailyBonusClaimedError) {
       return NextResponse.json({ error: error.message, code: 'ALREADY_CLAIMED' }, { status: 409 });
     }

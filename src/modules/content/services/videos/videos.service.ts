@@ -479,6 +479,7 @@ export class VideosService {
       scope: kigaliDateKey(), // once per video per day
       metadata: { watchId: watch.id },
       dailyCap: limits.maxDailyVideos,
+      budget: { table: 'videos', id: video.id },
     });
 
     if (!credit.credited) {
@@ -490,7 +491,9 @@ export class VideosService {
             ? "You've already earned this video's reward today. Try another video!"
             : credit.reason === 'DAILY_LIMIT'
               ? `You've used today's ${limits.maxDailyVideos} rewarded videos. Come back tomorrow or upgrade your plan for more.`
-              : 'This video has no reward.',
+              : credit.reason === 'BUDGET_EXHAUSTED'
+                ? "This video's sponsored rewards are used up for now. Try another video!"
+                : 'This video has no reward.',
       };
     }
 

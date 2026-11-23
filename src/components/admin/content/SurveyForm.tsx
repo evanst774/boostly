@@ -28,6 +28,7 @@ export interface SurveyFormValues {
   category: string;
   estimatedTime: number;
   rewardAmount: number;
+  rewardBudget: number | null;
   maxParticipants: number | '';
   isSponsored: boolean;
   sponsorName: string;
@@ -52,6 +53,7 @@ export const EMPTY_SURVEY_FORM: SurveyFormValues = {
   category: 'TECHNOLOGY',
   estimatedTime: 5,
   rewardAmount: 200,
+  rewardBudget: null,
   maxParticipants: '',
   isSponsored: false,
   sponsorName: '',
@@ -229,6 +231,20 @@ export function SurveyForm({
               value={form.rewardAmount}
               onChange={(e) => set('rewardAmount', Number(e.target.value))}
             />
+          </div>
+          <div>
+            <label className={labelClass}>Sponsor reward budget (RWF)</label>
+            <input
+              type="number"
+              min={1}
+              placeholder="No campaign budget"
+              className={inputClass}
+              value={form.rewardBudget ?? ''}
+              onChange={(e) => set('rewardBudget', e.target.value ? Number(e.target.value) : null)}
+            />
+            <p className="mt-1 text-xs text-[#94A3B8]">
+              Money the sponsor paid for rewards. Rewards stop when it&apos;s used up. Leave empty to pay only from the daily reward budget.
+            </p>
           </div>
           <div>
             <label className={labelClass}>Est. Time (min)</label>

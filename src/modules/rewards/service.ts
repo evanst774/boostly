@@ -17,6 +17,10 @@ import {
   TransactionStatusEnum,
   TransactionTypeEnum,
 } from '@/lib/db/schema/wallet';
+import { companySettings } from '@/lib/db/schema/company';
+import { videos } from '@/lib/db/schema/videos';
+import { games } from '@/lib/db/schema/games';
+import { surveys } from '@/lib/db/schema/surveys';
 import { walletRepository } from '@/modules/wallet/repository';
 import {
   adWatchesRepository,
@@ -61,7 +65,28 @@ export interface CreateRewardInput {
    * to false so they pay exactly the advertised percentage.
    */
   applyBoost?: boolean;
+  /**
+   * Sponsor campaign that funds this reward. The reward is only paid while
+   * the item's rewardBudget covers it, and rewardSpent grows in the same
+   * atomic write.
+   */
+  budget?: { table: 'videos' | 'games' | 'surveys'; id: string };
 }
+
+const BUDGET_TABLES = {
+  videos: { table: videos, id: videos.id, budget: videos.rewardBudget, spent: videos.rewardSpent },
+  games: { table: games, id: games.id, budget: games.rewardBudget, spent: games.rewardSpent },
+  surveys: { table: surveys, id: surveys.id, budget: surveys.rewardBudget, spent: surveys.rewardSpent },
+} as const;
+
+/** Reward types paid from the daily reward budget (real revenue). */
+const BUDGETED_TYPES: RewardType[] = [
+  RewardTypeEnum.VIDEO,
+  RewardTypeEnum.GAME,
+  RewardTypeEnum.SURVEY,
+  RewardTypeEnum.AD_WATCH,
+  RewardTypeEnum.DAILY_BONUS,
+];
 
 export type CreateRewardResult =
   | {
@@ -74,7 +99,7 @@ export type CreateRewardResult =
     }
   | {
       credited: false;
-      reason: 'ALREADY_CREDITED' | 'ZERO_AMOUNT' | 'DAILY_LIMIT';
+      reason: 'ALREADY_CREDITED' | 'ZERO_AMOUNT' | 'DAILY_LIMIT' | 'BUDGET_EXHAUSTED';
       amount: 0;
     };
 
@@ -153,16 +178,41 @@ export class RewardsService {
         badgeBoost: multiplier.badgeBoost,
         planBoost: multiplier.planBoost,
       });
+      const dayStart = kigaliDayStartIso();
+      const budgetTable = input.budget ? BUDGET_TABLES[input.budget.table] : null;
+
+      // Platform daily budget (admin-set from real revenue). NULL = not set.
+      const dailyBudgetCondition = BUDGETED_TYPES.includes(input.type)
+        ? sql`(
+            (SELECT ${companySettings.dailyRewardBudget} FROM ${companySettings} WHERE ${companySettings.id} = 'single') IS NULL
+            OR (
+              SELECT coalesce(sum(${rewards.amount}), 0) FROM ${rewards}
+              WHERE ${rewards.status} = ${RewardStatusEnum.CLAIMED}
+                AND ${rewards.createdAt} >= ${dayStart}
+                AND ${rewards.type} IN (${sql.join(BUDGETED_TYPES.map((t) => sql`${t}`), sql`, `)})
+            ) + ${amount} <= (SELECT ${companySettings.dailyRewardBudget} FROM ${companySettings} WHERE ${companySettings.id} = 'single')
+          )`
+        : sql`1 = 1`;
+
+      // Sponsor campaign budget for this item. NULL budget = no campaign cap.
+      const campaignCondition = budgetTable
+        ? sql`EXISTS (
+            SELECT 1 FROM ${budgetTable.table}
+            WHERE ${budgetTable.id} = ${input.budget!.id}
+              AND (${budgetTable.budget} IS NULL OR coalesce(${budgetTable.spent}, 0) + ${amount} <= ${budgetTable.budget})
+          )`
+        : sql`1 = 1`;
+
       const capCondition =
         input.dailyCap === undefined
-          ? sql`1 = 1`
-          : sql`(
+          ? sql`${dailyBudgetCondition} AND ${campaignCondition}`
+          : sql`${dailyBudgetCondition} AND ${campaignCondition} AND (
               SELECT count(*) FROM ${rewards}
               WHERE ${rewards.userId} = ${input.userId}
                 AND ${rewards.type} = ${input.type}
                 AND ${rewards.status} = ${RewardStatusEnum.CLAIMED}
-                AND ${rewards.createdAt} >= ${kigaliDayStartIso()}
-            ) < ${input.dailyCap}`;
+                AND ${rewards.createdAt} >= ${dayStart}
+            ) < ${input.dailyCap})`;
 
       const [insertResult] = await db.batch([
         db.run(sql`
@@ -201,10 +251,28 @@ export class RewardsService {
               "updatedAt" = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
           WHERE ${wallets.id} = ${wallet.id} AND ${rewardInserted}
         `),
+        // Spend the sponsor's campaign budget (no-op without one).
+        ...(budgetTable
+          ? [
+              db.run(sql`
+                UPDATE ${budgetTable.table}
+                SET ${sql.raw(`"rewardSpent"`)} = coalesce(${budgetTable.spent}, 0) + ${amount}
+                WHERE ${budgetTable.id} = ${input.budget!.id} AND ${rewardInserted}
+              `),
+            ]
+          : []),
       ]);
 
       if (!insertResult.rowsAffected) {
-        return { credited: false, reason: 'DAILY_LIMIT', amount: 0 };
+        // Tell the member WHY: their plan's daily limit, or the money for
+        // rewards (sponsor campaign / platform daily budget) is used up.
+        if (input.dailyCap !== undefined) {
+          const done = await this.getTodayRewardCount(input.userId, input.type);
+          if (done >= input.dailyCap) {
+            return { credited: false, reason: 'DAILY_LIMIT', amount: 0 };
+          }
+        }
+        return { credited: false, reason: 'BUDGET_EXHAUSTED', amount: 0 };
       }
 
       const [reward, updatedWallet] = await Promise.all([
@@ -762,6 +830,12 @@ export const adWatchesService = new AdWatchesService();
 
 const DAILY_BONUS_BASE = 100;
 
+export class DailyBonusUnavailableError extends Error {
+  constructor() {
+    super("Today's sponsored rewards are used up. New sponsored tasks are added regularly. Check back tomorrow!");
+  }
+}
+
 export class DailyBonusClaimedError extends Error {
   constructor() {
     super("You've already claimed today's bonus. Come back tomorrow!");
@@ -825,6 +899,9 @@ export class DailyBonusesService {
     // ALREADY_CREDITED means a parallel request paid it; mark it claimed too.
     if (result.credited || result.reason === 'ALREADY_CREDITED') {
       await dailyBonusesRepository.claimBonus(bonus.id);
+    }
+    if (!result.credited && result.reason === 'BUDGET_EXHAUSTED') {
+      throw new DailyBonusUnavailableError();
     }
     if (!result.credited) throw new DailyBonusClaimedError();
 

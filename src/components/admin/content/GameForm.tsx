@@ -15,6 +15,7 @@ export interface GameFormValues {
   provider: string;
   orientation: string;
   baseReward: number;
+  rewardBudget: number | null;
   maxReward: number;
   maxPlaysPerDay: number;
   minPlayDuration: number;
@@ -36,6 +37,7 @@ export const EMPTY_GAME_FORM: GameFormValues = {
   provider: 'SELF_HOSTED',
   orientation: 'BOTH',
   baseReward: 50,
+  rewardBudget: null,
   maxReward: 150,
   maxPlaysPerDay: 10,
   minPlayDuration: 30,
@@ -197,6 +199,22 @@ export function GameForm({
         </div>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className={labelClass}>Sponsor reward budget (RWF)</label>
+          <input
+            type="number"
+            min={1}
+            placeholder="No campaign budget"
+            className={inputClass}
+            value={form.rewardBudget ?? ''}
+            onChange={(e) => set('rewardBudget', e.target.value ? Number(e.target.value) : null)}
+          />
+          <p className="mt-1 text-xs text-[#94A3B8]">
+            Money the sponsor paid for rewards. Rewards stop when it&apos;s used up. Leave empty to pay only from the daily reward budget.
+          </p>
+        </div>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         <div>
           <label className={labelClass}>Base Reward (RWF)</label>

@@ -622,18 +622,9 @@ export async function activateSubscription(params: {
   // Each activation is its own event (the row is reused across renewals).
   const activationKey = params.paymentId ?? `${subscription.id}:${values.startsAt}`;
 
-  const bonusAmount = (plan.dailyEarnings ?? 0) * 30;
-  if (bonusAmount > 0) {
-    await rewardsService.createReward({
-      userId,
-      type: RewardTypeEnum.SUBSCRIPTION_BONUS,
-      baseAmount: bonusAmount,
-      description: `Welcome to ${plan.name}`,
-      sourceId: plan.id,
-      sourceType: 'subscription',
-      scope: activationKey,
-    });
-  }
+  // No welcome bonus: paying for a plan unlocks tasks, it doesn't pay out
+  // a fixed amount. Earnings come only from funded tasks.
+
 
   await referralsService.recordPurchaseCommission(userId, {
     type: QualifyingPurchaseEnum.SUBSCRIPTION_PAYMENT,

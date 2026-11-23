@@ -9,99 +9,21 @@ import {
 } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import type { SeedBadgesResult } from '../types';
-import { TIERS, type TierConfig } from '@/lib/constants/tiers';
+import { TIERS, TIER_ORDER, TIER_PRICES, type TierConfig } from '@/lib/constants/tiers';
 
-// Helper to convert tier config to subscription plan
-function tierToPlan(tier: TierConfig, baseCurrency: string = 'RWF'): any {
-  const isFree = tier.value === 'FREE';
-
-  // Price mapping based on tier
-  const priceMap: Record<string, { monthly: number; yearly: number }> = {
-    FREE: { monthly: 0, yearly: 0 },
-    STARTER: { monthly: 6000, yearly: 60000 },
-    SILVER: { monthly: 15000, yearly: 150000 },
-    GOLD: { monthly: 30000, yearly: 300000 },
-    PLATINUM: { monthly: 60000, yearly: 600000 },
-    PREMIUM: { monthly: 120000, yearly: 1200000 },
-  };
-
-  // Daily earning estimation based on tier
-  const dailyEarningMap: Record<string, number> = {
-    FREE: 30,
-    STARTER: 80,
-    SILVER: 220,
-    GOLD: 500,
-    PLATINUM: 1100,
-    PREMIUM: 2500,
-  };
-
-  // Feature mapping
-  const featureMap: Record<string, string[]> = {
-    FREE: [
-      'Watch videos & earn',
-      'Play games & earn',
-      'Complete surveys',
-      'Daily rewards',
-      'Referral program',
-    ],
-    STARTER: [
-      'Double earning limits',
-      'Priority access to premium content',
-      'Ad-free experience',
-      'Exclusive games & surveys',
-      'Basic analytics',
-    ],
-    SILVER: [
-      'Triple earning limits',
-      'Priority withdrawals',
-      'Exclusive content library',
-      'Premium support',
-      'Advanced analytics',
-      'Content creation tools',
-    ],
-    GOLD: [
-      'Premium earning opportunities',
-      'VIP support',
-      'Content monetization',
-      'Revenue sharing',
-      'Early access to new features',
-      'Verified badge',
-      'Creator dashboard',
-    ],
-    PLATINUM: [
-      'Unlimited earning potential',
-      'Premium VIP support',
-      'Higher revenue share',
-      'Exclusive content & events',
-      'Instant payouts',
-      'Elite badge',
-      'Personal account manager',
-      'Creator fund access',
-    ],
-    PREMIUM: [
-      'Maximum earning potential',
-      'Ultimate VIP support',
-      'Highest revenue share',
-      'All content unlocked',
-      'Exclusive partnerships',
-      'Premium elite badge',
-      'Invite-only events',
-      'Platform revenue share',
-    ],
-  };
-
-  const price = isFree ? 0 : priceMap[tier.value]?.monthly || 0;
-  const yearlyPrice = isFree ? 0 : priceMap[tier.value]?.yearly || 0;
-  const dailyEarnings = dailyEarningMap[tier.value] || 0;
-
+// Helper to convert tier config to subscription plan. Prices, limits and the
+// per-task reward boost all come from lib/constants/tiers.ts (single source).
+// dailyEarnings stays 0: there are no fixed earnings, only funded tasks.
+function tierToPlan(tier: TierConfig): any {
+  const price = TIER_PRICES[tier.value] ?? { monthly: 0, yearly: 0 };
   return {
     name: `${tier.label} Plan`,
     description: tier.description,
     tier: tier.value,
-    priceMonthly: price,
-    priceYearly: yearlyPrice,
-    dailyEarnings: dailyEarnings,
-    features: featureMap[tier.value] || tier.features,
+    priceMonthly: price.monthly,
+    priceYearly: price.yearly,
+    dailyEarnings: 0,
+    features: tier.features,
     maxDailyVideos: tier.metadata.maxDailyVideos,
     maxDailyGames: tier.metadata.maxDailyGames,
     maxDailyAds: tier.metadata.maxDailyAds,
@@ -183,14 +105,7 @@ export async function seedBadges(): Promise<SeedBadgesResult> {
   console.log('  📋 Seeding subscription plans from TIERS...');
 
   const planList: SubscriptionPlan[] = [];
-  const tierOrder = [
-    'FREE',
-    'STARTER',
-    'SILVER',
-    'GOLD',
-    'PLATINUM',
-    'PREMIUM',
-  ];
+  const tierOrder = TIER_ORDER;
 
   for (const tierKey of tierOrder) {
     const tier = TIERS[tierKey];
@@ -213,11 +128,6 @@ export async function seedBadges(): Promise<SeedBadgesResult> {
       planList.push(newPlan);
       console.log(`    ✅ Created subscription plan: ${planData.name}`);
 
-      // Log earning potential
-      const monthlyEarnings = planData.dailyEarnings * 30;
-      console.log(
-        `       📊 Daily: ${planData.dailyEarnings} RWF | Monthly: ~${monthlyEarnings.toLocaleString()} RWF`,
-      );
     } else {
       planList.push(existing);
       console.log(`    ⚠️ Subscription plan exists: ${planData.name}`);

@@ -79,6 +79,14 @@ export const videos = sqliteTable(
 
     // Reward
     rewardAmount: real('rewardAmount').notNull().default(40), // Rwf per video
+
+    // Sponsor-funded reward budget (RWF). Rewards for this item stop once
+    // rewardSpent reaches it. NULL = no campaign budget: paid only within the
+    // platform's daily reward budget.
+    rewardBudget: real('rewardBudget'),
+    // Nullable on purpose: drizzle-kit push emits `DELETE FROM <table>` before
+    // adding a NOT NULL column, which would wipe live content. Treat NULL as 0.
+    rewardSpent: real('rewardSpent').default(0),
     bonusReward: real('bonusReward'), // Bonus for completing all videos in a series
 
     // Sponsored content

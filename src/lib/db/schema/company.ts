@@ -119,6 +119,15 @@ export const companySettings = sqliteTable('company_settings', {
   momoAccountName: text('momoAccountName'),
 
   // ============================================
+  // REWARD BUDGET (sustainable earnings)
+  // ============================================
+  /**
+   * Most RWF the platform pays out in task rewards per Kigali day, set from
+   * real revenue (ads, sponsors, plan fees). NULL = not set yet (no cap).
+   */
+  dailyRewardBudget: real('dailyRewardBudget'),
+
+  // ============================================
   // LOCALE SETTINGS
   // ============================================
   timezone: text('timezone').default('Africa/Kigali'),

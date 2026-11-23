@@ -33,6 +33,7 @@ export default function CreateVideoPage() {
     videoUrl: '',
     thumbnailUrl: '',
     rewardAmount: 40,
+    rewardBudget: null as number | null,
     isSponsored: false,
     sponsorName: '',
     sponsorLogo: '',
@@ -296,6 +297,27 @@ export default function CreateVideoPage() {
                   min="0"
                 />
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#0F172A] dark:text-white mb-1.5">
+                Sponsor reward budget (RWF)
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={formData.rewardBudget ?? ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    rewardBudget: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
+                className="w-full px-4 py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white"
+                placeholder="No campaign budget"
+              />
+              <p className="mt-1 text-xs text-[#94A3B8]">
+                What the sponsor paid for rewards. Rewards stop when it&apos;s used up.
+              </p>
             </div>
           </div>
 
