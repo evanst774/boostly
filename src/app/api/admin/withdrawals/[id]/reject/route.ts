@@ -14,6 +14,7 @@ import {
 } from '@/lib/db/schema/wallet';
 import { and, eq, sql } from 'drizzle-orm';
 import { notificationsService } from '@/lib/notifications';
+import { emailWithdrawalRejected, inBackground } from '@/lib/mail/money-emails';
 
 export const dynamic = 'force-dynamic';
 
@@ -120,6 +121,14 @@ export async function POST(
 
       return result;
     });
+
+    inBackground(
+      emailWithdrawalRejected({
+        userId: withdrawal.userId,
+        amount: withdrawal.amount,
+        reason,
+      }),
+    );
 
     await notificationsService
       .notifyWithdrawalStatus(withdrawal.userId, withdrawal.amount, 'rejected', reason)

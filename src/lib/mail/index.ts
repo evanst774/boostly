@@ -1,6 +1,7 @@
 // src/lib/mail.ts
 
 import { db } from '../db';
+import { REFERRAL_COMMISSION_LABEL } from '@/lib/constants/referrals';
 import {
   emailLogs,
   type EmailType,
@@ -120,7 +121,7 @@ export async function sendEmail({
 // BOOSTLY EMAIL TEMPLATE BUILDER
 // ============================================
 
-function createBoostlyEmail(
+export function createBoostlyEmail(
   content: string,
   title: string,
   subtitle?: string,
@@ -516,7 +517,7 @@ function buildCodeBox(code: string, label: string, expiryText: string): string {
     </div>`;
 }
 
-function buildInfoBox(title: string, items: string[]): string {
+export function buildInfoBox(title: string, items: string[]): string {
   const listItems = items
     .map(
       (item) => `
@@ -608,16 +609,12 @@ export function buildWelcomeEmailHTML(
 ): string {
   const content = `
     <div class="greeting">Welcome to Boostly, ${userName || 'there'}!</div>
-    <p class="text">Your account is ready. Start earning real rewards by completing simple activities — watch videos, play games, complete surveys, and more.</p>
-    <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:16px;text-align:center;margin:20px 0;">
-      <p style="font-size:28px;font-weight:800;color:#22C55E;">+50 RWF</p>
-      <p style="font-size:13px;color:#166534;">Welcome bonus added to your wallet</p>
-    </div>
-    ${buildInfoBox('How to get started', [
-      'Watch videos and earn up to 40 RWF each',
-      'Play games and earn up to 150 RWF per session',
-      'Complete surveys for up to 500 RWF',
-      'Invite friends and earn 200 RWF per referral',
+    <p class="text">Your account is ready. Earn RWF every day by watching sponsored videos, playing games and answering short surveys.</p>
+    ${buildInfoBox('How it works', [
+      'Complete your daily tasks: each one adds RWF to your balance',
+      'Withdraw to your MTN MoMo or Airtel Money number',
+      'All withdrawals are paid every day at 3:00 PM',
+      `Invite friends: earn ${REFERRAL_COMMISSION_LABEL} of every plan or badge they buy`,
     ])}
     <div class="btn-wrap">
       <a href="${COMPANY_WEBSITE}/dashboard" class="btn btn-gold">Start Earning Now</a>

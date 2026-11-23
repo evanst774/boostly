@@ -22,6 +22,9 @@ export const emailTypes = [
   'ACCOUNT_LOCKED',
   'ACCOUNT_LOCKED_USER',
   'SECURITY_ALERT',
+  'WITHDRAWAL_UPDATE',
+  'PLAN_PAYMENT',
+  'ADMIN_ALERT',
 ] as const;
 
 export type EmailType = (typeof emailTypes)[number];

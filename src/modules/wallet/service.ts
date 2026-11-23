@@ -27,6 +27,12 @@ import { wallets, withdrawals, transactions } from '@/lib/db/schema';
 import { and, eq, gte, sql } from 'drizzle-orm';
 import { getWithdrawalEligibility } from './withdrawal-policy';
 import {
+  emailWithdrawalRequested,
+  emailWithdrawalPaid,
+  emailWithdrawalRejected,
+  inBackground,
+} from '@/lib/mail/money-emails';
+import {
   MOBILE_MONEY_PROVIDERS,
   detectMobileProvider,
   formatRwandaPhone,
@@ -331,6 +337,15 @@ export class WalletService {
       return created;
     });
 
+    inBackground(
+      emailWithdrawalRequested({
+        userId: user.id,
+        amount: validated.amount,
+        phoneNumber,
+        provider,
+      }),
+    );
+
     await createAuditLog({
       userId: user.id,
       action: 'WITHDRAWAL_REQUESTED',
@@ -479,6 +494,14 @@ export class WalletService {
         })
         .where(eq(wallets.userId, withdrawal.userId));
 
+      inBackground(
+        emailWithdrawalRejected({
+          userId: withdrawal.userId,
+          amount: withdrawal.amount,
+          reason: validated.reason || 'Rejected by admin',
+        }),
+      );
+
       await createAuditLog({
         userId: user.id,
         action: 'WITHDRAWAL_REJECTED',
@@ -507,6 +530,15 @@ export class WalletService {
       id,
       WithdrawalStatusEnum.COMPLETED,
       user.id,
+    );
+
+    inBackground(
+      emailWithdrawalPaid({
+        userId: withdrawal.userId,
+        amount: withdrawal.amount,
+        phoneNumber: withdrawal.phoneNumber,
+        reference: withdrawal.reference,
+      }),
     );
 
     await createAuditLog({

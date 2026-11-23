@@ -14,6 +14,7 @@ import {
 } from '@/lib/db/schema/wallet';
 import { and, eq, sql } from 'drizzle-orm';
 import { notificationsService } from '@/lib/notifications';
+import { emailWithdrawalPaid, inBackground } from '@/lib/mail/money-emails';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,6 +116,15 @@ export async function POST(
 
       return result;
     });
+
+    inBackground(
+      emailWithdrawalPaid({
+        userId: withdrawal.userId,
+        amount: withdrawal.amount,
+        phoneNumber: withdrawal.phoneNumber,
+        reference,
+      }),
+    );
 
     await notificationsService
       .notifyWithdrawalStatus(withdrawal.userId, withdrawal.amount, 'completed')

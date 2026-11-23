@@ -22,6 +22,12 @@ import { createAuditLog } from '@/lib/audit';
 import { notificationsService } from '@/lib/notifications';
 import { activateSubscription } from '@/modules/badges/service';
 import {
+  emailPlanActivated,
+  emailPlanPaymentRejected,
+  emailPlanPaymentSubmitted,
+  inBackground,
+} from '@/lib/mail/money-emails';
+import {
   detectMobileProvider,
   normalizeRwandaPhone,
   type MobileMoneyProvider,
@@ -239,6 +245,16 @@ export async function submitPlanPayment(input: {
     newData: { planId: plan.id, amount, provider, transactionRef },
   });
 
+  inBackground(
+    emailPlanPaymentSubmitted({
+      userId: user.id,
+      planName: plan.name,
+      amount,
+      transactionRef,
+      payerPhone,
+    }),
+  );
+
   await notificationsService
     .createNotificationForUser(
       user.id,
@@ -333,6 +349,14 @@ export async function approvePlanPayment(id: string) {
       .set({ subscriptionId: subscription.id })
       .where(eq(planPayments.id, id));
 
+    inBackground(
+      emailPlanActivated({
+        userId: claimed.userId,
+        planName: plan.name,
+        expiresAt: subscription.expiresAt,
+      }),
+    );
+
     await createAuditLog({
       userId: admin.id,
       action: 'PLAN_PAYMENT_APPROVED',
@@ -379,6 +403,19 @@ export async function rejectPlanPayment(id: string, reason: string) {
     entityId: id,
     newData: { memberId: row.userId, reason: why },
   });
+  const rejectedPlan = await db.query.subscriptionPlans.findFirst({
+    where: eq(subscriptionPlans.id, row.planId),
+    columns: { name: true },
+  });
+  inBackground(
+    emailPlanPaymentRejected({
+      userId: row.userId,
+      planName: rejectedPlan?.name ?? 'plan',
+      transactionRef: row.transactionRef,
+      reason: why,
+    }),
+  );
+
   await notificationsService
     .createNotificationForUser(
       row.userId,
