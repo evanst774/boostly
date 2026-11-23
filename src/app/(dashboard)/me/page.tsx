@@ -5,6 +5,7 @@
 'use client';
 
 import Link from 'next/link';
+import { REFERRAL_COMMISSION_LABEL } from '@/lib/constants/referrals';
 import { useRouter } from 'next/navigation';
 import {
   Bell,
@@ -124,7 +125,7 @@ export default function MePage() {
 
       <Group
         rows={[
-          { href: '/referrals', label: 'Invite friends', hint: 'Earn 18% of their first plan or badge', icon: Users, tint: 'bg-[#F5F3FF] text-[#7C3AED] dark:bg-[#8B5CF6]/15 dark:text-[#A78BFA]' },
+          { href: '/referrals', label: 'Invite friends', hint: `Earn ${REFERRAL_COMMISSION_LABEL} of every plan they buy`, icon: Users, tint: 'bg-[#F5F3FF] text-[#7C3AED] dark:bg-[#8B5CF6]/15 dark:text-[#A78BFA]' },
           { href: '/badges', label: 'Badges', hint: 'Boost your task rewards', icon: BadgeCheck, tint: 'bg-[#FFFBEB] text-[#B45309] dark:bg-[#F59E0B]/15 dark:text-[#FBBF24]' },
           { href: '/notifications', label: 'Notifications', icon: Bell, tint: 'bg-[#EFF6FF] text-[#2563EB] dark:bg-[#2563EB]/15 dark:text-[#60A5FA]', count: unreadCount },
         ]}

@@ -196,7 +196,7 @@ export class BadgesService {
       });
     }
 
-    // Pays the referrer 18% of what Boostly keeps from this purchase, if the
+    // Pays the referrer the referral commission on what Boostly keeps from this purchase, if the
     // buyer was referred and hasn't already been credited for this purchase.
     // No-op (qualified: false) if there's no referral — never throws.
     await referralsService.recordPurchaseCommission(user.id, {

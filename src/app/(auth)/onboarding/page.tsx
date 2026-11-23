@@ -2,13 +2,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { REFERRAL_COMMISSION_LABEL } from '@/lib/constants/referrals';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ChevronLeft, Sparkles } from 'lucide-react';
 import { MIN_WITHDRAWAL, PAYOUT_TIME_LABEL } from '@/lib/constants/payouts';
 
 // Copy must match the real rules: per-plan daily tasks, mobile money payouts
-// at 3:00 PM (lib/constants/payouts.ts), and an 18% referral commission on a
+// at 3:00 PM (lib/constants/payouts.ts), and the referral commission on every
 // friend's first plan/badge purchase (modules/referrals/service.ts).
 const STEPS: {
   title: string;
@@ -47,11 +48,11 @@ const STEPS: {
   {
     title: 'Invite Friends & Earn More',
     description:
-      'Share your referral code. When a friend you invited buys their first plan or badge, you earn 18% of it.',
+      `Share your referral code. Every time a friend you invited buys a plan or badge, you earn ${REFERRAL_COMMISSION_LABEL} of it.`,
     icon: '🚀',
     bg: 'bg-gradient-to-br from-purple-500/10 via-purple-600/5 to-purple-500/10',
     stats: [
-      { value: '18%', label: 'Commission' },
+      { value: REFERRAL_COMMISSION_LABEL, label: 'Commission' },
       { value: '∞', label: 'No limit' },
     ],
     color: 'from-purple-500 to-purple-600',

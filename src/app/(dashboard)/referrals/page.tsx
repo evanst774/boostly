@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { REFERRAL_COMMISSION_LABEL } from '@/lib/constants/referrals';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -266,8 +267,8 @@ export default function ReferralsPage() {
           </div>
           <h2 className="text-2xl font-extrabold">Invite Friends &amp; Earn</h2>
           <p className="text-white/80 text-sm mt-2 max-w-sm mx-auto">
-            Share your code. When a friend you invited buys their first plan or
-            badge, you earn <strong>18%</strong> of it.
+            Share your code. Every time a friend you invited buys a plan or a
+            badge, you earn <strong>{REFERRAL_COMMISSION_LABEL}</strong> of it.
           </p>
           <div className="inline-flex items-center gap-2 bg-white/15 border border-white/25 rounded-full px-5 py-2.5 mt-4 text-sm font-bold">
             <Check size={16} className="text-white/80" />
@@ -331,7 +332,7 @@ export default function ReferralsPage() {
           </button>
         </div>
         <p className="text-xs text-[#6B7280] text-center mt-3">
-          You earn 18% of each invited friend&apos;s first plan or badge purchase
+          You earn {REFERRAL_COMMISSION_LABEL} of every plan or badge your invited friends buy
         </p>
       </div>
 
@@ -404,8 +405,8 @@ export default function ReferralsPage() {
                 {
                   step: 3,
                   icon: '💰',
-                  title: 'You Earn 18%',
-                  desc: 'When your friend buys their first plan or badge, 18% of it is added to your balance (after a 7-day hold).',
+                  title: `You Earn ${REFERRAL_COMMISSION_LABEL}`,
+                  desc: `Each time your friend buys or renews a plan (or buys a badge), ${REFERRAL_COMMISSION_LABEL} of it is added to your balance once the payment is confirmed.`,
                 },
               ].map((item) => (
                 <div key={item.step} className="flex items-start gap-4">
@@ -506,7 +507,7 @@ export default function ReferralsPage() {
                   >
                     {friend.reward > 0
                       ? `+${Math.round(friend.reward).toLocaleString()} RWF`
-                      : 'Earns 18% on first purchase'}
+                      : `Earns ${REFERRAL_COMMISSION_LABEL} on every purchase`}
                   </p>
                   <span
                     className={cn(
@@ -592,7 +593,7 @@ export default function ReferralsPage() {
             {(data?.friends || []).filter((f) => f.reward > 0).length === 0 ? (
               <p className="px-5 py-8 text-sm text-center text-[#6B7280]">
                 No referral earnings yet. You&apos;ll see them here when an
-                invited friend buys their first plan or badge.
+                invited friend buys a plan or badge.
               </p>
             ) : (
               (data?.friends || [])

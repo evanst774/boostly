@@ -56,6 +56,11 @@ export interface CreateRewardInput {
    * simultaneous requests can never both slip under the cap.
    */
   dailyCap?: number;
+  /**
+   * Apply the member's badge/plan boost (default true). Commissions set this
+   * to false so they pay exactly the advertised percentage.
+   */
+  applyBoost?: boolean;
 }
 
 export type CreateRewardResult =
@@ -119,7 +124,10 @@ export class RewardsService {
     // Resolve the multiplier and ensure the wallet row exists BEFORE opening the
     // transaction. Interactive transactions hold a write lock on SQLite/libSQL,
     // so anything that can be done outside should be.
-    const multiplier = await this.getEarningsMultiplier(input.userId);
+    const multiplier =
+      input.applyBoost === false
+        ? { badgeBoost: 0, planBoost: 0, total: 1 }
+        : await this.getEarningsMultiplier(input.userId);
     const amount = roundReward(input.baseAmount * multiplier.total);
 
     if (amount <= 0) {

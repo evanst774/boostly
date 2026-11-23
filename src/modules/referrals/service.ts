@@ -1,4 +1,5 @@
 // src/modules/referrals/service.ts
+import { REFERRAL_COMMISSION_RATE } from '@/lib/constants/referrals';
 import { and, eq, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db';
@@ -28,7 +29,7 @@ import type { CreateReferralInput } from '@/modules/referrals/validation';
  * there is no amount at which a referral pair extracts more than they paid.
  * The old flat bonus could be farmed with throwaway emails at zero cost.
  */
-export const REFERRAL_COMMISSION_RATE = 0.18;
+export { REFERRAL_COMMISSION_RATE } from '@/lib/constants/referrals';
 
 /**
  * WHAT COUNTS AS REVENUE — read this before adding a trigger type.
@@ -37,7 +38,7 @@ export const REFERRAL_COMMISSION_RATE = 0.18;
  * payments. It is NOT paid on wallet deposits.
  *
  * A wallet deposit is a liability, not revenue — the user can withdraw it
- * again. Paying 18% on a deposit means handing out real money for a
+ * again. Paying commission on a deposit means handing out real money for a
  * transaction that earned nothing, and it is trivially farmable: deposit,
  * collect commission, withdraw. If someone asks you to "just add deposits
  * too", this is the reason not to.
@@ -55,14 +56,14 @@ export type QualifyingPurchaseType =
  *
  * false — commission on the referee's FIRST purchase only. Bounded liability:
  *   you know the maximum a referral can ever cost you.
- * true  — every renewal pays 18%, forever. Standard SaaS affiliate practice and
+ * true  — every renewal pays commission, forever. Standard SaaS affiliate practice and
  *   a much stronger incentive to recruit, but the liability never closes and it
  *   compounds with churn-and-resubscribe gaming.
  *
  * Starting at false. Flip it once you have retention data and know what a
  * subscriber is actually worth over their lifetime.
  */
-export const COMMISSION_ON_RENEWALS = false;
+export const COMMISSION_ON_RENEWALS = true;
 
 /**
  * Floor exists only to avoid dust rows, not as an anti-fraud measure — the
@@ -71,11 +72,10 @@ export const COMMISSION_ON_RENEWALS = false;
 export const MIN_QUALIFYING_PURCHASE = 500;
 
 /**
- * Commission is held before crediting, so a reversed mobile-money payment or a
- * refunded badge can be clawed back before the referrer withdraws it.
- * Set to 0 to credit immediately.
+ * No hold: commissions are credited when the purchase is confirmed. Plan
+ * payments by mobile money are verified by an admin before they activate,
+ * so there's nothing to claw back afterwards.
  */
-export const COMMISSION_HOLD_DAYS = 7;
 
 /** Referrals expire if the referee never buys anything. Closes your liability. */
 export const REFERRAL_QUALIFY_WINDOW_DAYS = 90;
@@ -104,7 +104,7 @@ export interface PurchaseTrigger {
   referenceId: string;
   /**
    * NET amount Boostly keeps, in the user's base currency, AFTER payment
-   * processor fees. Commission on gross would quietly exceed 18% of margin.
+   * processor fees. Commission on gross would quietly exceed the commission rate on margin.
    */
   netAmount: number;
   /** Human label for the reward description, e.g. "Gold Badge". */
@@ -190,7 +190,7 @@ export class ReferralsService {
   }
 
   /**
-   * Pays the referrer 18% of a referee's purchase.
+   * Pays the referrer REFERRAL_COMMISSION_RATE of a referee's purchase.
    *
    * Call from badge purchase completion and subscription payment success.
    * NEVER from a wallet deposit or an earnings credit — see the comment on
@@ -262,6 +262,9 @@ export class ReferralsService {
         rate: REFERRAL_COMMISSION_RATE,
         isFirstPurchase,
       },
+      // Exactly the advertised rate: the referrer's badge/plan boost does
+      // not apply to commissions.
+      applyBoost: false,
     });
 
     if (!credit.credited) {
