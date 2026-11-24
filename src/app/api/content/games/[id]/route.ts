@@ -1,4 +1,6 @@
 // src/app/api/content/games/[id]/route.ts
+import { ZodError } from 'zod';
+import { firstIssueMessage } from '@/modules/content/validation';
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session.server';
 import { requirePermission } from '@/lib/auth/permissions';
@@ -22,6 +24,10 @@ export async function GET(
     return NextResponse.json({ game });
   } catch (error) {
     console.error('Game GET error:', error);
+    // Validation problems: one clear sentence and a 400, not raw JSON.
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: firstIssueMessage(error) }, { status: 400 });
+    }
     const message =
       error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ error: message }, { status: 500 });
@@ -47,6 +53,10 @@ export async function PUT(
     return NextResponse.json({ game });
   } catch (error) {
     console.error('Game PUT error:', error);
+    // Validation problems: one clear sentence and a 400, not raw JSON.
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: firstIssueMessage(error) }, { status: 400 });
+    }
     const message =
       error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ error: message }, { status: 500 });
@@ -69,6 +79,10 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Game DELETE error:', error);
+    // Validation problems: one clear sentence and a 400, not raw JSON.
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: firstIssueMessage(error) }, { status: 400 });
+    }
     const message =
       error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ error: message }, { status: 500 });

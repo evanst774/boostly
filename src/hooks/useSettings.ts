@@ -42,17 +42,16 @@ export function useSettings() {
     fetchData();
   }, [user]);
 
-  const updateProfile = async (profileData: {
-    name: string;
-    email: string;
-    phone: string;
-  }) => {
+  const updateProfile = async (profileData: { name: string; phone?: string }) => {
     const response = await fetch('/api/user/profile', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(profileData),
     });
-    if (!response.ok) throw new Error('Failed to update profile');
+    if (!response.ok) {
+      const json = await response.json().catch(() => ({}));
+      throw new Error(json.error || 'Failed to update profile');
+    }
     return response.json();
   };
 

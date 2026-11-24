@@ -1,4 +1,5 @@
 // src/app/api/content/games/route.ts
+import { firstIssueMessage } from '@/modules/content/validation';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json(
         {
-          error: 'Invalid game payload',
+          error: firstIssueMessage(parsed.error),
           issues: parsed.error.flatten().fieldErrors,
         },
         { status: 400 },

@@ -9,6 +9,32 @@ import {
 } from '@/lib/db/schema';
 
 // ============================================
+// URL HELPERS
+// ============================================
+
+/** Trim; add https:// when an admin types a bare domain (e.g. "mtn.co.rw"). */
+function cleanUrl(v: unknown) {
+  if (typeof v !== 'string') return v;
+  const t = v.trim();
+  if (!t) return undefined;
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(t) ? t : `https://${t}`;
+}
+
+/** Optional link: blank means "none" instead of failing validation. */
+const optionalUrl = (message: string) => z.preprocess(cleanUrl, z.url(message).optional());
+
+/** Required link (trimmed, https:// added when missing). */
+const requiredUrl = (message: string) => z.preprocess(cleanUrl, z.url(message));
+
+/** First validation problem as a sentence an admin can act on. */
+export function firstIssueMessage(error: z.ZodError): string {
+  const issue = error.issues[0];
+  if (!issue) return 'Please check the form.';
+  const field = issue.path.join('.');
+  return field ? `${field}: ${issue.message}` : issue.message;
+}
+
+// ============================================
 // REUSABLE SPONSOR VALIDATION
 // ============================================
 
@@ -59,8 +85,8 @@ const videoBaseSchema = z.object({
     .enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'])
     .optional(),
   duration: z.number().int().positive().optional(),
-  videoUrl: z.url('Invalid video URL format'),
-  thumbnailUrl: z.url('Invalid thumbnail URL format').optional(),
+  videoUrl: requiredUrl('Enter a valid video link (an uploaded file, a direct .mp4 link or a YouTube link)'),
+  thumbnailUrl: optionalUrl('Invalid thumbnail URL format'),
   videoKey: z.string().optional(),
   thumbnailKey: z.string().optional(),
   rewardAmount: z.number().positive().default(40),
@@ -69,8 +95,8 @@ const videoBaseSchema = z.object({
   bonusReward: z.number().positive().optional(),
   isSponsored: z.boolean().default(false),
   sponsorName: z.string().optional(),
-  sponsorLogo: z.url('Invalid sponsor logo URL format').optional(),
-  sponsorWebsite: z.url('Invalid sponsor website URL format').optional(),
+  sponsorLogo: optionalUrl('Invalid sponsor logo URL format'),
+  sponsorWebsite: optionalUrl('Invalid sponsor website URL format'),
   sponsoredUntil: z.iso.datetime().optional(),
   tags: z.array(z.string()).optional(),
   status: z.enum(['DRAFT', 'PENDING_REVIEW', 'ACTIVE']).default('DRAFT'),
@@ -95,9 +121,9 @@ const gameBaseSchema = z.object({
   description: z.string().optional(),
   category: z.enum(GameCategoryEnum),
   icon: z.string().optional(),
-  thumbnailUrl: z.url('Invalid thumbnail URL format').optional(),
+  thumbnailUrl: optionalUrl('Invalid thumbnail URL format'),
   thumbnailKey: z.string().optional(),
-  gameUrl: z.url('Invalid game URL format').optional(),
+  gameUrl: optionalUrl('Invalid game URL format'),
   provider: z.enum(GameProviderEnum).default('SELF_HOSTED'),
   orientation: z.enum(GameOrientationEnum).default('BOTH'),
   baseReward: z.number().positive().default(50),
@@ -110,8 +136,8 @@ const gameBaseSchema = z.object({
   difficulty: z.number().int().min(1).max(5).default(1),
   isSponsored: z.boolean().default(false),
   sponsorName: z.string().optional(),
-  sponsorLogo: z.url('Invalid sponsor logo URL format').optional(),
-  sponsorWebsite: z.url('Invalid sponsor website URL format').optional(),
+  sponsorLogo: optionalUrl('Invalid sponsor logo URL format'),
+  sponsorWebsite: optionalUrl('Invalid sponsor website URL format'),
   sponsoredUntil: z.iso.datetime().optional(),
 });
 
@@ -214,7 +240,7 @@ const surveyBaseSchema = z.object({
   title: z.string().min(1).max(255),
   description: z.string().optional(),
   brand: z.string().min(1),
-  brandLogo: z.url('Invalid brand logo URL format').optional(),
+  brandLogo: optionalUrl('Invalid brand logo URL format'),
   brandLogoKey: z.string().optional(),
   category: z.enum(SurveyCategoryEnum),
   questionsCount: z.number().int().positive().default(5),
@@ -225,8 +251,8 @@ const surveyBaseSchema = z.object({
   maxParticipants: z.number().int().positive().optional(),
   isSponsored: z.boolean().default(false),
   sponsorName: z.string().optional(),
-  sponsorLogo: z.url('Invalid sponsor logo URL format').optional(),
-  sponsorWebsite: z.url('Invalid sponsor website URL format').optional(),
+  sponsorLogo: optionalUrl('Invalid sponsor logo URL format'),
+  sponsorWebsite: optionalUrl('Invalid sponsor website URL format'),
   sponsoredUntil: z.iso.datetime().optional(),
   startsAt: z.iso.datetime().optional(),
   endsAt: z.iso.datetime().optional(),

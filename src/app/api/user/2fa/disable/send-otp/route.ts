@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 // src/app/api/user/2fa/disable/send-otp/route.ts
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session.server';
@@ -25,7 +26,7 @@ export async function POST() {
         ),
       );
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = crypto.randomInt(100000, 1000000).toString();
     await db.insert(otpVerifications).values({
       id: crypto.randomUUID(),
       userId: user.id,
@@ -37,15 +38,16 @@ export async function POST() {
 
     await sendEmail({
       to: user.email,
-      subject: 'Disable 2FA Verification - MotoTrack',
+      subject: 'Your Boostly code to turn off two-step verification',
       html: build2FAOTPEmailHTML(user.name || 'User', otp),
       type: 'VERIFICATION',
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('Error sending 2FA disable code:', error);
     return NextResponse.json(
-      { error: 'Internal server error', stack: error },
+      { error: 'Internal server error' },
       { status: 500 },
     );
   }

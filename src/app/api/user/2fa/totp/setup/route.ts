@@ -18,8 +18,16 @@ export async function POST() {
     if (!user)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    // Never replace an authenticator that is already active: the member's
+    // current app would stop working before the new one is verified.
+    const current = await db.query.users.findFirst({ where: eq(users.id, user.id), columns: { twoFAEnabledMethods: true } });
+    const methods = Array.isArray(current?.twoFAEnabledMethods) ? current.twoFAEnabledMethods : [];
+    if (methods.includes('TOTP')) {
+      return NextResponse.json({ error: 'Authenticator app is already on. Turn it off first to set up a new one.' }, { status: 409 });
+    }
+
     const secret = generateTOTPSecret();
-    const uri = generateTOTPUri(user.email, 'MotoTrack', secret);
+    const uri = generateTOTPUri(user.email, 'Boostly', secret);
     const backupCodes = generateBackupCodes(10);
 
     await db

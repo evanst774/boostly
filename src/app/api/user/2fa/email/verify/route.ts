@@ -1,4 +1,5 @@
 // src/app/api/user/2fa/email/verify/route.ts
+import { TOO_MANY, clearFailures, isLocked, recordFailure } from '@/lib/auth/attempt-limit';
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session.server';
 import { db } from '@/lib/db';
@@ -15,6 +16,8 @@ export async function POST(request: NextRequest) {
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const { code } = await request.json();
+        const limitKey = `2fa-email-setup:${user.id}`;
+        if (isLocked(limitKey)) return NextResponse.json({ error: TOO_MANY }, { status: 429 }); // attempt-limit
 
         // Verify OTP
         const otpRecord = await db.query.otpVerifications.findFirst({
@@ -27,8 +30,10 @@ export async function POST(request: NextRequest) {
         });
 
         if (!otpRecord || new Date(otpRecord.expiresAt) < new Date()) {
+            recordFailure(limitKey);
             return NextResponse.json({ error: 'Invalid or expired code' }, { status: 400 });
         }
+        clearFailures(limitKey);
 
         // Mark OTP as used
         await db

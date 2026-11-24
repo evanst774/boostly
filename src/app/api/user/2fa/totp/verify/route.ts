@@ -1,4 +1,5 @@
 // src/app/api/user/2fa/totp/verify/route.ts
+import { TOO_MANY, clearFailures, isLocked, recordFailure } from '@/lib/auth/attempt-limit';
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session.server';
 import { db } from '@/lib/db';
@@ -16,6 +17,8 @@ export async function POST(request: NextRequest) {
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const { code } = await request.json();
+        const limitKey = `2fa-totp-setup:${user.id}`;
+        if (isLocked(limitKey)) return NextResponse.json({ error: TOO_MANY }, { status: 429 }); // attempt-limit
 
         // Get user's TOTP secret and current methods
         const record = await db
@@ -34,8 +37,10 @@ export async function POST(request: NextRequest) {
         // Verify TOTP code
         const isValid = await verifyTOTPCode(record[0].totpSecret, code, user.email);
         if (!isValid) {
+            recordFailure(limitKey);
             return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
         }
+        clearFailures(limitKey);
 
         // Parse existing methods
         let methods: TwoFAMethod[] = [];

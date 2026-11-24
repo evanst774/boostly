@@ -55,11 +55,7 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Error checking 2FA status:', error);
-    return NextResponse.json({
-      available: ['EMAIL', 'TOTP'] as TwoFAMethod[],
-      enabled: [] as TwoFAMethod[],
-      defaultMethod: null,
-      is2FAEnabled: false,
-    });
+    // Don't report "off" when we simply couldn't check.
+    return NextResponse.json({ error: 'Could not load two-step verification status' }, { status: 500 });
   }
 }

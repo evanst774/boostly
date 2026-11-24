@@ -1,4 +1,5 @@
 // src/app/api/user/2fa/disable/route.ts
+import { TOO_MANY, isLocked, recordFailure } from '@/lib/auth/attempt-limit';
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session.server';
 import { db } from '@/lib/db';
@@ -18,6 +19,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { method, code } = await request.json();
+    const limitKey = `2fa-disable:${user.id}`;
+    if (isLocked(limitKey)) return NextResponse.json({ error: TOO_MANY }, { status: 429 });
 
     if (!method || !['EMAIL', 'TOTP'].includes(method)) {
       return NextResponse.json(
@@ -48,6 +51,7 @@ export async function POST(request: NextRequest) {
         ),
       });
       if (!otpRecord || new Date(otpRecord.expiresAt) < new Date()) {
+        recordFailure(limitKey);
         return NextResponse.json(
           { error: 'Invalid or expired verification code' },
           { status: 400 },
@@ -97,6 +101,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (!isValid) {
+        recordFailure(limitKey);
         return NextResponse.json(
           { error: 'Invalid verification code or backup code' },
           { status: 400 },

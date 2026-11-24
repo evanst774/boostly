@@ -34,7 +34,6 @@ import {
   Crown,
   Users,
   HelpCircle,
-  Fingerprint,
   Volume2,
   BarChart3,
   Headphones,
@@ -52,6 +51,8 @@ import { LOCALE_TAGS, useLocale, useT } from '@/lib/i18n';
 import { account } from '@/lib/i18n/messages/account';
 import { common } from '@/lib/i18n/messages/common';
 import { REFERRAL_COMMISSION_LABEL } from '@/lib/constants/referrals';
+import { TwoFactorCard } from '@/components/settings/TwoFactorCard';
+import { detectMobileProvider, formatRwandaPhone, normalizeRwandaPhone } from '@/lib/constants/payouts';
 
 type SettingsTab =
   | 'profile'
@@ -92,6 +93,22 @@ export default function SettingsPage() {
   // Real signed-in sessions and the last payout number.
   const [sessionsList, setSessionsList] = useState<{ id: string; createdAt: string; current: boolean }[] | null>(null);
   const [payoutNumber, setPayoutNumber] = useState<string | null>(null);
+  // Default payout number (Settings > Payment).
+  const [payoutForm, setPayoutForm] = useState({ phone: '', name: '' });
+  const [savedPayout, setSavedPayout] = useState<{ phone: string | null; name: string | null }>({ phone: null, name: null });
+  const [payoutMsg, setPayoutMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [savingPayout, setSavingPayout] = useState(false);
+  // Real 2FA state (from the 2FA card) for the security score.
+  const [twoFAOn, setTwoFAOn] = useState(false);
+  // Close account dialog.
+  const [closeOpen, setCloseOpen] = useState(false);
+  const [closeForm, setCloseForm] = useState({ confirm: '', password: '' });
+  const [closeError, setCloseError] = useState<string | null>(null);
+  const [closing, setClosing] = useState(false);
+  // Profile photo upload.
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  // Real security score: password set, email verified, two-step verification on.
+  const securityScore = Math.round(((hasPassword ? 1 : 0) + (user?.emailVerified ? 1 : 0) + (twoFAOn ? 1 : 0)) * (100 / 3));
   const loadSessions = useCallback(async () => {
     try {
       const res = await fetch('/api/user/sessions', { cache: 'no-store' });
@@ -112,7 +129,13 @@ export default function SettingsPage() {
     if (activeTab === 'payment') {
       fetch('/api/earn/today', { cache: 'no-store' })
         .then((r) => (r.ok ? r.json() : null))
-        .then((d) => setPayoutNumber(d?.withdrawal?.lastPhoneNumber ?? null))
+        .then((d) => {
+          setPayoutNumber(d?.withdrawal?.lastPhoneNumber ?? null);
+          const phone = d?.withdrawal?.defaultPhoneNumber ?? null;
+          const name = d?.withdrawal?.defaultAccountName ?? null;
+          setSavedPayout({ phone, name });
+          setPayoutForm({ phone: phone ? formatRwandaPhone(phone) : '', name: name ?? '' });
+        })
         .catch(() => undefined);
     }
   }, [activeTab, loadSessions]);
@@ -125,7 +148,6 @@ export default function SettingsPage() {
   }, []);
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
-  const [show2FA, setShow2FA] = useState(false);
 
   // Dialog states
   const [dialogState, setDialogState] = useState<DialogState | null>(null);
@@ -134,8 +156,17 @@ export default function SettingsPage() {
   const [profileData, setProfileData] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    phone: user?.phone || '+250 780 123 456',
+    phone: user?.phone || '',
   });
+  // Fill the form once the account has loaded (it starts empty on first render).
+  useEffect(() => {
+    if (!user) return;
+    setProfileData((d) => ({
+      name: d.name || user.name || '',
+      email: user.email || '',
+      phone: d.phone || user.phone || '',
+    }));
+  }, [user]);
 
   // Password form
   const [passwordData, setPasswordData] = useState({
@@ -205,14 +236,15 @@ export default function SettingsPage() {
   const handleUpdateProfile = async () => {
     setIsSaving(true);
     try {
-      await updateProfile(profileData);
+      await updateProfile({ name: profileData.name.trim(), phone: profileData.phone.trim() });
+      await refreshUser();
       setSaveSuccess(true);
       setIsEditing(false);
       setTimeout(() => setSaveSuccess(false), 3000);
-    } catch {
+    } catch (e) {
       showAlert({
         title: t('error'),
-        message: t('profileUpdateFailed'),
+        message: e instanceof Error && e.message !== 'Failed to update profile' ? e.message : t('profileUpdateFailed'),
         variant: 'error',
       });
     } finally {
@@ -284,6 +316,108 @@ export default function SettingsPage() {
     }
   };
 
+  const savePayoutDefault = async (clear = false) => {
+    setPayoutMsg(null);
+    if (!clear) {
+      const phone = normalizeRwandaPhone(payoutForm.phone);
+      if (!phone || !detectMobileProvider(phone)) {
+        setPayoutMsg({ ok: false, text: t('payoutInvalidPhone') });
+        return;
+      }
+      if (payoutForm.name.trim().length < 2) {
+        setPayoutMsg({ ok: false, text: t('payoutNeedName') });
+        return;
+      }
+    }
+    setSavingPayout(true);
+    try {
+      const res = await fetch('/api/user/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(clear ? { payoutPhone: null, payoutName: null } : { payoutPhone: payoutForm.phone, payoutName: payoutForm.name.trim() }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || t('error'));
+      const phone = json.preferences?.payoutPhone ?? null;
+      const name = json.preferences?.payoutName ?? null;
+      setSavedPayout({ phone, name });
+      setPayoutForm({ phone: phone ? formatRwandaPhone(phone) : '', name: name ?? '' });
+      setPayoutMsg({ ok: true, text: clear ? t('payoutCleared') : t('payoutSaved') });
+    } catch (e) {
+      setPayoutMsg({ ok: false, text: e instanceof Error ? e.message : t('error') });
+    } finally {
+      setSavingPayout(false);
+    }
+  };
+
+  const signOutOtherDevices = () => {
+    showConfirm({
+      title: t('logoutAllDevices'),
+      message: t('logoutAllConfirm'),
+      confirmText: t('logoutAll'),
+      cancelText: tc('cancel'),
+      confirmVariant: 'danger',
+      onConfirm: async () => {
+        const res = await fetch('/api/user/sessions?all=others', { method: 'DELETE' });
+        const json = await res.json().catch(() => ({}));
+        await loadSessions();
+        showAlert({
+          title: res.ok ? t('success') : t('error'),
+          message: res.ok ? t('sessionsSignedOut', { count: json.signedOut ?? 0 }) : json.error || t('error'),
+          variant: res.ok ? 'success' : 'error',
+        });
+      },
+    });
+  };
+
+  const closeAccount = async () => {
+    setCloseError(null);
+    setClosing(true);
+    try {
+      const res = await fetch('/api/user/account/close', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(closeForm),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || t('error'));
+      window.location.href = '/login';
+    } catch (e) {
+      setCloseError(e instanceof Error ? e.message : t('error'));
+    } finally {
+      setClosing(false);
+    }
+  };
+
+  const uploadPhoto = async (file: File | undefined) => {
+    if (!file) return;
+    if (!/^image\/(png|jpe?g|webp)$/.test(file.type) || file.size > 3 * 1024 * 1024) {
+      showAlert({ title: t('error'), message: t('photoInvalid'), variant: 'error' });
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('folder', 'avatars');
+      const up = await fetch('/api/upload', { method: 'POST', body: form });
+      const upJson = await up.json().catch(() => ({}));
+      const url = upJson?.url ?? upJson?.files?.[0]?.url ?? upJson?.data?.url ?? upJson?.results?.[0]?.url;
+      if (!up.ok || !url) throw new Error(upJson.error || t('photoFailed'));
+      const res = await fetch('/api/user/avatar', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatarUrl: url }),
+      });
+      if (!res.ok) throw new Error(t('photoFailed'));
+      await refreshUser();
+    } catch (e) {
+      showAlert({ title: t('error'), message: e instanceof Error ? e.message : t('photoFailed'), variant: 'error' });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const handleLogout = () => {
     showConfirm({
       title: t('signOut'),
@@ -299,17 +433,9 @@ export default function SettingsPage() {
   };
 
   const handleDeleteAccount = () => {
-    showConfirm({
-      title: t('deleteAccount'),
-      message: t('deleteAccountConfirm'),
-      confirmText: t('deleteAccount'),
-      cancelText: tc('cancel'),
-      confirmVariant: 'danger',
-      onConfirm: async () => {
-        await logout();
-        router.push('/login');
-      },
-    });
+    setCloseForm({ confirm: '', password: '' });
+    setCloseError(null);
+    setCloseOpen(true);
   };
 
   const checkPasswordStrength = (password: string) => {
@@ -401,6 +527,63 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
+      {/* Close account */}
+      {closeOpen && (
+        <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" onClick={() => !closing && setCloseOpen(false)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="close-title"
+            className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-white dark:bg-[#1E293B] p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="close-title" className="text-lg font-bold text-[#EF4444]">{t('deleteAccount')}</h2>
+            <p className="text-sm text-[#6B7280]">{t('closeAccountExplain')}</p>
+            <label className="block">
+              <span className="text-sm font-medium text-[#6B7280]">{t('closeTypeDelete')}</span>
+              <input
+                className="mt-1 w-full px-4 py-3 rounded-xl border-2 border-[#F3F4F6] focus:border-[#EF4444] focus:outline-none text-sm"
+                value={closeForm.confirm}
+                onChange={(e) => setCloseForm((f) => ({ ...f, confirm: e.target.value }))}
+                autoComplete="off"
+              />
+            </label>
+            {hasPassword && (
+              <label className="block">
+                <span className="text-sm font-medium text-[#6B7280]">{t('currentPassword')}</span>
+                <input
+                  type="password"
+                  className="mt-1 w-full px-4 py-3 rounded-xl border-2 border-[#F3F4F6] focus:border-[#EF4444] focus:outline-none text-sm"
+                  value={closeForm.password}
+                  onChange={(e) => setCloseForm((f) => ({ ...f, password: e.target.value }))}
+                  autoComplete="current-password"
+                />
+              </label>
+            )}
+            {closeError && <p role="alert" className="text-sm text-[#DC2626]">{closeError}</p>}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setCloseOpen(false)}
+                disabled={closing}
+                className="flex-1 py-3 rounded-xl border border-[#F3F4F6] text-sm font-semibold"
+              >
+                {tc('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={() => void closeAccount()}
+                disabled={closing || closeForm.confirm.trim().toUpperCase() !== 'DELETE' || (hasPassword && !closeForm.password)}
+                className="flex-1 py-3 rounded-xl bg-[#EF4444] text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {closing && <Loader2 size={16} className="animate-spin" />}
+                {t('deleteAccount')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Dialogs */}
       {dialogState?.type === 'confirm' && (
         <ConfirmDialog
@@ -469,20 +652,39 @@ export default function SettingsPage() {
 
             <div className="relative z-10">
               <div className="relative inline-block">
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#60A5FA] to-[#2563EB] border-4 border-white/40 flex items-center justify-center text-3xl font-extrabold shadow-lg mx-auto">
-                  {user?.name
-                    ?.split(' ')
-                    .map((n) => n[0])
-                    .join('')
-                    .toUpperCase() || 'U'}
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-[#60A5FA] to-[#2563EB] border-4 border-white/40 flex items-center justify-center text-3xl font-extrabold shadow-lg mx-auto">
+                  {user?.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={user.avatar} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    user?.name
+                      ?.split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .toUpperCase() || 'U'
+                  )}
                 </div>
-                <button
-                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center shadow-md hover:scale-110 transition-transform"
+                <label
+                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center shadow-md hover:scale-110 transition-transform cursor-pointer"
                   aria-label={t('changePhoto')}
-                  onClick={() => setIsEditing(true)}
+                  title={t('changePhoto')}
                 >
-                  <Camera size={14} className="text-[#2563EB]" />
-                </button>
+                  {uploadingPhoto ? (
+                    <Loader2 size={14} className="text-[#2563EB] animate-spin" />
+                  ) : (
+                    <Camera size={14} className="text-[#2563EB]" />
+                  )}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="sr-only"
+                    disabled={uploadingPhoto}
+                    onChange={(e) => {
+                      void uploadPhoto(e.target.files?.[0]);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
               </div>
               <h2 className="text-xl font-bold mt-4">{user?.name || t('user')}</h2>
               <p className="text-white/75">
@@ -564,14 +766,11 @@ export default function SettingsPage() {
                     />
                     <input
                       type="email"
-                      className="w-full pl-11 pr-4 py-3 border border-[#F3F4F6] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all"
+                      className="w-full pl-11 pr-4 py-3 border border-[#F3F4F6] rounded-xl bg-[#F8FAFC] text-[#6B7280] outline-none cursor-not-allowed"
                       value={profileData.email}
-                      onChange={(e) =>
-                        setProfileData({
-                          ...profileData,
-                          email: e.target.value,
-                        })
-                      }
+                      readOnly
+                      aria-readonly="true"
+                      title={t('emailLocked')}
                     />
                   </div>
                 </div>
@@ -687,12 +886,15 @@ export default function SettingsPage() {
                   {t('enable2faHint')}
                 </p>
               </div>
-              <span className="text-2xl font-extrabold text-[#F59E0B]">
-                75%
+              <span className={cn('text-2xl font-extrabold', securityScore >= 100 ? 'text-[#22C55E]' : 'text-[#F59E0B]')}>
+                {securityScore}%
               </span>
             </div>
             <div className="h-2 bg-[#F3F4F6] rounded-full overflow-hidden">
-              <div className="h-full w-[75%] bg-gradient-to-r from-[#F59E0B] to-[#FBBF24] rounded-full" />
+              <div
+                className={cn('h-full rounded-full bg-gradient-to-r', securityScore >= 100 ? 'from-[#22C55E] to-[#4ADE80]' : 'from-[#F59E0B] to-[#FBBF24]')}
+                style={{ width: `${securityScore}%` }}
+              />
             </div>
           </div>
 
@@ -845,36 +1047,11 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {/* 2FA */}
-            <div className="flex items-center gap-4 px-5 py-4 border-b border-[#F3F4F6]">
-              <div className="w-10 h-10 rounded-xl bg-[#FFFBEB] flex items-center justify-center text-[#F59E0B]">
-                <Fingerprint size={18} />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-bold">{t('twoFactor')}</p>
-                <p className="text-xs text-[#6B7280]">
-                  {t('twoFactorHint')}
-                </p>
-              </div>
-              <button
-                className={cn(
-                  'w-12 h-7 rounded-full transition-colors relative',
-                  show2FA ? 'bg-[#22C55E]' : 'bg-[#D1D5DB]',
-                )}
-                aria-label={t('twoFactor')}
-                aria-pressed={show2FA}
-                onClick={() => setShow2FA(!show2FA)}
-              >
-                <div
-                  className={cn(
-                    'absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-sm transition-transform keep-light',
-                    show2FA ? 'right-0.5' : 'left-0.5',
-                  )}
-                />
-              </button>
-            </div>
 
           </div>
+
+          {/* Two-step verification (real, backed by /api/user/2fa/*) */}
+          <TwoFactorCard onStatusChange={(st) => setTwoFAOn(st.is2FAEnabled)} />
 
           {/* Active Sessions */}
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm overflow-hidden">
@@ -921,25 +1098,7 @@ export default function SettingsPage() {
           {/* Logout All */}
           <button
             className="w-full py-4 rounded-xl border border-[#EF4444] text-[#EF4444] font-bold hover:bg-[#FEF2F2] transition-colors flex items-center justify-center gap-2"
-            onClick={() => {
-              showConfirm({
-                title: t('logoutAllDevices'),
-                message: t('logoutAllConfirm'),
-                confirmText: t('logoutAll'),
-                cancelText: tc('cancel'),
-                confirmVariant: 'danger',
-                onConfirm: async () => {
-                  const res = await fetch('/api/user/sessions?all=others', { method: 'DELETE' });
-                  const json = await res.json().catch(() => ({}));
-                  await loadSessions();
-                  showAlert({
-                    title: res.ok ? t('success') : t('error'),
-                    message: res.ok ? t('sessionsSignedOut', { count: json.signedOut ?? 0 }) : json.error || t('error'),
-                    variant: res.ok ? 'success' : 'error',
-                  });
-                },
-              });
-            }}
+            onClick={signOutOtherDevices}
           >
             <LogOut size={18} />
             {t('logoutAllDevices')}
@@ -1201,6 +1360,74 @@ export default function SettingsPage() {
             <p className="mt-3 pt-3 border-t border-[#F3F4F6] text-xs text-[#6B7280]">{t('payoutNumberHint')}</p>
           </div>
 
+          {/* Default payout number */}
+          <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-bold">{t('defaultPayoutTitle')}</h3>
+              <p className="text-xs text-[#6B7280]">
+                {savedPayout.phone
+                  ? t('defaultPayoutCurrent', { number: formatRwandaPhone(savedPayout.phone), name: savedPayout.name ?? '' })
+                  : t('defaultPayoutNone')}
+              </p>
+            </div>
+            <label className="block">
+              <span className="text-sm font-medium text-[#6B7280]">{t('payoutPhoneLabel')}</span>
+              <input
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="078 123 4567"
+                className="mt-1 w-full px-4 py-3 rounded-xl border-2 border-[#F3F4F6] focus:border-[#2563EB] focus:outline-none text-sm"
+                value={payoutForm.phone}
+                onChange={(e) => setPayoutForm((f) => ({ ...f, phone: e.target.value }))}
+              />
+              {payoutForm.phone && (
+                <span className="mt-1 block text-xs text-[#6B7280]">
+                  {(() => {
+                    const p = detectMobileProvider(payoutForm.phone);
+                    return p === 'MTN' ? 'MTN MoMo' : p === 'AIRTEL' ? 'Airtel Money' : t('payoutInvalidPhone');
+                  })()}
+                </span>
+              )}
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium text-[#6B7280]">{t('payoutNameLabel')}</span>
+              <input
+                type="text"
+                autoComplete="name"
+                className="mt-1 w-full px-4 py-3 rounded-xl border-2 border-[#F3F4F6] focus:border-[#2563EB] focus:outline-none text-sm"
+                value={payoutForm.name}
+                onChange={(e) => setPayoutForm((f) => ({ ...f, name: e.target.value }))}
+              />
+            </label>
+            {payoutMsg && (
+              <p role="status" className={cn('text-sm', payoutMsg.ok ? 'text-[#16A34A]' : 'text-[#DC2626]')}>
+                {payoutMsg.text}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void savePayoutDefault(false)}
+                disabled={savingPayout}
+                className="flex-1 py-3 rounded-xl bg-[#2563EB] text-white text-sm font-bold hover:bg-[#1D4ED8] disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {savingPayout && <Loader2 size={16} className="animate-spin" />}
+                {t('saveAsDefault')}
+              </button>
+              {savedPayout.phone && (
+                <button
+                  type="button"
+                  onClick={() => void savePayoutDefault(true)}
+                  disabled={savingPayout}
+                  className="px-4 py-3 rounded-xl border border-[#F3F4F6] text-sm font-semibold text-[#6B7280] hover:border-[#EF4444] hover:text-[#EF4444] disabled:opacity-60"
+                >
+                  {t('removeDefault')}
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Info Note */}
           <div className="bg-[#EFF6FF] border border-[#BFDBFE] rounded-2xl p-4 flex gap-3">
             <AlertTriangle
@@ -1247,32 +1474,33 @@ export default function SettingsPage() {
                 icon: MessageCircle,
                 title: t('liveChat'),
                 desc: t('liveChatHint'),
-                badge: t('online'),
-                badgeColor: 'bg-[#22C55E]',
+                // Opens the Jivo chat window that's already on every page.
+                action: () => {
+                  const api = (window as unknown as { jivo_api?: { open: () => void } }).jivo_api;
+                  if (api) api.open();
+                  else showAlert({ title: t('liveChat'), message: t('chatUnavailable'), variant: 'info' });
+                },
               },
               {
                 icon: Mail,
                 title: t('emailSupport'),
                 desc: 'support@boostly.buzz',
-              },
-              {
-                icon: Phone,
-                title: t('callSupport'),
-                desc: `+250 788 000 000 · ${t('callHours')}`,
+                action: () => {
+                  window.location.href = 'mailto:support@boostly.buzz?subject=Boostly%20support';
+                },
               },
             ].map((item, index) => (
               <div
                 key={index}
                 className={cn(
                   'flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-[#F8FAFC] transition-colors',
-                  index !== 2 && 'border-b border-[#F3F4F6]',
+                  index !== 1 && 'border-b border-[#F3F4F6]',
                 )}
-                onClick={() => {
-                  showAlert({
-                    title: item.title,
-                    message: t('openingSoon', { name: item.title }),
-                    variant: 'info',
-                  });
+                role="button"
+                tabIndex={0}
+                onClick={item.action}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') item.action();
                 }}
               >
                 <item.icon size={24} className="text-[#2563EB] flex-shrink-0" />
@@ -1280,17 +1508,6 @@ export default function SettingsPage() {
                   <p className="text-sm font-bold">{item.title}</p>
                   <p className="text-xs text-[#6B7280]">{item.desc}</p>
                 </div>
-                {item.badge && (
-                  <span
-                    className={cn(
-                      'text-xs font-bold text-white px-3 py-1 rounded-full flex items-center gap-1',
-                      item.badgeColor || 'bg-[#6B7280]',
-                    )}
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                    {item.badge}
-                  </span>
-                )}
                 <ChevronRight size={16} className="text-[#9CA3AF]" />
               </div>
             ))}
@@ -1328,16 +1545,6 @@ export default function SettingsPage() {
             ))}
           </div>
 
-          {/* App Version */}
-          <div className="flex items-center justify-between bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-5">
-            <div>
-              <p className="text-sm font-bold">{t('appVersion')}</p>
-              <p className="text-xs text-[#6B7280]">v2.4.1 · {t('upToDate')}</p>
-            </div>
-            <span className="inline-flex items-center gap-1 text-xs font-bold text-[#22C55E] bg-[#F0FDF4] px-3 py-1 rounded-full">
-              <Check size={12} /> {t('latest')}
-            </span>
-          </div>
         </div>
       )}
 
@@ -1347,22 +1554,7 @@ export default function SettingsPage() {
         <div className="flex flex-wrap gap-3">
           <button
             className="px-4 py-2 rounded-xl border border-[#EF4444] text-[#EF4444] text-sm font-medium hover:bg-[#FEF2F2] transition-colors"
-            onClick={() => {
-              showConfirm({
-                title: t('logoutAllDevices'),
-                message: t('logoutAllConfirm'),
-                confirmText: t('logoutAll'),
-                cancelText: tc('cancel'),
-                confirmVariant: 'danger',
-                onConfirm: () => {
-                  showAlert({
-                    title: t('success'),
-                    message: t('sessionsTerminated'),
-                    variant: 'success',
-                  });
-                },
-              });
-            }}
+            onClick={signOutOtherDevices}
           >
             {t('logoutAllDevices')}
           </button>

@@ -24,6 +24,8 @@ export interface WithdrawalEligibility {
   nextPayoutAt: string;
   lastPhoneNumber: string | null;
   lastAccountName: string | null;
+  defaultPhoneNumber?: string | null;
+  defaultAccountName?: string | null;
 }
 
 export interface LedgerEntry {

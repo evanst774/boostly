@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 // src/lib/totp.ts - Updated to use real account
 import { Secret, TOTP } from '@otp-lib/authenticator';
 
@@ -38,7 +39,7 @@ export async function verifyTOTPCode(secretBase32: string, token: string, accoun
 export function generateBackupCodes(count: number = 10): string[] {
     const codes: string[] = [];
     for (let i = 0; i < count; i++) {
-        const code = Math.floor(10000000 + Math.random() * 90000000).toString();
+        const code = randomInt(10000000, 100000000).toString();
         codes.push(code);
     }
     return codes;

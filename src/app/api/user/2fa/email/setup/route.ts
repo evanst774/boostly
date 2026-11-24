@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 // src/app/api/user/2fa/email/setup/route.ts
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session.server';
@@ -26,7 +27,7 @@ export async function POST() {
       );
 
     // Generate new OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = crypto.randomInt(100000, 1000000).toString();
 
     await db.insert(otpVerifications).values({
       id: crypto.randomUUID(),
@@ -40,7 +41,7 @@ export async function POST() {
     // Send email
     await sendEmail({
       to: user.email,
-      subject: '2FA Setup Verification - MotoTrack',
+      subject: 'Your Boostly verification code',
       html: build2FAOTPEmailHTML(user.name || 'User', otp),
       type: 'VERIFICATION',
     });
@@ -52,7 +53,7 @@ export async function POST() {
   } catch (error) {
     console.error('Error sending 2FA OTP:', error);
     return NextResponse.json(
-      { error: 'Internal server error', stack: error },
+      { error: 'Internal server error' },
       { status: 500 },
     );
   }

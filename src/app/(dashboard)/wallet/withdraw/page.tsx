@@ -84,8 +84,11 @@ export default function WithdrawPage() {
   // Prefill from the last request.
   useEffect(() => {
     if (!elig) return;
-    if (!phone && elig.lastPhoneNumber) setPhone(formatRwandaPhone(elig.lastPhoneNumber));
-    if (!accountName && elig.lastAccountName) setAccountName(elig.lastAccountName);
+    // Saved default first (Settings > Payment), then the number used last time.
+    const prefPhone = elig.defaultPhoneNumber || elig.lastPhoneNumber;
+    const prefName = elig.defaultPhoneNumber ? elig.defaultAccountName : elig.lastAccountName;
+    if (!phone && prefPhone) setPhone(formatRwandaPhone(prefPhone));
+    if (!accountName && prefName) setAccountName(prefName);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elig]);
 

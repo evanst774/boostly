@@ -3,7 +3,8 @@
 // Who may request a withdrawal, and when. Each plan sets its own interval in
 // Admin (defaults: Free weekly, paid daily). Every request is paid at the next 3:00 PM run.
 import { db } from '@/lib/db';
-import { withdrawals, wallets, WithdrawalStatusEnum } from '@/lib/db/schema';
+import { users, withdrawals, wallets, WithdrawalStatusEnum } from '@/lib/db/schema';
+import { normalizePreferences } from '@/lib/constants/preferences';
 import { and, desc, eq, ne } from 'drizzle-orm';
 import { getUserPlan } from '@/modules/rewards/plan-limits';
 import {
@@ -34,6 +35,9 @@ export interface WithdrawalEligibility {
   /** Phone used on the last request, to prefill the form. */
   lastPhoneNumber: string | null;
   lastAccountName: string | null;
+  /** Default payout number saved in Settings > Payment (preferred over last used). */
+  defaultPhoneNumber: string | null;
+  defaultAccountName: string | null;
 }
 
 /** Midnight (start) of the next Kigali calendar day, as a UTC instant. */
@@ -47,7 +51,7 @@ export async function getWithdrawalEligibility(
   userId: string,
   now: Date = new Date(),
 ): Promise<WithdrawalEligibility> {
-  const [plan, wallet, last] = await Promise.all([
+  const [plan, wallet, last, profile] = await Promise.all([
     getUserPlan(userId),
     db.query.wallets.findFirst({ where: eq(wallets.userId, userId) }),
     // Rejected (FAILED) requests don't count against the user's allowance.
@@ -58,7 +62,9 @@ export async function getWithdrawalEligibility(
       ),
       orderBy: [desc(withdrawals.requestedAt)],
     }),
+    db.query.users.findFirst({ where: eq(users.id, userId), columns: { preferences: true } }),
   ]);
+  const prefs = normalizePreferences(profile?.preferences);
 
   const balance = wallet?.balance ?? 0;
   const intervalDays = plan.withdrawalIntervalDays; // set per plan in Admin
@@ -105,5 +111,7 @@ export async function getWithdrawalEligibility(
     nextPayoutAt: getNextPayoutAt(now).toISOString(),
     lastPhoneNumber: last?.phoneNumber ?? null,
     lastAccountName: last?.accountName ?? null,
+    defaultPhoneNumber: prefs.payoutPhone,
+    defaultAccountName: prefs.payoutName,
   };
 }
