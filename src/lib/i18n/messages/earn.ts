@@ -182,6 +182,8 @@ export const earn = defineMessages({
     loadMoreSurveys: 'Load more surveys',
     closeSurvey: 'Close survey',
     brandQuestions: '{brand} • {n} questions',
+    textAnswerPlaceholder: 'Type your answer…',
+    chooseAllThatApply: 'Choose all that apply',
   },
   fr: {
     sponsored: 'Sponsorisé',
@@ -358,6 +360,8 @@ export const earn = defineMessages({
     loadMoreSurveys: 'Plus de sondages',
     closeSurvey: 'Fermer le sondage',
     brandQuestions: '{brand} • {n} questions',
+    textAnswerPlaceholder: 'Écrivez votre réponse…',
+    chooseAllThatApply: 'Plusieurs réponses possibles',
   },
   sw: {
     sponsored: 'Imedhaminiwa',
@@ -530,5 +534,7 @@ export const earn = defineMessages({
     loadMoreSurveys: 'Pakia tafiti zaidi',
     closeSurvey: 'Funga utafiti',
     brandQuestions: '{brand} • maswali {n}',
+    textAnswerPlaceholder: 'Andika jibu lako…',
+    chooseAllThatApply: 'Chagua zote zinazohusika',
   },
 });

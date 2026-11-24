@@ -170,6 +170,25 @@ const QuestionTypes = {
   LIKERT: 'likert',
 };
 
+/** Multiple-choice picks are kept as a JSON array string while answering. */
+const parsePicks = (v: string | null): string[] => {
+  if (!v) return [];
+  try {
+    const a = JSON.parse(v);
+    return Array.isArray(a) ? a.map(String) : [v];
+  } catch {
+    return [v];
+  }
+};
+
+/** Whether the current question has a usable answer (enables Next). */
+function isAnswered(type: string | undefined, value: string | null) {
+  if (!value) return false;
+  if (type === QuestionTypes.TEXT) return value.trim().length >= 2;
+  if (type === QuestionTypes.MULTIPLE_CHOICE) return parsePicks(value).length > 0;
+  return true;
+}
+
 function SurveyQuestion({
   question,
   index,
@@ -259,6 +278,63 @@ function SurveyQuestion({
           </div>
         );
 
+      case QuestionTypes.TEXT:
+        return (
+          <div>
+            <textarea
+              value={selectedOption ?? ''}
+              onChange={(e) => onSelect(e.target.value.slice(0, 1000))}
+              rows={4}
+              maxLength={1000}
+              placeholder={t('textAnswerPlaceholder')}
+              aria-label={question.question}
+              className="w-full resize-none rounded-xl border-2 border-[#E2E8F0] bg-white px-4 py-3 text-sm text-[#0F172A] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#2563EB] dark:border-[#334155] dark:bg-[#0F172A] dark:text-white"
+            />
+            <p className="mt-1 text-right text-[11px] text-[#94A3B8]">{(selectedOption ?? '').length}/1000</p>
+          </div>
+        );
+
+      case QuestionTypes.MULTIPLE_CHOICE: {
+        const picks = parsePicks(selectedOption);
+        const toggle = (option: string) => {
+          const next = picks.includes(option) ? picks.filter((p) => p !== option) : [...picks, option];
+          onSelect(next.length ? JSON.stringify(next) : '');
+        };
+        return (
+          <div className="space-y-3">
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">{t('chooseAllThatApply')}</p>
+            {options.map((option: string) => {
+              const on = picks.includes(option);
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={on}
+                  onClick={() => toggle(option)}
+                  className={cn(
+                    'w-full text-left px-4 py-3 rounded-xl border-2 transition-all flex items-center gap-3',
+                    on
+                      ? 'border-[#2563EB] bg-[#EFF6FF] dark:bg-[#2563EB]/20'
+                      : 'border-[#F1F5F9] dark:border-[#334155] hover:border-[#2563EB] hover:bg-[#F8FAFC] dark:hover:bg-[#334155]',
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0',
+                      on ? 'border-[#2563EB] bg-[#2563EB]' : 'border-[#94A3B8] dark:border-[#64748B]',
+                    )}
+                  >
+                    {on && <Check size={12} className="text-white" />}
+                  </div>
+                  <span className="text-sm font-medium">{option}</span>
+                </button>
+              );
+            })}
+          </div>
+        );
+      }
+
       case QuestionTypes.SINGLE_CHOICE:
       default:
         return (
@@ -342,10 +418,10 @@ function SurveyQuestion({
         </button>
         <button
           onClick={onNext}
-          disabled={!selectedOption || isSubmitting}
+          disabled={!isAnswered(type, selectedOption) || isSubmitting}
           className={cn(
             'px-6 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2',
-            selectedOption && !isSubmitting
+            isAnswered(type, selectedOption) && !isSubmitting
               ? 'bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white hover:shadow-lg hover:shadow-blue-500/30'
               : 'bg-[#F1F5F9] dark:bg-[#334155] text-[#94A3B8] dark:text-[#64748B] cursor-not-allowed',
           )}
@@ -523,10 +599,10 @@ export default function SurveysPage() {
   };
 
   const handleNextQuestion = () => {
-    if (!selectedOption) return;
+    if (!isAnswered(questions[currentQuestion]?.type, selectedOption)) return;
 
     const newAnswers = [...answers];
-    newAnswers[currentQuestion] = selectedOption;
+    newAnswers[currentQuestion] = selectedOption ?? '';
     setAnswers(newAnswers);
 
     if (currentQuestion < questions.length - 1) {
@@ -559,7 +635,12 @@ export default function SurveysPage() {
             startToken,
             answers: questions.map((q, index) => ({
               questionId: q.id,
-              answer: finalAnswers[index] ?? '',
+              answer:
+                q.type === QuestionTypes.MULTIPLE_CHOICE
+                  ? parsePicks(finalAnswers[index] ?? null)
+                  : q.type === QuestionTypes.TEXT
+                    ? (finalAnswers[index] ?? '').trim()
+                    : finalAnswers[index] ?? '',
             })),
           }),
         },

@@ -517,3 +517,17 @@ html.lenis {
   background-color: #243247;
 }
 :where(.dark .app-theme) .shadow-sm { box-shadow: 0 1px 2px rgba(0,0,0,.35); }
+
+/* ============================================================
+   Jivo live chat: keep the phone launcher above our bottom tab bar
+   (64px + the home-indicator inset) instead of on top of it.
+   Jivo's class names are hashed; `__jivoMobileButton` is the
+   stable marker on the floating mobile button.
+   ============================================================ */
+@media (max-width: 1023.98px) {
+  jdiv[class*='__jivoMobileButton'] {
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 6px) !important;
+    transform: scale(0.82);
+    transform-origin: bottom right;
+  }
+}
