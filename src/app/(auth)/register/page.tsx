@@ -2,6 +2,7 @@
 
 'use client';
 
+import { REFERRAL_COMMISSION_LABEL } from '@/lib/constants/referrals';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -140,7 +141,9 @@ export default function RegisterPage() {
 
       if (response.ok && data.valid) {
         setReferralValid(true);
-        toast.success("Valid referral code! You'll get a welcome bonus.", {
+        toast.success(
+          data.referrer ? `Valid code: invited by ${data.referrer}` : 'Valid referral code',
+          {
           duration: 3000,
           icon: <BadgeCheck className="w-5 h-5 text-[#22C55E]" />,
         });
@@ -391,8 +394,8 @@ export default function RegisterPage() {
             you spend here
           </h1>
           <p className="relative z-10 text-sm text-white/50 leading-relaxed max-w-[280px] mb-9">
-            Join thousands earning daily points, referral bonuses, and cash
-            payouts on Boostly.
+            Earn from sponsored videos, games and surveys, and get paid to
+            your mobile money.
           </p>
 
           {/* Feature list */}
@@ -419,7 +422,7 @@ export default function RegisterPage() {
                   Refer Friends
                 </div>
                 <div className="text-[12.5px] text-white/45 leading-relaxed">
-                  Earn a welcome bonus for every friend who joins
+                  {`Earn ${REFERRAL_COMMISSION_LABEL} of every plan your friends buy`}
                 </div>
               </div>
             </div>
@@ -442,7 +445,7 @@ export default function RegisterPage() {
           <div className="relative z-10 flex-1 min-h-[140px] mt-8">
             <RewardChip
               icon={<Gift className="w-3.5 h-3.5" />}
-              label="+500 referral bonus"
+              label={`${REFERRAL_COMMISSION_LABEL} referral commission`}
               tone="gold"
               style={{ top: 8, left: 8, animationDelay: '0s' }}
             />
@@ -584,7 +587,7 @@ export default function RegisterPage() {
                 </p>
                 <p className="text-[10px] text-white/40 truncate">
                   {referralValid === true
-                    ? "You'll get a welcome bonus when you sign up!"
+                    ? 'Your friend will be credited when you sign up'
                     : referralValid === false
                       ? 'Please check the code and try again'
                       : `Code: ${form.referralCode}`}

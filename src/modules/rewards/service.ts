@@ -27,10 +27,7 @@ import {
   dailyBonusesRepository,
 } from '@/modules/rewards/repository';
 import type { CreateAdWatchInput } from '@/modules/rewards/validation';
-import {
-  userBadgesRepository,
-  userSubscriptionsRepository,
-} from '@/modules/badges/repository';
+import { userBadgesRepository } from '@/modules/badges/repository';
 import { getUserDailyLimits, getUserPlan } from '@/modules/rewards/plan-limits';
 import { kigaliDayStartIso } from '@/lib/constants/payouts';
 
@@ -171,7 +168,7 @@ export class RewardsService {
     const multiplier =
       input.applyBoost === false
         ? { badgeBoost: 0, planBoost: 0, total: 1 }
-        : await this.getEarningsMultiplier(input.userId);
+        : await this.getEarningsMultiplier(input.userId, input.type);
     let amount = roundReward(input.baseAmount * multiplier.total);
 
     if (amount <= 0) {
@@ -357,11 +354,15 @@ export class RewardsService {
    * Badge tiers do NOT stack with each other — a user holding Silver and Gold
    * gets Gold's 30%, not 45%. Plan boost is separate and does stack with badge.
    */
-  async getEarningsMultiplier(userId: string): Promise<EarningsMultiplier> {
-    const [badgeBoost, planBoost] = await Promise.all([
-      this.getBadgeBoost(userId),
-      this.getSubscriptionBoost(userId),
-    ]);
+  /**
+   * Reward multiplier for a member. The plan boost can differ per task type
+   * (video / game / survey), as set in Admin > Subscriptions; members without
+   * a subscription use the Free plan's settings.
+   */
+  async getEarningsMultiplier(userId: string, type?: RewardType): Promise<EarningsMultiplier> {
+    const [badgeBoost, plan] = await Promise.all([this.getBadgeBoost(userId), getUserPlan(userId)]);
+    const key = type === 'VIDEO' || type === 'GAME' || type === 'SURVEY' ? type : 'OTHER';
+    const planBoost = plan.boosts[key];
 
     return {
       badgeBoost,
@@ -376,12 +377,6 @@ export class RewardsService {
     return activeBadge?.badge?.earningsBoost ?? 0;
   }
 
-  /** The user's active (non-expired) subscription plan's boost. 0 if none. */
-  private async getSubscriptionBoost(userId: string): Promise<number> {
-    const activeSubscription =
-      await userSubscriptionsRepository.getActiveByUserId(userId);
-    return activeSubscription?.plan?.badgeBoost ?? 0;
-  }
 
   // ============================================
   // READS

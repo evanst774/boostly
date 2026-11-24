@@ -52,6 +52,10 @@ const planFields = {
   maxDailySurveys: z.number().int().min(0).max(10_000),
   /** Extra reward per task: 0.3 = +30%. */
   badgeBoost: z.number().min(0).max(5),
+  /** Per-type overrides of badgeBoost; null = use badgeBoost. */
+  videoBoost: z.number().min(0).max(5).nullable(),
+  gameBoost: z.number().min(0).max(5).nullable(),
+  surveyBoost: z.number().min(0).max(5).nullable(),
   priorityWithdrawal: z.boolean(),
   vipSupport: z.boolean(),
   /** Days between withdrawals (1 = daily, 7 = weekly). Null = plan default. */
@@ -74,6 +78,9 @@ export const createSubscriptionPlanSchema = z.object({
   isActive: planFields.isActive.default(true),
   sortOrder: planFields.sortOrder.optional(),
   isPopular: planFields.isPopular.optional(),
+  videoBoost: planFields.videoBoost.optional(),
+  gameBoost: planFields.gameBoost.optional(),
+  surveyBoost: planFields.surveyBoost.optional(),
 });
 
 // No defaults here: a PATCH must only change the fields it sends.

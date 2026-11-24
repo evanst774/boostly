@@ -25,9 +25,18 @@ import { requirePermission } from '@/lib/auth/permissions';
 import { BadgesPermissions } from './permissions';
 import { walletService } from '../wallet/service';
 import { rewardsService } from '../rewards/service';
-import { RewardTypeEnum, userSubscriptions, type SubscriptionPlan } from '@/lib/db/schema';
+import {
+  RewardTypeEnum,
+  TransactionStatusEnum,
+  TransactionTypeEnum,
+  transactions,
+  userSubscriptions,
+  wallets,
+  type SubscriptionPlan,
+} from '@/lib/db/schema';
+import { quotePlan } from './plan-quote';
 import { db } from '@/lib/db';
-import { eq } from 'drizzle-orm';
+import { and, eq, gte, sql } from 'drizzle-orm';
 import { notificationsService } from '@/lib/notifications';
 import {
   referralsService,
@@ -409,53 +418,75 @@ export class BadgesService {
     const plan = await subscriptionPlansRepository.getById(validated.planId);
     if (!plan) throw new Error('Subscription plan not found');
 
-    // Check if user already has active subscription
-    const existing = await userSubscriptionsRepository.getActiveByUserId(
-      user.id,
-    );
-    if (existing) {
-      // Get the plan name from the existing subscription
-      const existingPlan = await subscriptionPlansRepository.getById(
-        existing.planId,
-      );
-      throw new Error(
-        `You already have an active subscription: ${existingPlan?.name || 'Unknown plan'}`,
-      );
+    if (!plan.isActive || plan.tier === 'FREE') throw new Error('This plan cannot be bought');
+
+    // Same rules as the mobile money checkout: renewals pay full price,
+    // upgrades get credit for unused days, downgrades wait for the plan to end.
+    const quote = await quotePlan(user.id, plan, validated.billingCycle);
+    if (quote.kind === 'DOWNGRADE_BLOCKED') throw new Error(quote.message ?? 'You cannot switch to this plan yet');
+    const due = quote.due;
+
+    // Take the money atomically: the balance check and the debit are one
+    // UPDATE, so two purchases at once can never overdraw the wallet.
+    let transactionId: string | null = null;
+    if (due > 0) {
+      const [debited] = await db
+        .update(wallets)
+        .set({ balance: sql`${wallets.balance} - ${due}`, updatedAt: sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))` })
+        .where(and(eq(wallets.userId, user.id), gte(wallets.balance, due)))
+        .returning();
+      if (!debited) throw new Error(`Insufficient balance. You need ${due.toLocaleString()} RWF.`);
+      const [tx] = await db
+        .insert(transactions)
+        .values({
+          userId: user.id,
+          walletId: debited.id,
+          type: TransactionTypeEnum.DEBIT,
+          amount: due,
+          currency: debited.defaultCurrency,
+          amountInBase: due,
+          description:
+            quote.kind === 'UPGRADE'
+              ? `Upgrade to ${plan.name} (${quote.credit.toLocaleString()} RWF credit applied)`
+              : `${plan.name} subscription (${validated.billingCycle})`,
+          referenceId: plan.id,
+          referenceType: 'subscription',
+          status: TransactionStatusEnum.COMPLETED,
+          completedAt: new Date().toISOString(),
+        })
+        .returning();
+      transactionId = tx?.id ?? null;
     }
 
-    // Check balance - ensure prices are not null
-    const price =
-      validated.billingCycle === 'MONTHLY'
-        ? (plan.priceMonthly ?? 0)
-        : (plan.priceYearly ?? 0);
-
-    if (price <= 0) {
-      throw new Error('Invalid plan price');
+    let subscription;
+    try {
+      subscription = await activateSubscription({
+        userId: user.id,
+        plan,
+        billingCycle: validated.billingCycle,
+        autoRenew: validated.autoRenew || false,
+        amountPaid: due,
+        source: 'WALLET',
+        actorId: user.id,
+      });
+    } catch (error) {
+      // Activation failed after paying: give the money back.
+      if (due > 0) {
+        await db
+          .update(wallets)
+          .set({ balance: sql`${wallets.balance} + ${due}` })
+          .where(eq(wallets.userId, user.id));
+        if (transactionId) {
+          await db
+            .update(transactions)
+            .set({ status: TransactionStatusEnum.FAILED, description: `Refunded: ${plan.name} could not be activated` })
+            .where(eq(transactions.id, transactionId));
+        }
+      }
+      throw error;
     }
 
-    const balance = await walletService.getWalletBalance(user.id);
-    if (balance < price) {
-      throw new Error(`Insufficient balance. Need Rwf ${price}`);
-    }
-
-    // FIX: `status: 'COMPLETED'` removed — see purchaseBadge() above for why.
-    await walletService.deductBalance(user.id, price, {
-      description: `${plan.name} subscription (${validated.billingCycle})`,
-      referenceId: plan.id,
-      referenceType: 'subscription',
-    });
-
-    const subscription = await activateSubscription({
-      userId: user.id,
-      plan,
-      billingCycle: validated.billingCycle,
-      autoRenew: validated.autoRenew || false,
-      amountPaid: price,
-      source: 'WALLET',
-      actorId: user.id,
-    });
-
-    return { subscription, plan };
+    return { subscription, plan, quote };
   }
 
   async getMySubscription() {

@@ -34,6 +34,9 @@ export interface Plan {
   maxDailySurveys: number;
   maxDailyAds: number;
   badgeBoost: number;
+  videoBoost: number | null;
+  gameBoost: number | null;
+  surveyBoost: number | null;
   priorityWithdrawal: boolean;
   vipSupport: boolean;
   withdrawalIntervalDays: number | null;
@@ -64,6 +67,10 @@ interface FormState {
   maxDailySurveys: string;
   maxDailyAds: string;
   boostPct: string;
+  /** Per-type boosts; '' = use the general boost. */
+  videoPct: string;
+  gamePct: string;
+  surveyPct: string;
   priorityWithdrawal: boolean;
   vipSupport: boolean;
   intervalMode: IntervalMode;
@@ -125,6 +132,9 @@ function planToForm(plan: Plan): FormState {
     maxDailySurveys: str(plan.maxDailySurveys),
     maxDailyAds: str(plan.maxDailyAds),
     boostPct: str(Math.round((plan.badgeBoost || 0) * 1000) / 10),
+    videoPct: plan.videoBoost == null ? '' : str(Math.round(plan.videoBoost * 1000) / 10),
+    gamePct: plan.gameBoost == null ? '' : str(Math.round(plan.gameBoost * 1000) / 10),
+    surveyPct: plan.surveyBoost == null ? '' : str(Math.round(plan.surveyBoost * 1000) / 10),
     priorityWithdrawal: plan.priorityWithdrawal,
     vipSupport: plan.vipSupport,
     ...intervalToForm(plan.withdrawalIntervalDays),
@@ -167,6 +177,9 @@ function initialForm(mode: EditorMode, plans: Plan[]): FormState {
     maxDailySurveys: '3',
     maxDailyAds: '10',
     boostPct: '0',
+    videoPct: '',
+    gamePct: '',
+    surveyPct: '',
     priorityWithdrawal: false,
     vipSupport: false,
     intervalMode: 'default',
@@ -241,6 +254,19 @@ function validate(
   if (!Number.isFinite(boost) || boost < 0 || boost > 500) {
     errors.boostPct = 'Enter a boost between 0% and 500%.';
   }
+  // Optional per-type boosts: blank = use the general boost.
+  const typeBoost = (k: 'videoPct' | 'gamePct' | 'surveyPct'): number | null => {
+    if (f[k].trim() === '') return null;
+    const v = parseNum(f[k]);
+    if (!Number.isFinite(v) || v < 0 || v > 500) {
+      errors[k] = 'Between 0% and 500%, or leave blank.';
+      return null;
+    }
+    return Math.round(v * 10) / 1000;
+  };
+  const videoBoost = typeBoost('videoPct');
+  const gameBoost = typeBoost('gamePct');
+  const surveyBoost = typeBoost('surveyPct');
 
   let withdrawalIntervalDays: number | null = null;
   if (f.intervalMode === 'daily') withdrawalIntervalDays = 1;
@@ -279,6 +305,9 @@ function validate(
     maxDailySurveys,
     maxDailyAds,
     badgeBoost: Math.round(boost * 10) / 1000,
+    videoBoost,
+    gameBoost,
+    surveyBoost,
     priorityWithdrawal: f.priorityWithdrawal,
     vipSupport: f.vipSupport,
     withdrawalIntervalDays,
@@ -298,7 +327,9 @@ function validate(
         ? (original.description ?? '')
         : k === 'isPopular'
           ? !!original.isPopular
-          : original[k];
+          : k === 'videoBoost' || k === 'gameBoost' || k === 'surveyBoost'
+            ? (original[k] ?? null)
+            : original[k];
     if (JSON.stringify(before) !== JSON.stringify(full[k])) {
       (diff as Record<string, unknown>)[k] = full[k];
     }
@@ -743,6 +774,43 @@ export function PlanEditor({
                   <span className="pointer-events-none absolute inset-y-0 right-3.5 flex items-center text-sm text-[#64748B] dark:text-[#94A3B8]">
                     %
                   </span>
+                </div>
+              </Field>
+
+              <Field
+                label="Boost by task type (optional)"
+                helper={`Leave blank to use the general boost (${form.boostPct || 0}%). Example: surveys 50 and videos 20 pays more for surveys.`}
+                error={errors.videoPct || errors.gamePct || errors.surveyPct}
+              >
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      ['videoPct', 'Videos'],
+                      ['gamePct', 'Games'],
+                      ['surveyPct', 'Surveys'],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <label key={key} className="block">
+                      <span className="mb-1 block text-xs font-medium text-[#64748B] dark:text-[#94A3B8]">{label}</span>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min={0}
+                          max={500}
+                          step={5}
+                          placeholder={form.boostPct || '0'}
+                          aria-label={`${label} boost`}
+                          className={cn(inputCls, 'pr-8')}
+                          value={form[key]}
+                          onChange={(e) => set(key, e.target.value)}
+                        />
+                        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-[#64748B] dark:text-[#94A3B8]">
+                          %
+                        </span>
+                      </div>
+                    </label>
+                  ))}
                 </div>
               </Field>
 

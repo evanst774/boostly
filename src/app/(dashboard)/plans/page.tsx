@@ -41,6 +41,8 @@ interface PlanView {
   priceYearly: number;
   /** Reward per task multiplier: 1 + plan boost. */
   rate: number;
+  /** Per-type multipliers when the plan sets different boosts. */
+  rates: { videos: number; games: number; surveys: number } | null;
   videos: number;
   games: number;
   surveys: number;
@@ -75,6 +77,12 @@ function buildPlans(apiPlans: SubscriptionPlan[]): PlanView[] {
     priceMonthly: p.priceMonthly ?? 0,
     priceYearly: p.priceYearly ?? 0,
     rate: 1 + (p.badgeBoost ?? 0),
+    rates: (() => {
+      const x = p as typeof p & { videoBoost?: number | null; gameBoost?: number | null; surveyBoost?: number | null };
+      if (x.videoBoost == null && x.gameBoost == null && x.surveyBoost == null) return null;
+      const base = p.badgeBoost ?? 0;
+      return { videos: 1 + (x.videoBoost ?? base), games: 1 + (x.gameBoost ?? base), surveys: 1 + (x.surveyBoost ?? base) };
+    })(),
     videos: p.maxDailyVideos ?? 0,
     games: p.maxDailyGames ?? 0,
     surveys: p.maxDailySurveys ?? 0,
@@ -120,6 +128,14 @@ export default function PlansPage() {
   const [showCompare, setShowCompare] = useState(false);
   const [payMethod, setPayMethod] = useState<'MOMO' | 'WALLET'>('MOMO');
   const [payments, setPayments] = useState<PlanPaymentView[]>([]);
+  // Server quote for the open checkout: new / renewal / upgrade with credit.
+  const [quote, setQuote] = useState<{
+    kind: 'NEW' | 'RENEWAL' | 'UPGRADE' | 'DOWNGRADE_BLOCKED';
+    price: number;
+    credit: number;
+    due: number;
+    message: string | null;
+  } | null>(null);
 
   const loadPayments = async () => {
     try {
@@ -171,10 +187,29 @@ export default function PlansPage() {
     setError(null);
     setSuccess(null);
     setCheckoutPlan(plan);
-    // Wallet purchase only works without an active paid plan.
     setPayMethod('MOMO');
     loadBalance();
   };
+
+  // Fetch what this member would pay for the open checkout and cycle.
+  useEffect(() => {
+    setQuote(null);
+    if (!checkoutPlan?.id) return;
+    let cancelled = false;
+    fetch(`/api/subscriptions/plans/${checkoutPlan.id}/quote?cycle=${cycle}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((q) => {
+        if (cancelled || !q) return;
+        setQuote(q);
+        // Prefer the wallet when it already covers the amount due.
+        if (balance !== null && balance >= q.due) setPayMethod('WALLET');
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkoutPlan?.id, cycle]);
 
   const handleSubscribe = async () => {
     if (!checkoutPlan?.id) return;
@@ -191,9 +226,7 @@ export default function PlansPage() {
       );
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || 'Could not activate plan');
-      setSuccess(
-        `${checkoutPlan.name} is active. You can now complete more tasks and withdraw every day.`,
-      );
+      setSuccess(`${checkoutPlan.name} is active. Your new daily tasks and limits apply right away.`);
       setCheckoutPlan(null);
       await Promise.all([refetch(), loadBalance()]);
     } catch (e) {
@@ -267,7 +300,9 @@ export default function PlansPage() {
     );
   }
 
-  const checkoutPrice = checkoutPlan ? priceFor(checkoutPlan, cycle) : 0;
+  const listPrice = checkoutPlan ? priceFor(checkoutPlan, cycle) : 0;
+  const checkoutPrice = quote ? quote.due : listPrice;
+  const blocked = quote?.kind === 'DOWNGRADE_BLOCKED';
   const notEnough =
     checkoutPlan !== null && balance !== null && balance < checkoutPrice;
 
@@ -492,6 +527,11 @@ export default function PlansPage() {
               <p className="mt-0.5 text-xs text-[#64748B] dark:text-[#94A3B8]">
                 {plan.description}
               </p>
+              {plan.rates && (
+                <p className="mt-1 text-[11px] font-medium text-[#16A34A] dark:text-[#4ADE80]">
+                  Videos {formatRate(plan.rates.videos)} · Games {formatRate(plan.rates.games)} · Surveys {formatRate(plan.rates.surveys)}
+                </p>
+              )}
 
               <div className="mt-4">
                 {isFree ? (
@@ -690,14 +730,11 @@ export default function PlansPage() {
             {/* Payment method */}
             <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-[#F1F5F9] dark:bg-[#0F172A] p-1">
               {(['MOMO', 'WALLET'] as const).map((m) => {
-                const walletBlocked = m === 'WALLET' && !!subscription && currentTier !== 'FREE';
                 return (
                   <button
                     key={m}
                     type="button"
-                    disabled={walletBlocked}
                     onClick={() => setPayMethod(m)}
-                    title={walletBlocked ? 'Wallet payment is only for members without a paid plan' : undefined}
                     className={cn(
                       'rounded-lg py-2 text-sm font-semibold transition-colors disabled:opacity-40',
                       payMethod === m
@@ -711,7 +748,11 @@ export default function PlansPage() {
               })}
             </div>
 
-            {payMethod === 'MOMO' ? (
+            {blocked ? (
+              <p className="mt-4 rounded-xl bg-[#FFFBEB] p-4 text-sm text-[#92400E] dark:bg-[#F59E0B]/10 dark:text-[#FCD34D]">
+                {quote?.message}
+              </p>
+            ) : payMethod === 'MOMO' ? (
               <div className="max-h-[65vh] overflow-y-auto -mx-1 px-1">
                 <MomoCheckout
                   planId={checkoutPlan.id!}
@@ -728,9 +769,19 @@ export default function PlansPage() {
                   <span className="text-[#64748B] dark:text-[#94A3B8]">
                     {cycle === 'MONTHLY' ? 'Monthly' : 'Yearly'} price
                   </span>
-                  <span className="font-bold text-[#0F172A] dark:text-white">
-                    {rwf(checkoutPrice)}
+                  <span className="font-semibold text-[#0F172A] dark:text-white">
+                    {rwf(listPrice)}
                   </span>
+                </div>
+                {quote?.kind === 'UPGRADE' && quote.credit > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-[#64748B] dark:text-[#94A3B8]">Credit for unused days</span>
+                    <span className="font-semibold text-[#16A34A] dark:text-[#4ADE80]">−{rwf(quote.credit)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="font-semibold text-[#0F172A] dark:text-white">To pay now</span>
+                  <span className="font-bold text-[#0F172A] dark:text-white">{rwf(checkoutPrice)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="flex items-center gap-1.5 text-[#64748B] dark:text-[#94A3B8]">
@@ -750,13 +801,18 @@ export default function PlansPage() {
                     <Clock size={14} /> Withdraw
                   </span>
                   <span className="font-semibold text-[#2563EB] dark:text-[#60A5FA]">
-                    Every day at {PAYOUT_TIME_LABEL}
+                    {checkoutPlan.withdrawLabel}, paid at {PAYOUT_TIME_LABEL}
                   </span>
                 </div>
               </div>
   
               <p className="mt-3 text-xs text-[#64748B] dark:text-[#94A3B8]">
-                The price is paid from your Boostly wallet balance. Your new daily
+                {quote?.kind === 'UPGRADE'
+                  ? 'Your current plan is replaced now and the unused days are credited. '
+                  : quote?.kind === 'RENEWAL'
+                    ? 'The new period is added after your current one. '
+                    : ''}
+                Paid from your Boostly wallet balance. Your new daily
                 tasks ({checkoutPlan.videos} videos, {checkoutPlan.games} games,{' '}
                 {checkoutPlan.surveys} surveys) start right away.
               </p>
@@ -779,6 +835,8 @@ export default function PlansPage() {
                   </>
                 ) : notEnough ? (
                   'Not enough balance'
+                ) : checkoutPrice === 0 ? (
+                  'Upgrade now (covered by your credit)'
                 ) : (
                   `Pay ${rwf(checkoutPrice)} and activate`
                 )}

@@ -5,6 +5,7 @@
 //   2. member submits payer phone + transaction ID + screenshot  -> PENDING
 //   3. admin checks the MoMo statement and approves -> plan activates
 //      (or rejects with a reason the member sees)
+import { quotePlan } from '@/modules/badges/plan-quote';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
@@ -158,8 +159,14 @@ export async function submitPlanPayment(input: {
   if (!plan || !plan.isActive || plan.tier === 'FREE') {
     throw new PlanPaymentError(404, 'This plan is not available.');
   }
-  const amount = input.billingCycle === 'YEARLY' ? plan.priceYearly ?? 0 : plan.priceMonthly ?? 0;
-  if (amount <= 0) throw new PlanPaymentError(400, 'This plan has no price set.');
+  // Same quote as wallet payments: upgrades get credit for unused days.
+  const quote = await quotePlan(user.id, plan, input.billingCycle);
+  if (quote.kind === 'DOWNGRADE_BLOCKED') throw new PlanPaymentError(409, quote.message ?? 'You cannot switch to this plan yet.');
+  const amount = quote.due;
+  if (quote.price <= 0) throw new PlanPaymentError(400, 'This plan has no price set.');
+  if (amount <= 0) {
+    throw new PlanPaymentError(400, 'Your current plan credit covers this upgrade. Choose "Wallet balance" to upgrade for free.');
+  }
 
   const payerPhone = normalizeRwandaPhone(input.payerPhone);
   const provider = payerPhone ? detectMobileProvider(payerPhone) : null;

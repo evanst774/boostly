@@ -146,6 +146,10 @@ export const subscriptionPlans = sqliteTable(
     withdrawalIntervalDays: integer('withdrawalIntervalDays'),
     // Display order on the Plans page (lowest first; NULL = by price) and
     // the "Most popular" highlight. Both admin-set; nullable for safe adds.
+    // Per-task-type reward boosts (0.3 = +30%). NULL = use badgeBoost.
+    videoBoost: real('videoBoost'),
+    gameBoost: real('gameBoost'),
+    surveyBoost: real('surveyBoost'),
     sortOrder: integer('sortOrder'),
     isPopular: integer('isPopular', { mode: 'boolean' }),
 

@@ -23,6 +23,8 @@ export interface UserPlanInfo {
   dailyEarningsMax: number;
   /** Days between withdrawals (1 = every day). */
   withdrawalIntervalDays: number;
+  /** Reward boost per task type (0.3 = +30%), from the plan. */
+  boosts: { VIDEO: number; GAME: number; SURVEY: number; OTHER: number };
 }
 
 type PlanRow = typeof subscriptionPlans.$inferSelect;
@@ -37,6 +39,12 @@ function fromRow(plan: PlanRow, expiresAt: string | null): UserPlanInfo {
     limits: { maxDailyVideos, maxDailyGames, maxDailyAds, maxDailySurveys },
     dailyEarningsMax: Math.max(0, Number(plan.dailyEarnings) || 0),
     withdrawalIntervalDays: plan.withdrawalIntervalDays ?? getWithdrawalIntervalDays(plan.tier),
+    boosts: {
+      VIDEO: plan.videoBoost ?? plan.badgeBoost ?? 0,
+      GAME: plan.gameBoost ?? plan.badgeBoost ?? 0,
+      SURVEY: plan.surveyBoost ?? plan.badgeBoost ?? 0,
+      OTHER: plan.badgeBoost ?? 0,
+    },
   };
 }
 
@@ -68,6 +76,7 @@ export async function getUserPlan(userId: string): Promise<UserPlanInfo> {
     },
     dailyEarningsMax: TIER_DAILY_MAX.FREE,
     withdrawalIntervalDays: getWithdrawalIntervalDays('FREE'),
+    boosts: { VIDEO: 0, GAME: 0, SURVEY: 0, OTHER: 0 },
   };
 }
 

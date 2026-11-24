@@ -29,6 +29,14 @@ export async function POST(
     console.error('Subscribe to plan error:', error);
     const message =
       error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    // Expected refusals (balance, downgrade, plan rules) are 4xx, not crashes.
+    const status = /insufficient balance/i.test(message)
+      ? 402
+      : /can't switch|cannot switch|lower plan|cannot be bought|not found|invalid/i.test(message)
+        ? 409
+        : /zod|expected|required/i.test(message)
+          ? 400
+          : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

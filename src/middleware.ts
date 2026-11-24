@@ -57,6 +57,7 @@ const PUBLIC_API_ROUTES = [
   '/api/auth/resend-2fa',
   '/api/auth/notify-locked',
   '/api/auth/register',
+  '/api/referrals/validate',
   '/api/auth/verify-email',
   '/api/auth/oauth/google',
   '/api/auth/oauth/google/callback',
