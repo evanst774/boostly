@@ -20,7 +20,10 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useTransactions } from '@/hooks/useTransactions';
-import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { cn, formatCurrency as formatMoney } from '@/lib/utils';
+import { LOCALE_TAGS, useFormatNumber, useLocale, useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { wallet } from '@/lib/i18n/messages/wallet';
 import type { Transaction } from '@/lib/db/schema';
 
 type TransactionType =
@@ -31,19 +34,21 @@ type TransactionType =
   | 'referrals';
 type TransactionStatus = 'all' | 'completed' | 'pending' | 'failed';
 
-const typeOptions: { value: TransactionType; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'earnings', label: 'Earnings' },
-  { value: 'withdrawals', label: 'Withdrawals' },
-  { value: 'bonuses', label: 'Bonuses' },
-  { value: 'referrals', label: 'Referrals' },
+type WalletKey = keyof typeof wallet.en;
+
+const typeOptions: { value: TransactionType; label: WalletKey }[] = [
+  { value: 'all', label: 'all' },
+  { value: 'earnings', label: 'earnings' },
+  { value: 'withdrawals', label: 'withdrawals' },
+  { value: 'bonuses', label: 'bonuses' },
+  { value: 'referrals', label: 'referrals' },
 ];
 
-const statusOptions: { value: TransactionStatus; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'failed', label: 'Failed' },
+const statusOptions: { value: TransactionStatus; label: WalletKey }[] = [
+  { value: 'all', label: 'all' },
+  { value: 'completed', label: 'completed' },
+  { value: 'pending', label: 'pending' },
+  { value: 'failed', label: 'failed' },
 ];
 
 // Map transaction types to display icons
@@ -57,10 +62,10 @@ const iconMap: Record<string, { icon: LucideIcon; bg: string; color: string }> =
   subscription: { icon: Sparkles, bg: 'bg-[#EFF6FF]', color: 'text-[#2563EB]' },
 };
 
-const statusMap: Record<string, { label: string; icon: LucideIcon; color: string }> = {
-  completed: { label: 'Done', icon: CheckCircle2, color: 'bg-[#22C55E]' },
-  pending: { label: 'Pending', icon: Clock, color: 'bg-[#F59E0B]' },
-  failed: { label: 'Failed', icon: XCircle, color: 'bg-[#EF4444]' },
+const statusMap: Record<string, { label: WalletKey; icon: LucideIcon; color: string }> = {
+  completed: { label: 'done', icon: CheckCircle2, color: 'bg-[#22C55E]' },
+  pending: { label: 'pending', icon: Clock, color: 'bg-[#F59E0B]' },
+  failed: { label: 'failed', icon: XCircle, color: 'bg-[#EF4444]' },
 };
 
 export default function TransactionHistoryPage() {
@@ -70,6 +75,14 @@ export default function TransactionHistoryPage() {
     useState<TransactionStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
+  const t = useT(wallet);
+  const tc = useT(common);
+  const fmt = useFormatNumber();
+  const { locale } = useLocale();
+  const tag = LOCALE_TAGS[locale];
+  const formatCurrency = (n: number) => formatMoney(n, 'RWF', { locale: tag });
+  const formatDate = (d: string | null) =>
+    d ? new Date(d).toLocaleDateString(tag, { month: 'short', day: '2-digit', year: 'numeric' }) : '—';
 
   const { data, isLoading, totalPages } = useTransactions({
     type: selectedType,
@@ -103,35 +116,36 @@ export default function TransactionHistoryPage() {
         <button
           className="w-10 h-10 rounded-xl border border-[#F3F4F6] flex items-center justify-center hover:border-[#2563EB] transition-colors"
           onClick={() => router.back()}
+          aria-label={tc('back')}
         >
           <ArrowLeft size={18} />
         </button>
         <div>
-          <h1 className="text-xl font-bold">Transaction History</h1>
-          <p className="text-sm text-[#6B7280]">View all your transactions</p>
+          <h1 className="text-xl font-bold">{t('historyTitle')}</h1>
+          <p className="text-sm text-[#6B7280]">{t('historySubtitle')}</p>
         </div>
         <button className="ml-auto text-sm font-semibold text-[#2563EB] flex items-center gap-1 hover:underline">
           <Download size={16} />
-          Export
+          {t('export')}
         </button>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
-          <p className="text-xs text-[#6B7280]">Total Earned</p>
+          <p className="text-xs text-[#6B7280]">{t('totalEarned')}</p>
           <p className="text-xl font-extrabold text-[#22C55E]">
             {formatCurrency(summary.totalEarned)}
           </p>
         </div>
         <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
-          <p className="text-xs text-[#6B7280]">Withdrawn</p>
+          <p className="text-xs text-[#6B7280]">{t('withdrawn')}</p>
           <p className="text-xl font-extrabold text-[#EF4444]">
             {formatCurrency(summary.totalWithdrawn)}
           </p>
         </div>
         <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
-          <p className="text-xs text-[#6B7280]">Pending</p>
+          <p className="text-xs text-[#6B7280]">{t('pending')}</p>
           <p className="text-xl font-extrabold text-[#F59E0B]">
             {formatCurrency(summary.pending)}
           </p>
@@ -148,7 +162,7 @@ export default function TransactionHistoryPage() {
           />
           <input
             type="text"
-            placeholder="Search transactions..."
+            placeholder={t('searchTx')}
             className="w-full pl-11 pr-4 py-2.5 border border-[#F3F4F6] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all text-sm"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -168,7 +182,7 @@ export default function TransactionHistoryPage() {
               )}
               onClick={() => setSelectedType(option.value)}
             >
-              {option.label}
+              {t(option.label)}
             </button>
           ))}
         </div>
@@ -186,7 +200,7 @@ export default function TransactionHistoryPage() {
               )}
               onClick={() => setSelectedStatus(option.value)}
             >
-              {option.label}
+              {t(option.label)}
             </button>
           ))}
         </div>
@@ -203,9 +217,9 @@ export default function TransactionHistoryPage() {
             <div className="w-16 h-16 rounded-full bg-[#F8FAFC] flex items-center justify-center mx-auto mb-4">
               <Wallet size={24} className="text-[#9CA3AF]" />
             </div>
-            <p className="text-[#6B7280] font-medium">No transactions found</p>
+            <p className="text-[#6B7280] font-medium">{t('noTx')}</p>
             <p className="text-sm text-[#9CA3AF] mt-1">
-              Start earning to see your transactions here
+              {t('noTxHint')}
             </p>
           </div>
         ) : (
@@ -215,7 +229,9 @@ export default function TransactionHistoryPage() {
               <div key={date}>
                 <div className="px-4 py-2 bg-[#F8FAFC] border-b border-[#F3F4F6]">
                   <p className="text-xs font-bold text-[#6B7280] uppercase tracking-wider">
-                    {date === new Date().toDateString() ? 'Today' : date}
+                    {date === new Date().toDateString()
+                      ? t('today')
+                      : new Date(date).toLocaleDateString(tag, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
                 {txs.map((tx: Transaction, index: number) => {
@@ -264,7 +280,7 @@ export default function TransactionHistoryPage() {
                           )}
                         >
                           {isPositive ? '+' : ''}
-                          {tx.amount.toLocaleString()} RWF
+                          {tc('rwf', { amount: fmt(tx.amount) })}
                         </p>
                         <span
                           className={cn(
@@ -273,7 +289,7 @@ export default function TransactionHistoryPage() {
                           )}
                         >
                           <StatusIcon size={10} />
-                          {statusStyle.label}
+                          {t(statusStyle.label)}
                         </span>
                       </div>
                     </div>
@@ -293,17 +309,17 @@ export default function TransactionHistoryPage() {
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
           >
-            Previous
+            {t('previous')}
           </button>
           <span className="text-sm text-[#6B7280]">
-            Page {page} of {totalPages}
+            {t('pageOf', { page, total: totalPages })}
           </span>
           <button
             className="px-4 py-2 rounded-xl border border-[#F3F4F6] hover:border-[#2563EB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
           >
-            Next
+            {t('next')}
           </button>
         </div>
       )}

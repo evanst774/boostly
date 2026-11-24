@@ -5,17 +5,21 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { useT } from '@/lib/i18n';
+import { landing } from '@/lib/i18n/messages/landing';
 
 const LINKS = [
-  { label: 'Ways to earn', href: '/#earn' },
-  { label: 'How it works', href: '/#how-it-works' },
-  { label: 'Payouts', href: '/#payouts' },
-  { label: 'FAQ', href: '/#faq' },
-];
+  { label: 'navWays', href: '/#earn' },
+  { label: 'navHow', href: '/#how-it-works' },
+  { label: 'navPayouts', href: '/#payouts' },
+  { label: 'navFaq', href: '/#faq' },
+] as const;
 
 /** Transparent over the dark hero, solid once the page scrolls. */
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const t = useT(landing);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -34,8 +38,8 @@ export function Navbar() {
       )}
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-6">
-        <Link href="/" className="flex items-center gap-2.5 shrink-0">
+      <nav className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-3 lg:gap-6">
+        <Link href="/" aria-label="Boostly" className="flex items-center gap-2.5 shrink-0">
           <Image
             src="/img/logo/icon.png"
             alt=""
@@ -43,7 +47,7 @@ export function Navbar() {
             height={32}
             className="rounded-lg"
           />
-          <span className="font-rebond-bold text-lg tracking-tight text-white">Boostly</span>
+          <span className="hidden xs:inline font-rebond-bold text-lg tracking-tight text-white">Boostly</span>
         </Link>
 
         <ul className="hidden lg:flex items-center gap-1 ml-4">
@@ -53,30 +57,34 @@ export function Navbar() {
                 href={l.href}
                 className="px-3 py-2 rounded-lg text-sm text-white/65 hover:text-white transition-colors"
               >
-                {l.label}
+                {t(l.label)}
               </a>
             </li>
           ))}
         </ul>
 
         <div className="ml-auto hidden lg:flex items-center gap-2">
+          <LanguageSwitcher variant="compact" className="mr-1 text-white/80" />
           <Link href="/login" className="px-4 py-2 text-sm font-medium text-white/80 hover:text-white">
-            Log in
+            {t('logIn')}
           </Link>
           <Link
             href="/register"
             className="px-4 py-2 rounded-full bg-gold hover:bg-gold-hover text-[#111827] text-sm font-bold transition-colors"
           >
-            Start earning
+            {t('startEarning')}
           </Link>
         </div>
 
-        <Link
-          href="/login"
-          className="lg:hidden ml-auto rounded-full border border-white/15 px-4 py-1.5 text-sm font-semibold text-white"
-        >
-          Log in
-        </Link>
+        <div className="lg:hidden ml-auto flex items-center gap-2">
+          <LanguageSwitcher variant="compact" className="text-white/80" />
+          <Link
+            href="/login"
+            className="shrink-0 whitespace-nowrap rounded-full border border-white/15 px-3 xs:px-4 py-1.5 text-sm font-semibold text-white"
+          >
+            {t('logIn')}
+          </Link>
+        </div>
       </nav>
 
     </header>

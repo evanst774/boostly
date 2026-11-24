@@ -40,6 +40,9 @@ import { useEarnToday } from '@/hooks/useEarnToday';
 import { canGrantGameStorage, gameSandbox } from '@/lib/games/embed-policy';
 import { useSystemCurrency } from '@/hooks/useSystemCurrency';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { earn } from '@/lib/i18n/messages/earn';
 import {
   type Game,
   type GameCategory as SchemaGameCategory,
@@ -73,61 +76,61 @@ const categoryMap: Record<Exclude<UICategory, 'all'>, SchemaGameCategory> = {
 
 const categories: ReadonlyArray<{
   value: UICategory;
-  label: string;
+  label: `gcat_${UICategory}`;
   icon: React.ReactNode;
   color: string;
 }> = [
   {
     value: 'all',
-    label: 'All Games',
+    label: 'gcat_all',
     icon: <Zap size={14} />,
     color: 'from-blue-500 to-purple-500',
   },
   {
     value: 'puzzle',
-    label: 'Puzzle',
+    label: 'gcat_puzzle',
     icon: <Target size={14} />,
     color: 'from-purple-500 to-pink-500',
   },
   {
     value: 'action',
-    label: 'Action',
+    label: 'gcat_action',
     icon: <Flame size={14} />,
     color: 'from-red-500 to-orange-500',
   },
   {
     value: 'casual',
-    label: 'Casual',
+    label: 'gcat_casual',
     icon: <Gem size={14} />,
     color: 'from-emerald-500 to-teal-500',
   },
   {
     value: 'strategy',
-    label: 'Strategy',
+    label: 'gcat_strategy',
     icon: <Crown size={14} />,
     color: 'from-amber-500 to-yellow-500',
   },
   {
     value: 'quiz',
-    label: 'Quiz',
+    label: 'gcat_quiz',
     icon: <Medal size={14} />,
     color: 'from-indigo-500 to-blue-500',
   },
   {
     value: 'racing',
-    label: 'Racing',
+    label: 'gcat_racing',
     icon: <Rocket size={14} />,
     color: 'from-cyan-500 to-blue-500',
   },
   {
     value: 'sports',
-    label: 'Sports',
+    label: 'gcat_sports',
     icon: <Trophy size={14} />,
     color: 'from-green-500 to-emerald-500',
   },
   {
     value: 'adventure',
-    label: 'Adventure',
+    label: 'gcat_adventure',
     icon: <Shield size={14} />,
     color: 'from-violet-500 to-purple-500',
   },
@@ -179,6 +182,7 @@ function formatClock(totalSeconds: number): string {
  */
 function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
   const { formatAmount } = useSystemCurrency();
+  const t = useT(earn);
   const {
     session,
     progress,
@@ -292,7 +296,7 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
         <button
           onClick={result ? onClose : handleFinish}
           className="flex h-9 w-9 items-center justify-center rounded-xl text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-          aria-label="Exit game"
+          aria-label={t('exitGame')}
         >
           <X className="h-5 w-5" />
         </button>
@@ -301,17 +305,20 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
           <p className="truncate text-[13px] font-bold text-white sm:text-sm">{game.name}</p>
           <p className="truncate text-[11px] text-white/55 tabular-nums">
             {result
-              ? 'Session saved'
+              ? t('sessionSaved')
               : progress?.qualified
-                ? `Reward unlocked · ${formatAmount(progress.projectedReward)} · keep playing to earn more`
-                : `${formatClock(verified)} played · ${formatClock(Math.max(minSeconds - verified, 0))} to unlock your reward`}
+                ? t('rewardUnlocked', { amount: formatAmount(progress.projectedReward) })
+                : t('playedToUnlock', {
+                    played: formatClock(verified),
+                    left: formatClock(Math.max(minSeconds - verified, 0)),
+                  })}
           </p>
         </div>
 
         {game.isSponsored && (
           <span className="hidden items-center gap-0.5 rounded-full bg-gradient-to-r from-[#F59E0B] to-[#FBBF24] px-2 py-0.5 text-[9px] font-bold text-[#0F172A] md:flex">
             <Star size={10} className="fill-current" />
-            Sponsored
+            {t('sponsored')}
           </span>
         )}
 
@@ -328,7 +335,7 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
           <button
             onClick={toggleFullscreen}
             className="flex h-9 w-9 items-center justify-center rounded-xl text-white/60 transition-colors hover:bg-white/10 hover:text-white"
-            aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}
+            aria-label={isFullscreen ? t('exitFullScreen') : t('fullScreen')}
           >
             {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
           </button>
@@ -343,7 +350,7 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
               : 'bg-white/10 text-white hover:bg-white/20',
           )}
         >
-          {isCompleting ? 'Saving…' : progress?.qualified ? 'Claim' : 'Finish'}
+          {isCompleting ? t('saving') : progress?.qualified ? t('claim') : t('finish')}
         </button>
 
         {/* Progress towards the reward, as a thin line under the bar */}
@@ -381,14 +388,14 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
           <div className="text-center px-6 max-w-sm">
             <Gamepad2 size={48} className="mx-auto mb-3 text-white/60" />
             <p className="text-white font-semibold mb-1">
-              {session ? 'Couldn\'t save your session' : 'Can\'t start this game'}
+              {session ? t('cantSave') : t('cantStart')}
             </p>
             <p className="text-white/60 text-sm">{error}</p>
             <button
               onClick={onClose}
               className="mt-5 bg-white/10 hover:bg-white/20 text-white font-medium px-6 py-2.5 rounded-full text-sm transition-colors"
             >
-              Back to games
+              {t('backToGames')}
             </button>
           </div>
         )}
@@ -420,19 +427,19 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
               <>
                 <PartyPopper className="w-14 h-14 sm:w-16 sm:h-16 text-[#F59E0B]" />
                 <h2 className="text-2xl font-extrabold text-white">
-                  Nice run!
+                  {t('niceRun')}
                 </h2>
                 <div className="bg-emerald-500/20 border border-emerald-500/30 rounded-2xl px-8 py-4 w-full max-w-xs">
-                  <p className="text-white/60 text-xs">Added to your wallet</p>
+                  <p className="text-white/60 text-xs">{t('addedToWallet')}</p>
                   <p className="text-3xl font-extrabold text-[#22C55E]">
                     {formatAmount(result.rewardEarned)}
                   </p>
                   <p className="text-white/40 text-[10px] mt-1">
-                    New balance {formatAmount(result.newBalance)}
+                    {t('newBalance', { amount: formatAmount(result.newBalance) })}
                   </p>
                 </div>
                 <p className="text-white/50 text-xs">
-                  {formatClock(result.verifiedSeconds)} of verified play
+                  {t('verifiedPlay', { time: formatClock(result.verifiedSeconds) })}
                 </p>
               </>
             ) : (
@@ -443,29 +450,26 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
                   <Ban className="w-14 h-14 sm:w-16 sm:h-16 text-[#EF4444]" />
                 )}
                 <h2 className="text-xl font-extrabold text-white">
-                  {result.reason === 'TOO_SHORT' && 'A bit too short'}
-                  {result.reason === 'CAP_REACHED' && 'Daily limit reached'}
-                  {result.reason === 'PLAN_LIMIT' && "Today's games are used up"}
-                  {result.reason === 'BUDGET_EXHAUSTED' && 'Sponsored rewards used up'}
-                  {result.reason === 'DAILY_MAX' && "Today's earning maximum reached"}
-                  {result.reason === 'FLAGGED' && 'Session not counted'}
-                  {result.reason === 'ALREADY_CLAIMED' && 'Already claimed'}
+                  {result.reason === 'TOO_SHORT' && t('rt_TOO_SHORT')}
+                  {result.reason === 'CAP_REACHED' && t('rt_CAP_REACHED')}
+                  {result.reason === 'PLAN_LIMIT' && t('rt_PLAN_LIMIT')}
+                  {result.reason === 'BUDGET_EXHAUSTED' && t('rt_BUDGET_EXHAUSTED')}
+                  {result.reason === 'DAILY_MAX' && t('rt_DAILY_MAX')}
+                  {result.reason === 'FLAGGED' && t('rt_FLAGGED')}
+                  {result.reason === 'ALREADY_CLAIMED' && t('rt_ALREADY_CLAIMED')}
                 </h2>
                 <p className="text-white/60 text-sm max-w-xs">
                   {result.reason === 'TOO_SHORT' &&
-                    `Play at least ${formatClock(result.minPlaySeconds)} to earn a reward. You played ${formatClock(result.verifiedSeconds)}.`}
-                  {result.reason === 'CAP_REACHED' &&
-                    "You've earned everything available from this game today. Come back tomorrow."}
-                  {result.reason === 'PLAN_LIMIT' &&
-                    "You've reached your plan's rewarded games for today. Come back tomorrow or upgrade for more."}
-                  {result.reason === 'FLAGGED' &&
-                    "We couldn't verify this play session. Try playing again normally."}
-                  {result.reason === 'BUDGET_EXHAUSTED' &&
-                    "This game's sponsored rewards are used up for now. Try another game or come back later."}
-                  {result.reason === 'DAILY_MAX' &&
-                    "You've earned your plan's maximum for today. Come back tomorrow, or upgrade to earn more each day."}
-                  {result.reason === 'ALREADY_CLAIMED' &&
-                    'This session was already added to your wallet.'}
+                    t('rb_TOO_SHORT', {
+                      min: formatClock(result.minPlaySeconds),
+                      played: formatClock(result.verifiedSeconds),
+                    })}
+                  {result.reason === 'CAP_REACHED' && t('rb_CAP_REACHED')}
+                  {result.reason === 'PLAN_LIMIT' && t('rb_PLAN_LIMIT')}
+                  {result.reason === 'FLAGGED' && t('rb_FLAGGED')}
+                  {result.reason === 'BUDGET_EXHAUSTED' && t('rb_BUDGET_EXHAUSTED')}
+                  {result.reason === 'DAILY_MAX' && t('rb_DAILY_MAX')}
+                  {result.reason === 'ALREADY_CLAIMED' && t('rb_ALREADY_CLAIMED')}
                 </p>
               </>
             )}
@@ -476,7 +480,7 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
                 className="bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:shadow-lg hover:shadow-blue-500/30 text-white font-bold px-6 py-2.5 rounded-full transition-all text-sm flex items-center gap-2"
               >
                 <Gift size={16} />
-                Done
+                {t('done')}
               </button>
             </div>
           </motion.div>
@@ -492,6 +496,8 @@ function GameFrame({ game, onClose }: { game: Game; onClose: () => void }) {
 
 export default function GamesPage() {
   const { formatAmount } = useSystemCurrency();
+  const t = useT(earn);
+  const tc = useT(common);
 
   const [selectedCategory, setSelectedCategory] = useState<UICategory>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -556,13 +562,13 @@ export default function GamesPage() {
           <div className="flex items-center gap-1.5 bg-[#F5F3FF] dark:bg-[#8B5CF6]/20 px-3 py-1.5 rounded-full flex-shrink-0">
             <Trophy size={14} className="text-[#8B5CF6] dark:text-[#A78BFA]" />
             <span className="text-xs font-bold text-[#8B5CF6] dark:text-[#A78BFA] whitespace-nowrap">
-              {total} games
+              {t('nGames', { n: total })}
             </span>
           </div>
           {gamesQuota && (
             <div className="flex items-center gap-1.5 bg-[#F0FDF4] dark:bg-[#22C55E]/20 px-3 py-1.5 rounded-full flex-shrink-0">
               <span className="text-xs font-bold text-[#16A34A] dark:text-[#4ADE80] whitespace-nowrap">
-                {gamesQuota.remaining}/{gamesQuota.limit} rewarded left today
+                {t('rewardedLeft', { left: gamesQuota.remaining, limit: gamesQuota.limit })}
               </span>
             </div>
           )}
@@ -577,7 +583,7 @@ export default function GamesPage() {
         />
         <input
           type="search"
-          placeholder="Search games..."
+          placeholder={t('searchGames')}
           className="w-full pl-10 pr-4 py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all text-sm bg-white dark:bg-[#1E293B] text-[#0F172A] dark:text-white placeholder:text-[#94A3B8] dark:placeholder:text-[#64748B]"
           value={searchQuery}
           onChange={handleSearch}
@@ -586,18 +592,18 @@ export default function GamesPage() {
 
       {gamesQuota && gamesQuota.remaining === 0 && (
         <div className="rounded-xl border border-[#FDE68A] bg-[#FFFBEB] dark:bg-[#F59E0B]/10 dark:border-[#F59E0B]/30 p-3 text-sm text-[#92400E] dark:text-[#FBBF24]">
-          You&apos;ve used today&apos;s {gamesQuota.limit} rewarded games. Come back
-          tomorrow, or <a href="/plans" className="font-bold underline">upgrade</a> for more.
+          {t('gamesUsedUp', { limit: gamesQuota.limit })}{' '}
+          <a href="/plans" className="font-bold underline">{t('upgradeLink')}</a> {t('forMore')}
         </div>
       )}
 
       {listError && games.length === 0 && (
         <div className="text-center py-8 bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155]">
           <p className="text-sm text-[#64748B] dark:text-[#94A3B8]">
-            Couldn&apos;t load games. Check your connection.
+            {t('cantLoadGames')}
           </p>
           <button onClick={() => refetch()} className="mt-3 text-sm font-semibold text-[#2563EB]">
-            Try again
+            {tc('retry')}
           </button>
         </div>
       )}
@@ -616,7 +622,7 @@ export default function GamesPage() {
             onClick={() => handleCategoryChange(cat.value)}
           >
             {cat.icon}
-            {cat.label}
+            {t(cat.label)}
           </button>
         ))}
       </div>
@@ -636,25 +642,25 @@ export default function GamesPage() {
           <div className="relative z-10">
             <span className="inline-flex items-center gap-1 bg-[#F59E0B]/20 text-[#FBBF24] text-[10px] font-bold px-3 py-1 rounded-full mb-3">
               <Zap size={14} />
-              FEATURED
+              {t('featured')}
             </span>
             <h2 className="text-xl sm:text-2xl font-extrabold">
               {featured.name}
             </h2>
             <p className="text-white/70 text-xs sm:text-sm mt-1 max-w-md line-clamp-2">
-              {featured.description ?? 'Play to earn rewards'}
+              {featured.description ?? t('playToEarn')}
             </p>
             <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-3">
               <button className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold px-5 sm:px-6 py-2 rounded-full transition-colors text-xs sm:text-sm">
-                Play Now
+                {t('playNow')}
               </button>
               <span className="text-xs sm:text-sm text-white/70 flex items-center gap-1">
                 <Trophy size={16} className="text-[#F59E0B]" />
-                Up to {formatAmount(featured.maxReward)}
+                {t('upTo', { amount: formatAmount(featured.maxReward) })}
               </span>
               <span className="text-xs sm:text-sm text-white/70 flex items-center gap-1">
                 <Clock size={16} className="text-[#60A5FA]" />
-                {featured.minPlayDuration}s to earn
+                {t('secondsToEarn', { n: featured.minPlayDuration })}
               </span>
             </div>
           </div>
@@ -672,10 +678,10 @@ export default function GamesPage() {
         <div className="text-center py-12 bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155]">
           <Gamepad2 size={48} className="mx-auto mb-3 text-[#94A3B8] dark:text-[#64748B]" />
           <p className="text-[#64748B] dark:text-[#94A3B8] font-medium">
-            No games available
+            {t('noGames')}
           </p>
           <p className="text-xs text-[#94A3B8] dark:text-[#64748B] mt-1">
-            Check back later for new games
+            {t('checkBackGames')}
           </p>
         </div>
       ) : (
@@ -714,7 +720,7 @@ export default function GamesPage() {
                 {game.isSponsored && (
                   <div className="absolute top-2 left-2 bg-gradient-to-r from-[#F59E0B] to-[#FBBF24] text-[#0F172A] text-[10px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow-lg z-10">
                     <Star size={8} className="fill-current" />
-                    Sponsored
+                    {t('sponsored')}
                   </div>
                 )}
                 <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -752,10 +758,10 @@ export default function GamesPage() {
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
                 <Loader2 size={16} className="animate-spin" />
-                Loading more…
+                {t('loadingMore')}
               </span>
             ) : (
-              'Load More Games'
+              t('loadMoreGames')
             )}
           </button>
         </div>

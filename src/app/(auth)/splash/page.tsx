@@ -5,9 +5,12 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import { useT } from '@/lib/i18n';
+import { auth } from '@/lib/i18n/messages/auth';
 
 export default function SplashPage() {
   const router = useRouter();
+  const t = useT(auth);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -126,7 +129,7 @@ export default function SplashPage() {
           transition={{ delay: 0.4 }}
           className="text-white/40 text-sm mt-2 font-light tracking-wider"
         >
-          Earn. Play. Grow.
+          {t('splashTagline')}
         </motion.p>
 
         {/* Loading animation */}

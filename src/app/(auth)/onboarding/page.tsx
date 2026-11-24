@@ -1,7 +1,7 @@
 // src/app/(auth)/onboarding/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { REFERRAL_COMMISSION_LABEL } from '@/lib/constants/referrals';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -18,11 +18,21 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { MIN_WITHDRAWAL, PAYOUT_TIME_LABEL } from '@/lib/constants/payouts';
+import { useFormatNumber, useT } from '@/lib/i18n';
+import { auth } from '@/lib/i18n/messages/auth';
+import { common } from '@/lib/i18n/messages/common';
+
+type Vars = Record<string, string | number>;
+type Tr<K extends string> = (key: K, vars?: Vars) => string;
 
 // Copy must match the real rules: per-plan daily tasks, mobile money payouts
 // at 3:00 PM (lib/constants/payouts.ts), and the referral commission on every
 // friend's first plan/badge purchase (modules/referrals/service.ts).
-const STEPS: {
+function buildSteps(
+  t: Tr<keyof typeof auth.en>,
+  tc: Tr<keyof typeof common.en>,
+  fmt: (n: number) => string,
+): {
   title: string;
   description: string;
   icon: LucideIcon;
@@ -34,50 +44,55 @@ const STEPS: {
   subLabels?: string[];
   badges?: { name: string; reward: string; color: string; icon: LucideIcon; bonus: string }[];
   stats?: { value: string; label: string }[];
-}[] = [
+}[] {
+  const time = t('payoutClock', { time: PAYOUT_TIME_LABEL });
+  return [
   {
-    title: 'Welcome to Boostly',
-    description:
-      'Earn real money every day by watching sponsored videos, playing games and answering short surveys. Each finished task adds RWF to your balance.',
+    title: t('ob1Title'),
+    description: t('ob1Body'),
     icon: Lightbulb,
     iconColor: 'text-blue-500',
     bg: 'bg-gradient-to-br from-blue-500/10 via-blue-600/5 to-blue-500/10',
     floatIcons: [Clapperboard, Gamepad2, ClipboardList],
-    labels: ['Sponsored videos', 'Games', 'Surveys'],
-    subLabels: ['Daily tasks', 'Daily tasks', 'Daily tasks'],
+    labels: [t('obVideos'), tc('games'), tc('surveys')],
+    subLabels: [t('obDaily'), t('obDaily'), t('obDaily')],
     color: 'from-blue-500 to-blue-600',
   },
   {
-    title: 'Cash Out to Mobile Money',
-    description: `Request a withdrawal to any MTN or Airtel number. All withdrawals are paid every day at ${PAYOUT_TIME_LABEL}. Free members cash out weekly; paid plans cash out every day.`,
+    title: t('ob2Title'),
+    description: t('ob2Body', { time }),
     icon: Banknote,
     iconColor: 'text-green-500',
     bg: 'bg-gradient-to-br from-green-500/10 via-green-600/5 to-green-500/10',
     stats: [
-      { value: PAYOUT_TIME_LABEL, label: 'Daily payout' },
-      { value: `${MIN_WITHDRAWAL.toLocaleString()} RWF`, label: 'Minimum' },
+      { value: time, label: t('obDailyPayout') },
+      { value: tc('rwf', { amount: fmt(MIN_WITHDRAWAL) }), label: t('obMinimum') },
     ],
     color: 'from-green-500 to-green-600',
   },
   {
-    title: 'Invite Friends & Earn More',
-    description:
-      `Share your referral code. Every time a friend you invited buys a plan or badge, you earn ${REFERRAL_COMMISSION_LABEL} of it.`,
+    title: t('ob3Title'),
+    description: t('ob3Body', { commission: REFERRAL_COMMISSION_LABEL }),
     icon: Rocket,
     iconColor: 'text-purple-500',
     bg: 'bg-gradient-to-br from-purple-500/10 via-purple-600/5 to-purple-500/10',
     stats: [
-      { value: REFERRAL_COMMISSION_LABEL, label: 'Commission' },
-      { value: '∞', label: 'No limit' },
+      { value: REFERRAL_COMMISSION_LABEL, label: t('obCommission') },
+      { value: '∞', label: t('obNoLimit') },
     ],
     color: 'from-purple-500 to-purple-600',
   },
-];
+  ];
+}
 
 export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [windowHeight, setWindowHeight] = useState(0);
   const router = useRouter();
+  const t = useT(auth);
+  const tc = useT(common);
+  const fmt = useFormatNumber();
+  const STEPS = useMemo(() => buildSteps(t, tc, fmt), [t, tc, fmt]);
 
   useEffect(() => {
     setWindowHeight(window.innerHeight);
@@ -343,7 +358,7 @@ export default function OnboardingPage() {
             className="w-full bg-gold hover:bg-gold-hover text-navy font-bold py-3.5 sm:py-4 rounded-xl sm:rounded-2xl flex items-center justify-center gap-2 sm:gap-2.5 transition-all shadow-lg shadow-gold/20 relative overflow-hidden group text-sm sm:text-base"
           >
             <span className="relative z-10">
-              {step === STEPS.length - 1 ? "Get Started — It's Free" : 'Next'}
+              {step === STEPS.length - 1 ? t('obGetStarted') : t('next')}
             </span>
             <motion.div
               animate={{ x: [0, 5, 0] }}
@@ -371,7 +386,7 @@ export default function OnboardingPage() {
               className="w-full text-text-muted text-xs sm:text-sm font-medium hover:text-navy transition-colors py-1.5 sm:py-2"
             >
               <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 inline mr-1 sm:mr-1.5" />
-              Back
+              {tc('back')}
             </motion.button>
           )}
 
@@ -383,7 +398,7 @@ export default function OnboardingPage() {
               onClick={() => router.push('/login')}
               className="w-full text-text-muted text-xs sm:text-sm font-medium hover:text-navy transition-colors py-1.5 sm:py-2"
             >
-              I already have an account
+              {t('obHaveAccount')}
             </motion.button>
           )}
         </div>

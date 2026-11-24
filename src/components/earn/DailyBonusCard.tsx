@@ -4,8 +4,9 @@
 import { useState } from 'react';
 import { CheckCircle2, Gift, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const rwf = (n: number) => `${Math.round(n).toLocaleString('en-US')} RWF`;
+import { useT } from '@/lib/i18n';
+import { dashboard } from '@/lib/i18n/messages/dashboard';
+import { useRwf } from '@/lib/i18n/messages/wallet';
 
 /** Claim today's check-in bonus. Streak milestones pay extra on day 7/14/30. */
 export function DailyBonusCard({
@@ -18,6 +19,8 @@ export function DailyBonusCard({
   const [claiming, setClaiming] = useState(false);
   const [claimed, setClaimed] = useState(bonus.claimed);
   const [error, setError] = useState<string | null>(null);
+  const t = useT(dashboard);
+  const rwf = useRwf();
 
   const claim = async () => {
     setClaiming(true);
@@ -26,15 +29,15 @@ export function DailyBonusCard({
       const res = await fetch('/api/daily-bonus', { method: 'POST' });
       const json = await res.json().catch(() => ({}));
       if (res.status === 409 && json.code === 'BUDGET_EXHAUSTED') {
-        setError(json.error || "Today's rewards are used up. Try again tomorrow.");
+        setError(json.error || t('bonusUsedUp'));
       } else if (res.ok || res.status === 409) {
         setClaimed(true);
         onClaimed();
       } else {
-        setError(json.error || 'Could not claim your bonus. Try again.');
+        setError(json.error || t('bonusFailed'));
       }
     } catch {
-      setError('Connection problem. Try again.');
+      setError(t('connection'));
     } finally {
       setClaiming(false);
     }
@@ -61,14 +64,14 @@ export function DailyBonusCard({
       </span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-[#0F172A] dark:text-white">
-          {claimed ? 'Daily bonus claimed' : `Daily bonus: ${rwf(bonus.amount)}`}
+          {claimed ? t('bonusClaimed') : t('bonusAmount', { amount: rwf(bonus.amount) })}
         </p>
         <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
           {error
             ? error
             : claimed
-              ? 'Come back tomorrow to keep your streak going.'
-              : `Day ${bonus.streakDay} of your streak. Extra bonus on days 7, 14 and 30.`}
+              ? t('bonusComeBack')
+              : t('bonusDay', { day: bonus.streakDay })}
         </p>
       </div>
       {!claimed && (
@@ -79,7 +82,7 @@ export function DailyBonusCard({
           className="shrink-0 px-4 py-2 rounded-xl bg-[#F59E0B] hover:bg-[#D97706] text-white text-sm font-bold disabled:opacity-60 inline-flex items-center gap-1.5"
         >
           {claiming && <Loader2 size={14} className="animate-spin" />}
-          Claim
+          {t('claim')}
         </button>
       )}
     </section>

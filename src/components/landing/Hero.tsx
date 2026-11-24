@@ -1,4 +1,6 @@
 // src/components/landing/Hero.tsx
+'use client';
+
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -11,33 +13,42 @@ import {
 import { PayoutCountdown } from '@/components/earn/PayoutCountdown';
 import { MIN_WITHDRAWAL, PAYOUT_TIME_LABEL } from '@/lib/constants/payouts';
 import type { LandingData } from '@/lib/landing/data';
-
-const rwf = (n: number) => `${Math.round(n).toLocaleString('en-US')} RWF`;
+import { useFormatNumber, useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { landing } from '@/lib/i18n/messages/landing';
 
 /**
  * Dark, cinematic opening. The card on the right uses real reward amounts
  * from live content (never invented earnings) and a live payout countdown.
  */
 export function Hero({ data }: { data: LandingData }) {
+  const t = useT(landing);
+  const tc = useT(common);
+  const fmt = useFormatNumber();
+  const rwf = (n: number) => tc('rwf', { amount: fmt(Math.round(n)) });
+  const time = t('payoutClock', { time: PAYOUT_TIME_LABEL });
   const sample = [
     {
       icon: PlayCircle,
-      label: data.videos[0]?.title ?? 'Watch a sponsored video',
-      kind: 'Video',
+      label: data.videos[0]?.title ?? t('sampleVideo'),
+      id: 'video',
+      kind: t('kindVideo'),
       reward: data.videos[0]?.reward,
       done: true,
     },
     {
       icon: Gamepad2,
-      label: data.games[0]?.name ?? 'Play a quick game',
-      kind: 'Game',
+      label: data.games[0]?.name ?? t('sampleGame'),
+      id: 'game',
+      kind: t('kindGame'),
       reward: data.games[0]?.reward,
       done: true,
     },
     {
       icon: ClipboardCheck,
-      label: data.surveys[0]?.title ?? 'Answer a short survey',
-      kind: 'Survey',
+      label: data.surveys[0]?.title ?? t('sampleSurvey'),
+      id: 'survey',
+      kind: t('kindSurvey'),
       reward: data.surveys[0]?.reward,
       done: false,
     },
@@ -59,18 +70,16 @@ export function Hero({ data }: { data: LandingData }) {
         <div>
           <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-white/70">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            Free to join · Paid to MTN MoMo &amp; Airtel Money
+            {t('heroPill')}
           </p>
 
           <h1 className="mt-6 font-rebond-bold text-[2.6rem] leading-[1.02] sm:text-6xl lg:text-7xl tracking-[-0.02em] text-white">
-            Watch. Play. Answer.
-            <span className="block text-gold">Get paid every day.</span>
+            {t('heroTitle1')}
+            <span className="block text-gold">{t('heroTitle2')}</span>
           </h1>
 
           <p className="mt-6 max-w-xl text-base sm:text-lg leading-relaxed text-white/65">
-            Boostly pays you in RWF for sponsored videos, quick games and short
-            surveys. Cash out to your mobile money. Every withdrawal is sent at{' '}
-            {PAYOUT_TIME_LABEL}.
+            {t('heroBody', { time })}
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
@@ -78,21 +87,21 @@ export function Hero({ data }: { data: LandingData }) {
               href="/register"
               className="inline-flex items-center justify-center gap-2 rounded-full bg-gold hover:bg-gold-hover px-7 py-3.5 text-[15px] font-bold text-[#111827] transition-colors"
             >
-              Start earning free <ArrowRight className="h-4 w-4" />
+              {t('startEarningFree')} <ArrowRight className="h-4 w-4" />
             </Link>
             <a
               href="#how-it-works"
               className="inline-flex items-center justify-center rounded-full border border-white/15 px-7 py-3.5 text-[15px] font-semibold text-white hover:bg-white/[0.06] transition-colors"
             >
-              See how it works
+              {t('seeHow')}
             </a>
           </div>
 
           <dl className="mt-10 grid grid-cols-3 max-w-lg divide-x divide-white/10 border-y border-white/10">
             {[
-              { k: 'Payout time', v: PAYOUT_TIME_LABEL },
-              { k: 'Minimum', v: rwf(MIN_WITHDRAWAL) },
-              { k: 'Fees', v: 'None' },
+              { k: t('payoutTime'), v: time },
+              { k: t('minimum'), v: rwf(MIN_WITHDRAWAL) },
+              { k: t('fees'), v: t('feesNone') },
             ].map((s) => (
               <div key={s.k} className="py-4 px-3 first:pl-0">
                 <dt className="text-[11px] uppercase tracking-wider text-white/40">{s.k}</dt>
@@ -107,14 +116,14 @@ export function Hero({ data }: { data: LandingData }) {
           <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-2 shadow-[0_40px_120px_-40px_rgba(37,99,235,0.6)]">
             <div className="rounded-[22px] bg-white p-5">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Today</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{t('today')}</p>
                 <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                  2 of 3 done
+                  {t('doneOf', { done: 2, total: 3 })}
                 </span>
               </div>
               <ul className="mt-4 space-y-2.5">
-                {sample.map(({ icon: Icon, label, kind, reward, done }) => (
-                  <li key={kind} className="flex items-center gap-3 rounded-2xl border border-slate-100 p-3">
+                {sample.map(({ icon: Icon, id, label, kind, reward, done }) => (
+                  <li key={id} className="flex items-center gap-3 rounded-2xl border border-slate-100 p-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white">
                       <Icon className="h-5 w-5" />
                     </span>
@@ -136,8 +145,8 @@ export function Hero({ data }: { data: LandingData }) {
                     <Smartphone className="h-5 w-5" />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold">Withdraw to mobile money</p>
-                    <p className="text-xs text-white/55">MTN MoMo or Airtel Money</p>
+                    <p className="text-sm font-semibold">{t('withdrawToMomo')}</p>
+                    <p className="text-xs text-white/55">{t('momoOrAirtel')}</p>
                   </div>
                 </div>
                 <PayoutCountdown tone="dark" className="mt-3" />

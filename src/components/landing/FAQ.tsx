@@ -5,41 +5,19 @@ import { useState } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { ChevronDown, HelpCircle } from 'lucide-react';
 import { MIN_WITHDRAWAL, PAYOUT_TIME_LABEL } from '@/lib/constants/payouts';
+import { useFormatNumber, useT } from '@/lib/i18n';
+import { landing } from '@/lib/i18n/messages/landing';
 
 const FAQS = [
-  {
-    q: 'Is Boostly free to join?',
-    a: 'Yes. Creating an account is free, and you can start completing tasks and earning right away.',
-  },
-  {
-    q: 'How do I earn money?',
-    a: 'Complete your daily tasks: watch sponsored videos, play games and answer surveys. Each finished task adds money to your Boostly balance.',
-  },
-  {
-    q: 'How do I withdraw?',
-    a: 'Open your wallet, enter the amount and the MTN MoMo or Airtel Money number you want to be paid on, then submit your request.',
-  },
-  {
-    q: 'When do I receive my money?',
-    a: `All withdrawals are processed every day at ${PAYOUT_TIME_LABEL} (Kigali time). Requests made before ${PAYOUT_TIME_LABEL} are paid the same day; later requests are paid the next day.`,
-  },
-  {
-    q: 'Is there a minimum withdrawal?',
-    a: `Yes, the minimum withdrawal is ${MIN_WITHDRAWAL.toLocaleString()} RWF. There are no withdrawal fees.`,
-  },
-  {
-    q: 'How many tasks can I do each day?',
-    a: 'Every account gets a set of tasks each day. New tasks become available daily, so come back every day to keep earning.',
-  },
-  {
-    q: 'Is my personal data safe?',
-    a: 'Yes. Your data is encrypted and we never sell your personal information to third parties.',
-  },
-  {
-    q: 'Can I use Boostly on my phone?',
-    a: 'Yes. Boostly works in any browser on your phone or computer.',
-  },
-];
+  { q: 'q1', a: 'a1' },
+  { q: 'q2', a: 'a2' },
+  { q: 'q3', a: 'a3' },
+  { q: 'q4', a: 'a4' },
+  { q: 'q5', a: 'a5' },
+  { q: 'q6', a: 'a6' },
+  { q: 'q7', a: 'a7' },
+  { q: 'q8', a: 'a8' },
+] as const;
 
 // Animation variants
 const sectionVariants: Variants = {
@@ -100,6 +78,9 @@ const iconVariants: Variants = {
 
 export function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const t = useT(landing);
+  const fmt = useFormatNumber();
+  const vars = { time: t('payoutClock', { time: PAYOUT_TIME_LABEL }), amount: fmt(MIN_WITHDRAWAL) };
 
   return (
     <motion.section
@@ -122,7 +103,7 @@ export function FAQ() {
           >
             <HelpCircle className="w-3.5 h-3.5 text-primary-light" />
             <span className="text-[10px] font-bold text-primary-light tracking-wider uppercase">
-              Got Questions?
+              {t('faqBadge')}
             </span>
           </motion.div>
 
@@ -133,7 +114,7 @@ export function FAQ() {
             transition={{ delay: 0.2, duration: 0.4 }}
             className="text-3xl md:text-4xl font-black text-white mb-3"
           >
-            Frequently Asked <span className="text-gold">Questions</span>
+            {t('faqTitle1')} <span className="text-gold">{t('faqTitle2')}</span>
           </motion.h2>
 
           <motion.p
@@ -143,13 +124,12 @@ export function FAQ() {
             transition={{ delay: 0.3, duration: 0.4 }}
             className="text-white/40 text-sm max-w-md mx-auto"
           >
-            Everything you need to know about earning and getting paid.
-            Can&apos;t find what you&apos;re looking for?
+            {t('faqIntro')}
             <a
               href="/support"
               className="text-gold hover:text-gold-hover ml-1 transition-colors"
             >
-              Contact us →
+              {t('contactUs')}
             </a>
           </motion.p>
 
@@ -186,7 +166,7 @@ export function FAQ() {
                         isOpen ? 'text-gold' : 'text-white'
                       }`}
                     >
-                      {faq.q}
+                      {t(faq.q)}
                     </span>
                   </div>
                   <motion.div
@@ -212,7 +192,7 @@ export function FAQ() {
                       className="overflow-hidden"
                     >
                       <p className="px-4 md:px-5 pb-4 md:pb-5 text-sm text-white/60 leading-relaxed">
-                        {faq.a}
+                        {t(faq.a, vars)}
                       </p>
                     </motion.div>
                   )}
@@ -231,12 +211,12 @@ export function FAQ() {
           className="mt-10 text-center"
         >
           <p className="text-white/30 text-sm">
-            Still have questions?{' '}
+            {t('stillQuestions')}{' '}
             <a
               href="/support"
               className="text-gold hover:text-gold-hover font-medium transition-colors"
             >
-              Get in touch with our team
+              {t('getInTouch')}
             </a>
           </p>
         </motion.div>

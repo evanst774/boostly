@@ -1,9 +1,12 @@
 // src/components/landing/Payouts.tsx
+'use client';
+
 import { CheckCircle2, Smartphone } from 'lucide-react';
 import { PAYOUT_TIME_LABEL, PAYOUT_TIMEZONE } from '@/lib/constants/payouts';
 import type { LandingStats, RecentPayout } from '@/lib/landing/data';
-
-const rwf = (n: number) => `${Math.round(n).toLocaleString('en-US')} RWF`;
+import { LOCALE_TAGS, useFormatNumber, useLocale, useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { landing } from '@/lib/i18n/messages/landing';
 
 function compact(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
@@ -22,24 +25,29 @@ export function Payouts({
   stats: LandingStats;
   payouts: RecentPayout[];
 }) {
+  const t = useT(landing);
+  const tc = useT(common);
+  const fmt = useFormatNumber();
+  const { locale } = useLocale();
+  const rwf = (n: number) => tc('rwf', { amount: fmt(Math.round(n)) });
+  const time = t('payoutClock', { time: PAYOUT_TIME_LABEL });
   const figures = [
-    { k: 'Members', v: compact(stats.members), show: stats.members > 0 },
-    { k: 'Tasks completed', v: compact(stats.tasksCompleted), show: stats.tasksCompleted > 0 },
-    { k: 'Rewards earned', v: `${compact(stats.rewardsPaid)} RWF`, show: stats.rewardsPaid > 0 },
-    { k: 'Paid to mobile money', v: `${compact(stats.withdrawn)} RWF`, show: stats.withdrawn > 0 },
+    { k: t('figMembers'), v: compact(stats.members), show: stats.members > 0 },
+    { k: t('figTasks'), v: compact(stats.tasksCompleted), show: stats.tasksCompleted > 0 },
+    { k: t('figRewards'), v: tc('rwf', { amount: compact(stats.rewardsPaid) }), show: stats.rewardsPaid > 0 },
+    { k: t('figPaid'), v: tc('rwf', { amount: compact(stats.withdrawn) }), show: stats.withdrawn > 0 },
   ].filter((f) => f.show);
 
   return (
     <section id="payouts" className="bg-slate-50 py-20 sm:py-28 scroll-mt-16 border-t border-slate-200/70">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-12 lg:gap-16 items-start">
         <div>
-          <p className="text-sm font-semibold text-primary">Payouts</p>
+          <p className="text-sm font-semibold text-primary">{t('navPayouts')}</p>
           <h2 className="mt-2 font-rebond-bold text-3xl sm:text-5xl tracking-[-0.02em] text-slate-900">
-            Real people, paid every day.
+            {t('payTitle')}
           </h2>
           <p className="mt-4 text-lg text-slate-600">
-            All withdrawal requests are paid together at {PAYOUT_TIME_LABEL},
-            Kigali time, straight to the member&apos;s mobile money number.
+            {t('payBody', { time })}
           </p>
 
           {figures.length > 0 && (
@@ -58,18 +66,18 @@ export function Payouts({
 
         <div className="rounded-3xl border border-slate-200 bg-white p-2 shadow-[0_30px_80px_-40px_rgba(15,23,42,0.35)]">
           <div className="flex items-center justify-between px-4 pt-3 pb-2">
-            <p className="text-sm font-semibold text-slate-900">Recent payouts</p>
+            <p className="text-sm font-semibold text-slate-900">{t('recentPayouts')}</p>
             <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Mobile money
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t('mobileMoney')}
             </span>
           </div>
           {payouts.length === 0 ? (
             <div className="m-2 rounded-2xl bg-slate-50 p-6 text-center">
               <Smartphone className="mx-auto h-6 w-6 text-slate-400" />
               <p className="mt-2 text-sm font-medium text-slate-700">
-                The next payout run is today at {PAYOUT_TIME_LABEL}.
+                {t('nextRun', { time })}
               </p>
-              <p className="text-xs text-slate-500">Completed payouts appear here.</p>
+              <p className="text-xs text-slate-500">{t('completedAppear')}</p>
             </div>
           ) : (
             <ul className="divide-y divide-slate-100">
@@ -81,7 +89,7 @@ export function Payouts({
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-slate-900">{p.name}</p>
                     <p className="text-xs text-slate-500">
-                      {new Date(p.at).toLocaleString('en-GB', {
+                      {new Date(p.at).toLocaleString(LOCALE_TAGS[locale], {
                         day: 'numeric',
                         month: 'short',
                         hour: '2-digit',

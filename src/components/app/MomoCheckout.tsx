@@ -12,8 +12,9 @@ import {
   normalizeRwandaPhone,
 } from '@/lib/constants/payouts';
 import { cn } from '@/lib/utils';
-
-const rwf = (n: number) => `${Math.round(n).toLocaleString('en-US')} RWF`;
+import { useT } from '@/lib/i18n';
+import { plans as plansMsg } from '@/lib/i18n/messages/plans';
+import { useRwf } from '@/lib/i18n/messages/wallet';
 
 interface MomoDetails {
   mtnNumber: string | null;
@@ -27,6 +28,7 @@ const input =
 
 function PayTo({ label, number, name }: { label: string; number: string; name: string | null }) {
   const [copied, setCopied] = useState(false);
+  const t = useT(plansMsg);
   const local = formatRwandaPhone(number);
   const copy = async () => {
     try {
@@ -45,14 +47,14 @@ function PayTo({ label, number, name }: { label: string; number: string; name: s
       <div className="min-w-0 flex-1">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748B]">{label}</p>
         <p className="text-base font-bold tabular-nums text-[#0F172A] dark:text-white select-all">{local}</p>
-        {name && <p className="text-xs text-[#64748B] dark:text-[#94A3B8] truncate">Name: {name}</p>}
+        {name && <p className="text-xs text-[#64748B] dark:text-[#94A3B8] truncate">{t('momoName', { name })}</p>}
       </div>
       <button
         type="button"
         onClick={copy}
         className="shrink-0 rounded-lg border border-[#E2E8F0] dark:border-[#334155] px-2.5 py-1.5 text-xs font-semibold text-[#0F172A] dark:text-white"
       >
-        {copied ? 'Copied' : <span className="inline-flex items-center gap-1"><Copy size={12} /> Copy</span>}
+        {copied ? t('copied') : <span className="inline-flex items-center gap-1"><Copy size={12} /> {t('copy')}</span>}
       </button>
     </div>
   );
@@ -79,6 +81,8 @@ export function MomoCheckout({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const t = useT(plansMsg);
+  const rwf = useRwf();
 
   useEffect(() => {
     fetch('/api/payments/momo', { cache: 'no-store' })
@@ -110,11 +114,11 @@ export function MomoCheckout({
       form.set('proof', file);
       const res = await fetch('/api/plan-payments', { method: 'POST', body: form });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || 'Could not submit your payment.');
+      if (!res.ok) throw new Error(json.error || t('submitPaymentFailed'));
       setDone(true);
       onSubmitted();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not submit your payment.');
+      setError(e instanceof Error ? e.message : t('submitPaymentFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -124,10 +128,9 @@ export function MomoCheckout({
     return (
       <div className="mt-4 rounded-xl bg-[#F0FDF4] dark:bg-[#22C55E]/10 p-5 text-center">
         <CheckCircle2 size={32} className="mx-auto text-[#16A34A]" />
-        <p className="mt-2 font-bold text-[#0F172A] dark:text-white">Payment submitted</p>
+        <p className="mt-2 font-bold text-[#0F172A] dark:text-white">{t('paymentSubmitted')}</p>
         <p className="mt-1 text-sm text-[#475569] dark:text-[#CBD5E1]">
-          We&apos;re checking your {rwf(amount)} payment. {planName} activates as soon as it&apos;s
-          confirmed, and you&apos;ll get a notification.
+          {t('paymentSubmittedBody', { amount: rwf(amount), plan: planName })}
         </p>
       </div>
     );
@@ -136,7 +139,7 @@ export function MomoCheckout({
   if (loadError || (details && !details.configured)) {
     return (
       <p className="mt-4 rounded-xl bg-[#FFFBEB] dark:bg-[#F59E0B]/10 p-4 text-sm text-[#92400E] dark:text-[#FBBF24]">
-        Mobile money payments aren&apos;t available yet. Please try again later.
+        {t('momoUnavailable')}
       </p>
     );
   }
@@ -152,22 +155,22 @@ export function MomoCheckout({
     <div className="mt-4 space-y-4">
       <div>
         <p className="text-sm font-bold text-[#0F172A] dark:text-white">
-          1. Send exactly {rwf(amount)} to:
+          {t('step1', { amount: rwf(amount) })}
         </p>
         <div className="mt-2 space-y-2">
           {details.mtnNumber && <PayTo label="MTN MoMo" number={details.mtnNumber} name={details.accountName} />}
           {details.airtelNumber && <PayTo label="Airtel Money" number={details.airtelNumber} name={details.accountName} />}
         </div>
         <p className="mt-2 text-xs text-[#64748B] dark:text-[#94A3B8]">
-          Check that the name shown on your phone matches before you confirm.
+          {t('checkName')}
         </p>
       </div>
 
       <div className="space-y-3">
-        <p className="text-sm font-bold text-[#0F172A] dark:text-white">2. Tell us about your payment</p>
+        <p className="text-sm font-bold text-[#0F172A] dark:text-white">{t('step2')}</p>
         <div>
           <label htmlFor="payer" className="text-xs font-semibold text-[#475569] dark:text-[#CBD5E1]">
-            Number you paid from
+            {t('paidFrom')}
           </label>
           <input
             id="payer"
@@ -180,25 +183,25 @@ export function MomoCheckout({
             className={cn(input, 'mt-1')}
           />
           {payerPhone && !phoneOk && (
-            <p className="mt-1 text-xs text-[#DC2626]">Enter an MTN (078/079) or Airtel (072/073) number.</p>
+            <p className="mt-1 text-xs text-[#DC2626]">{t('phoneInvalid')}</p>
           )}
           {provider && <p className="mt-1 text-xs text-[#64748B]">{provider === 'MTN' ? 'MTN MoMo' : 'Airtel Money'}</p>}
         </div>
         <div>
           <label htmlFor="txref" className="text-xs font-semibold text-[#475569] dark:text-[#CBD5E1]">
-            Transaction ID (from the confirmation SMS)
+            {t('txIdLabel')}
           </label>
           <input
             id="txref"
             autoCapitalize="characters"
-            placeholder="e.g. 12345678901"
+            placeholder={t('txIdPlaceholder')}
             value={txRef}
             onChange={(e) => setTxRef(e.target.value)}
             className={cn(input, 'mt-1')}
           />
         </div>
         <div>
-          <span className="text-xs font-semibold text-[#475569] dark:text-[#CBD5E1]">Screenshot of the confirmation</span>
+          <span className="text-xs font-semibold text-[#475569] dark:text-[#CBD5E1]">{t('screenshotLabel')}</span>
           <label
             className={cn(
               'mt-1 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed p-3',
@@ -215,9 +218,9 @@ export function MomoCheckout({
             )}
             <span className="min-w-0 flex-1 text-sm">
               <span className="block font-semibold text-[#0F172A] dark:text-white truncate">
-                {file ? file.name : 'Add screenshot'}
+                {file ? file.name : t('addScreenshot')}
               </span>
-              <span className="block text-xs text-[#64748B]">JPG, PNG, WebP or PDF, up to 5 MB</span>
+              <span className="block text-xs text-[#64748B]">{t('fileHint')}</span>
             </span>
             <input
               type="file"
@@ -239,10 +242,10 @@ export function MomoCheckout({
         disabled={!ready}
         className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] py-3 text-sm font-bold text-white hover:bg-[#1D4ED8] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {submitting ? <><Loader2 size={16} className="animate-spin" /> Submitting…</> : 'Submit payment for review'}
+        {submitting ? <><Loader2 size={16} className="animate-spin" /> {t('submitting')}</> : t('submitForReview')}
       </button>
       <p className="text-center text-xs text-[#64748B] dark:text-[#94A3B8]">
-        An admin checks the payment and activates your plan. Wrong or reused transaction IDs are rejected.
+        {t('reviewNote')}
       </p>
     </div>
   );

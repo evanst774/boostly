@@ -18,7 +18,10 @@ import {
   ChartColumn,
 } from 'lucide-react';
 import { useEarningsStats } from '@/hooks/useEarningsStats';
-import { cn, formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency as formatMoney } from '@/lib/utils';
+import { LOCALE_TAGS, useLocale, useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { wallet } from '@/lib/i18n/messages/wallet';
 
 type Period = 'week' | 'month' | 'year' | 'all';
 
@@ -37,13 +40,21 @@ export default function EarningsStatsPage() {
   const router = useRouter();
   const [period, setPeriod] = useState<Period>('month');
   const { data, isLoading } = useEarningsStats(period);
+  const t = useT(wallet);
+  const tc = useT(common);
+  const { locale } = useLocale();
+  const formatCurrency = (n: number) => formatMoney(n, 'RWF', { locale: LOCALE_TAGS[locale] });
+  const typeLabel = (type: string) => {
+    const key = `type_${type}` as const;
+    return key in wallet.en ? t(key as keyof typeof wallet.en) : type || t('type_other');
+  };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-pulse flex flex-col items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-[#2563EB]/20 border-4 border-[#2563EB] border-t-transparent animate-spin" />
-          <p className="text-[#6B7280]">Loading earnings data...</p>
+          <p className="text-[#6B7280]">{t('loadingEarnings')}</p>
         </div>
       </div>
     );
@@ -66,13 +77,14 @@ export default function EarningsStatsPage() {
         <button
           className="w-10 h-10 rounded-xl border border-[#F3F4F6] flex items-center justify-center hover:border-[#2563EB] transition-colors"
           onClick={() => router.back()}
+          aria-label={tc('back')}
         >
           <ArrowLeft size={18} />
         </button>
         <div>
-          <h1 className="text-xl font-bold">Earnings Stats</h1>
+          <h1 className="text-xl font-bold">{t('earningsTitle')}</h1>
           <p className="text-sm text-[#6B7280]">
-            Track your earnings performance
+            {t('earningsSubtitle')}
           </p>
         </div>
       </div>
@@ -85,12 +97,12 @@ export default function EarningsStatsPage() {
         <div className="relative z-10">
           <p className="text-sm text-white/75">
             {period === 'week'
-              ? 'This Week'
+              ? t('thisWeek')
               : period === 'month'
-                ? 'This Month'
+                ? t('thisMonth')
                 : period === 'year'
-                  ? 'This Year'
-                  : 'All Time'}
+                  ? t('thisYear')
+                  : t('allTime')}
           </p>
           <p className="text-4xl font-extrabold tracking-tight mt-1">
             {formatCurrency(total)}
@@ -103,8 +115,11 @@ export default function EarningsStatsPage() {
                 : 'bg-red-500/30 text-red-300',
             )}
           >
-            {change >= 0 ? '↑' : '↓'} {Math.abs(change).toFixed(1)}% vs last{' '}
-            {period}
+            {change >= 0 ? '↑' : '↓'}{' '}
+            {t(
+              period === 'week' ? 'vsWeek' : period === 'month' ? 'vsMonth' : period === 'year' ? 'vsYear' : 'vsAll',
+              { pct: Math.abs(change).toFixed(1) },
+            )}
           </span>
         </div>
       </div>
@@ -123,12 +138,12 @@ export default function EarningsStatsPage() {
             onClick={() => setPeriod(p)}
           >
             {p === 'week'
-              ? 'Week'
+              ? t('periodWeek')
               : p === 'month'
-                ? 'Month'
+                ? t('periodMonth')
                 : p === 'year'
-                  ? 'Year'
-                  : 'All'}
+                  ? t('periodYear')
+                  : t('all')}
           </button>
         ))}
       </div>
@@ -136,21 +151,21 @@ export default function EarningsStatsPage() {
       {/* Chart */}
       <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold">Earnings Overview</h3>
+          <h3 className="text-sm font-bold">{t('overview')}</h3>
           <span className="text-xs text-[#6B7280]">
             {period === 'week'
-              ? 'Last 7 days'
+              ? t('last7')
               : period === 'month'
-                ? 'Last 30 days'
+                ? t('last30')
                 : period === 'year'
-                  ? 'Last 12 months'
-                  : 'All time'}
+                  ? t('last12m')
+                  : t('allTime')}
           </span>
         </div>
         <div className="flex items-end gap-2 h-48">
           {chartData.length === 0 ? (
             <p className="text-sm text-[#6B7280] text-center w-full">
-              No data available
+              {t('noData')}
             </p>
           ) : (
             chartData.map((item: EarningsChartPoint, index: number) => {
@@ -191,11 +206,11 @@ export default function EarningsStatsPage() {
       {/* Breakdown */}
       <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-[#F3F4F6]">
-          <h3 className="text-sm font-bold">Earnings Breakdown</h3>
+          <h3 className="text-sm font-bold">{t('breakdown')}</h3>
         </div>
         {breakdown.length === 0 ? (
           <div className="text-center py-6">
-            <p className="text-sm text-[#6B7280]">No earnings data available</p>
+            <p className="text-sm text-[#6B7280]">{t('noEarningsData')}</p>
           </div>
         ) : (
           breakdown.map((item: EarningsBreakdownItem, index: number) => {
@@ -232,7 +247,7 @@ export default function EarningsStatsPage() {
                   {icons[item.type as keyof typeof icons] || <ChartColumn size={18} />}
                 </span>
                 <span className="flex-1 text-sm font-medium capitalize">
-                  {item.type || 'Other'}
+                  {typeLabel(item.type)}
                 </span>
                 <div className="w-24 h-2 bg-[#F8FAFC] rounded-full overflow-hidden">
                   <div
@@ -263,7 +278,7 @@ export default function EarningsStatsPage() {
               <Trophy size={18} className="text-[#2563EB]" />
             </div>
             <div>
-              <p className="text-xs text-[#6B7280]">Best Day</p>
+              <p className="text-xs text-[#6B7280]">{t('bestDay')}</p>
               <p className="text-lg font-extrabold">
                 {formatCurrency(bestDay?.amount || 0)}
               </p>
@@ -277,9 +292,9 @@ export default function EarningsStatsPage() {
               <Flame size={18} className="text-[#22C55E]" />
             </div>
             <div>
-              <p className="text-xs text-[#6B7280]">Current Streak</p>
-              <p className="text-lg font-extrabold">{streak} days</p>
-              <p className="text-xs text-[#6B7280]">Keep going!</p>
+              <p className="text-xs text-[#6B7280]">{t('currentStreak')}</p>
+              <p className="text-lg font-extrabold">{t('nDays', { n: streak })}</p>
+              <p className="text-xs text-[#6B7280]">{t('keepGoing')}</p>
             </div>
           </div>
         </div>
@@ -289,11 +304,11 @@ export default function EarningsStatsPage() {
               <Star size={18} className="text-[#F59E0B]" />
             </div>
             <div>
-              <p className="text-xs text-[#6B7280]">Avg. Daily</p>
+              <p className="text-xs text-[#6B7280]">{t('avgDaily')}</p>
               <p className="text-lg font-extrabold">
                 {formatCurrency(averageDaily)}
               </p>
-              <p className="text-xs text-[#6B7280]">per day</p>
+              <p className="text-xs text-[#6B7280]">{t('perDay')}</p>
             </div>
           </div>
         </div>
@@ -303,11 +318,11 @@ export default function EarningsStatsPage() {
               <DollarSign size={18} className="text-[#8B5CF6]" />
             </div>
             <div>
-              <p className="text-xs text-[#6B7280]">Highest</p>
+              <p className="text-xs text-[#6B7280]">{t('highest')}</p>
               <p className="text-lg font-extrabold">
                 {formatCurrency(highest)}
               </p>
-              <p className="text-xs text-[#6B7280]">single reward</p>
+              <p className="text-xs text-[#6B7280]">{t('singleReward')}</p>
             </div>
           </div>
         </div>

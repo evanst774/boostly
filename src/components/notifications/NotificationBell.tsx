@@ -7,12 +7,15 @@ import { Bell, BellDot } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
 import { NotificationDropdown } from './NotificationDropdown';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n';
+import { notifications as notificationsMsg } from '@/lib/i18n/messages/notifications';
 
 interface NotificationBellProps {
   className?: string;
 }
 
 export function NotificationBell({ className }: NotificationBellProps) {
+  const t = useT(notificationsMsg);
   const [isOpen, setIsOpen] = useState(false);
   const { unreadCount, notifications, markAsRead, markAllAsRead } =
     useNotifications();
@@ -52,7 +55,7 @@ export function NotificationBell({ className }: NotificationBellProps) {
           'relative w-9 h-9 rounded-xl border border-[#F3F4F6] flex items-center justify-center hover:border-[#2563EB] transition-all',
           className,
         )}
-        aria-label="Notifications"
+        aria-label={t('title')}
       >
         {unreadCount > 0 ? (
           <BellDot size={17} className="text-[#2563EB]" />

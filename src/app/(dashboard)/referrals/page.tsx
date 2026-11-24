@@ -25,6 +25,9 @@ import {
 } from 'lucide-react';
 import { useReferrals } from '@/hooks/useReferrals';
 import { cn, formatCurrency } from '@/lib/utils';
+import { useFormatNumber, useT } from '@/lib/i18n';
+import { referrals as referralsMsg } from '@/lib/i18n/messages/referrals';
+import { common } from '@/lib/i18n/messages/common';
 
 interface ReferralFriend {
   id?: string;
@@ -50,6 +53,9 @@ const XIcon = ({ size = 20 }: { size?: number }) => (
 
 export default function ReferralsPage() {
   const router = useRouter();
+  const t = useT(referralsMsg);
+  const tc = useT(common);
+  const formatNumber = useFormatNumber();
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'friends' | 'stats'>(
     'overview',
@@ -102,12 +108,12 @@ export default function ReferralsPage() {
   };
 
   const handleShare = (platform: string) => {
-    const message = `Join Boostly and earn daily rewards! Use my referral code ${referralCode} to get started. 🚀 https://boostly.buzz/ref/${referralCode}`;
+    const message = t('shareMessage', { code: referralCode, link: `https://boostly.buzz/ref/${referralCode}` });
 
     const shareUrls: Record<string, string> = {
       whatsapp: `https://wa.me/?text=${encodeURIComponent(message)}`,
       sms: `sms:?body=${encodeURIComponent(message)}`,
-      email: `mailto:?subject=Join Boostly!&body=${encodeURIComponent(message)}`,
+      email: `mailto:?subject=${encodeURIComponent(t('emailSubject'))}&body=${encodeURIComponent(message)}`,
       facebook: `https://www.facebook.com/sharer/sharer.php?u=https://boostly.buzz/ref/${referralCode}`,
       twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}`,
     };
@@ -135,13 +141,13 @@ export default function ReferralsPage() {
   const getFriendStatusLabel = (status: string) => {
     switch (status) {
       case 'active':
-        return '● Active';
+        return t('statusActive');
       case 'pending':
-        return 'Pending';
+        return t('statusPending');
       case 'completed':
         return (
           <span className="inline-flex items-center gap-0.5">
-            <Check size={10} /> Completed
+            <Check size={10} /> {t('statusCompleted')}
           </span>
         );
       default:
@@ -153,7 +159,7 @@ export default function ReferralsPage() {
   const milestones = [
     {
       id: 1,
-      title: 'First 5 Referrals',
+      title: t('m5'),
       achieved: true,
       reward: 1000,
       progress: 5,
@@ -162,7 +168,7 @@ export default function ReferralsPage() {
     },
     {
       id: 2,
-      title: '10 Referrals Club',
+      title: t('m10'),
       achieved: true,
       reward: 2500,
       progress: 10,
@@ -171,7 +177,7 @@ export default function ReferralsPage() {
     },
     {
       id: 3,
-      title: '25 Referrals',
+      title: t('m25'),
       achieved: false,
       reward: 5000,
       progress: 12,
@@ -180,7 +186,7 @@ export default function ReferralsPage() {
     },
     {
       id: 4,
-      title: '50 Referrals — VIP',
+      title: t('m50'),
       achieved: false,
       reward: 15000,
       progress: 12,
@@ -205,7 +211,7 @@ export default function ReferralsPage() {
     },
     {
       id: 'link',
-      label: 'Copy Link',
+      label: t('copyLink'),
       icon: <Link2 size={20} />,
       color: 'hover:border-[#8B5CF6] hover:text-[#8B5CF6]',
     },
@@ -223,7 +229,7 @@ export default function ReferralsPage() {
     },
     {
       id: 'email',
-      label: 'Email',
+      label: t('email'),
       icon: <Mail size={20} />,
       color: 'hover:border-[#EA4335] hover:text-[#EA4335]',
     },
@@ -234,7 +240,7 @@ export default function ReferralsPage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-pulse flex flex-col items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-[#2563EB]/20 border-4 border-[#2563EB] border-t-transparent animate-spin" />
-          <p className="text-[#6B7280]">Loading referrals...</p>
+          <p className="text-[#6B7280]">{t('loading')}</p>
         </div>
       </div>
     );
@@ -245,15 +251,15 @@ export default function ReferralsPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
-          className="hidden lg:flex w-10 h-10 rounded-xl border border-[#F3F4F6] items-center justify-center hover:border-[#2563EB] transition-colors" aria-label="Back"
+          className="hidden lg:flex w-10 h-10 rounded-xl border border-[#F3F4F6] items-center justify-center hover:border-[#2563EB] transition-colors" aria-label={tc('back')}
           onClick={() => router.back()}
         >
           <ArrowLeft size={18} />
         </button>
         <div>
-          <h1 className="text-xl font-bold">Referrals</h1>
+          <h1 className="text-xl font-bold">{t('title')}</h1>
           <p className="text-sm text-[#6B7280]">
-            Invite friends and earn rewards
+            {t('subtitle')}
           </p>
         </div>
         <button
@@ -261,7 +267,7 @@ export default function ReferralsPage() {
           onClick={() => setActiveTab('stats')}
         >
           <BarChart3 size={16} />
-          View Stats
+          {t('viewStats')}
         </button>
       </div>
 
@@ -274,14 +280,13 @@ export default function ReferralsPage() {
           <div className="w-20 h-20 rounded-full bg-white/15 border-2 border-white/25 flex items-center justify-center text-4xl mx-auto mb-4 shadow-lg">
             <Users size={36} />
           </div>
-          <h2 className="text-2xl font-extrabold">Invite Friends &amp; Earn</h2>
+          <h2 className="text-2xl font-extrabold">{t('heroTitle')}</h2>
           <p className="text-white/80 text-sm mt-2 max-w-sm mx-auto">
-            Share your code. Every time a friend you invited buys a plan or a
-            badge, you earn <strong>{REFERRAL_COMMISSION_LABEL}</strong> of it.
+            {t('heroBefore')} <strong>{REFERRAL_COMMISSION_LABEL}</strong> {t('heroAfter')}
           </p>
           <div className="inline-flex items-center gap-2 bg-white/15 border border-white/25 rounded-full px-5 py-2.5 mt-4 text-sm font-bold">
             <Check size={16} className="text-white/80" />
-            No limit on referrals — earn forever
+            {t('noLimit')}
           </div>
         </div>
       </div>
@@ -290,25 +295,25 @@ export default function ReferralsPage() {
       <div className="grid grid-cols-3 gap-4 -mt-6 relative z-10">
         <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
           <p className="text-2xl font-extrabold">{stats.total}</p>
-          <p className="text-xs text-[#6B7280]">Total Referrals</p>
+          <p className="text-xs text-[#6B7280]">{t('totalReferrals')}</p>
           <p className="text-[10px] text-[#22C55E] font-semibold mt-1">
-            {stats.pending} pending
+            {t('pendingCount', { count: stats.pending })}
           </p>
         </div>
         <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
           <p className="text-2xl font-extrabold text-[#8B5CF6]">
             {formatCurrency(stats.totalEarned)}
           </p>
-          <p className="text-xs text-[#6B7280]">Total Earned</p>
+          <p className="text-xs text-[#6B7280]">{t('totalEarned')}</p>
           <p className="text-[10px] text-[#22C55E] font-semibold mt-1">
-            {REFERRAL_COMMISSION_LABEL} commission
+            {t('commission', { percent: REFERRAL_COMMISSION_LABEL })}
           </p>
         </div>
         <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
           <p className="text-2xl font-extrabold">{stats.active}</p>
-          <p className="text-xs text-[#6B7280]">Active Friends</p>
+          <p className="text-xs text-[#6B7280]">{t('activeFriends')}</p>
           <p className="text-[10px] text-[#22C55E] font-semibold mt-1">
-            {stats.completed} paid a plan
+            {t('paidPlan', { count: stats.completed })}
           </p>
         </div>
       </div>
@@ -316,7 +321,7 @@ export default function ReferralsPage() {
       {/* Referral Code */}
       <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-5">
         <p className="text-sm font-semibold text-[#6B7280]">
-          Your Referral Code
+          {t('yourCode')}
         </p>
         <div className="flex items-center gap-3 mt-3">
           <div className="flex-1 bg-[#EFF6FF] border-2 border-dashed border-[#2563EB] rounded-xl px-4 py-3">
@@ -337,17 +342,17 @@ export default function ReferralsPage() {
             disabled={!referralCode}
           >
             {copied ? <Check size={18} /> : <Copy size={18} />}
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? t('copied') : t('copy')}
           </button>
         </div>
         <p className="text-xs text-[#6B7280] text-center mt-3">
-          You earn {REFERRAL_COMMISSION_LABEL} of every plan or badge your invited friends buy
+          {t('codeHint', { percent: REFERRAL_COMMISSION_LABEL })}
         </p>
       </div>
 
       {/* Share Buttons */}
       <div>
-        <p className="text-sm font-bold mb-3">Share via</p>
+        <p className="text-sm font-bold mb-3">{t('shareVia')}</p>
         <div className="grid grid-cols-3 gap-3">
           {sharePlatforms.map((platform) => (
             <button
@@ -370,9 +375,9 @@ export default function ReferralsPage() {
       {/* Tabs */}
       <div className="flex gap-1 bg-[#F8FAFC] rounded-2xl p-1 border border-[#F3F4F6]">
         {[
-          { id: 'overview', label: 'Overview' },
-          { id: 'friends', label: `Friends (${stats.total})` },
-          { id: 'stats', label: 'Stats' },
+          { id: 'overview', label: t('tabOverview') },
+          { id: 'friends', label: t('tabFriends', { count: stats.total }) },
+          { id: 'stats', label: t('tabStats') },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -396,26 +401,26 @@ export default function ReferralsPage() {
         <div className="space-y-4">
           {/* How It Works */}
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-5">
-            <h3 className="text-sm font-bold mb-4">How It Works</h3>
+            <h3 className="text-sm font-bold mb-4">{t('howItWorks')}</h3>
             <div className="space-y-4">
               {[
                 {
                   step: 1,
                   icon: Share2,
-                  title: 'Share Your Code',
-                  desc: 'Send your unique referral code to friends via WhatsApp, SMS, or any platform.',
+                  title: t('step1Title'),
+                  desc: t('step1Desc'),
                 },
                 {
                   step: 2,
                   icon: UserPlus,
-                  title: 'Friend Signs Up',
-                  desc: 'Your friend creates an account using your referral code during registration.',
+                  title: t('step2Title'),
+                  desc: t('step2Desc'),
                 },
                 {
                   step: 3,
                   icon: Coins,
-                  title: `You Earn ${REFERRAL_COMMISSION_LABEL}`,
-                  desc: `Each time your friend buys or renews a plan (or buys a badge), ${REFERRAL_COMMISSION_LABEL} of it is added to your balance once the payment is confirmed.`,
+                  title: t('step3Title', { percent: REFERRAL_COMMISSION_LABEL }),
+                  desc: t('step3Desc', { percent: REFERRAL_COMMISSION_LABEL }),
                 },
               ].map((item) => (
                 <div key={item.step} className="flex items-start gap-4">
@@ -442,9 +447,9 @@ export default function ReferralsPage() {
           {friends.length === 0 ? (
             <div className="text-center py-12">
               <Users size={56} className="mx-auto mb-4 text-[#D1D5DB]" />
-              <p className="text-[#6B7280] font-medium">No friends yet</p>
+              <p className="text-[#6B7280] font-medium">{t('noFriends')}</p>
               <p className="text-sm text-[#9CA3AF] mt-1">
-                Share your referral code to get started
+                {t('noFriendsHint')}
               </p>
             </div>
           ) : (
@@ -465,10 +470,10 @@ export default function ReferralsPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-[#111827]">
-                    {friend.name || 'Friend'}
+                    {friend.name || t('friend')}
                   </p>
                   <p className="text-xs text-[#6B7280]">
-                    Joined {friend.date || 'Recently'}
+                    {t('joined', { date: friend.date || t('recently') })}
                   </p>
                 </div>
                 <div className="text-right">
@@ -479,8 +484,8 @@ export default function ReferralsPage() {
                     )}
                   >
                     {friend.reward > 0
-                      ? `+${Math.round(friend.reward).toLocaleString()} RWF`
-                      : `Earns ${REFERRAL_COMMISSION_LABEL} on every purchase`}
+                      ? `+${tc('rwf', { amount: formatNumber(Math.round(friend.reward)) })}`
+                      : t('earnsOnEvery', { percent: REFERRAL_COMMISSION_LABEL })}
                   </p>
                   <span
                     className={cn(
@@ -496,7 +501,7 @@ export default function ReferralsPage() {
           )}
           {friends.length > 0 && (
             <button className="w-full py-3 text-sm font-medium text-[#6B7280] hover:bg-[#F8FAFC] transition-colors border-t border-[#F3F4F6]">
-              Load more friends
+              {t('loadMoreFriends')}
             </button>
           )}
         </div>
@@ -507,7 +512,7 @@ export default function ReferralsPage() {
           {/* Milestones */}
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-[#F3F4F6]">
-              <h3 className="text-sm font-bold">Referral Milestones</h3>
+              <h3 className="text-sm font-bold">{t('milestones')}</h3>
             </div>
             {milestones.map((milestone) => (
               <div key={milestone.id}>
@@ -529,17 +534,17 @@ export default function ReferralsPage() {
                     <p className="text-sm font-bold">{milestone.title}</p>
                     <p className="text-xs text-[#6B7280]">
                       {milestone.achieved
-                        ? `Achieved! ${milestone.target} friends joined`
-                        : `${milestone.progress} / ${milestone.target} friends joined`}
+                        ? t('achieved', { count: milestone.target })
+                        : t('progress', { progress: milestone.progress, target: milestone.target })}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-[#8B5CF6]">
-                      +{milestone.reward} RWF
+                      +{tc('rwf', { amount: milestone.reward })}
                     </p>
                     {milestone.achieved ? (
                       <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-[#22C55E] bg-[#DCFCE7] px-2 py-0.5 rounded-full">
-                        <Check size={10} /> Done
+                        <Check size={10} /> {t('done')}
                       </span>
                     ) : (
                       <span className="text-[10px] font-semibold text-[#6B7280]">
@@ -567,12 +572,11 @@ export default function ReferralsPage() {
           {/* Earnings History: real commissions only */}
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-[#F3F4F6]">
-              <h3 className="text-sm font-bold">Earnings History</h3>
+              <h3 className="text-sm font-bold">{t('earningsHistory')}</h3>
             </div>
             {(data?.friends || []).filter((f) => f.reward > 0).length === 0 ? (
               <p className="px-5 py-8 text-sm text-center text-[#6B7280]">
-                No referral earnings yet. You&apos;ll see them here when an
-                invited friend buys a plan or badge.
+                {t('noEarnings')}
               </p>
             ) : (
               (data?.friends || [])
@@ -587,12 +591,12 @@ export default function ReferralsPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-[#111827] truncate">
-                        {f.name || 'Friend'}
+                        {f.name || t('friend')}
                       </p>
                       <p className="text-xs text-[#6B7280]">{f.date}</p>
                     </div>
                     <p className="text-sm font-bold text-[#22C55E]">
-                      +{Math.round(f.reward).toLocaleString()} RWF
+                      +{tc('rwf', { amount: formatNumber(Math.round(f.reward)) })}
                     </p>
                   </div>
                 ))

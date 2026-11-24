@@ -19,6 +19,8 @@ export interface WithdrawalEligibility {
   canWithdraw: boolean;
   /** Why the user can't withdraw right now (null when they can). */
   reason: string | null;
+  /** Machine-readable reason, so screens can show it in the member's language. */
+  reasonCode: 'ALREADY_TODAY' | 'INTERVAL' | 'MIN_BALANCE' | null;
   balance: number;
   pendingAmount: number;
   minAmount: number;
@@ -76,18 +78,22 @@ export async function getWithdrawalEligibility(
   }
 
   let reason: string | null = null;
+  let reasonCode: WithdrawalEligibility['reasonCode'] = null;
   if (nextAllowedAt > now) {
+    reasonCode = intervalDays <= 1 ? 'ALREADY_TODAY' : 'INTERVAL';
     const freq = describeIntervalDays(intervalDays).toLowerCase();
     reason =
       intervalDays <= 1
         ? 'You have already requested a withdrawal today. You can request again tomorrow.'
         : `Your ${plan.name.replace(/ Plan$/, '')} plan can withdraw ${freq}. Upgrade to withdraw more often.`;
   } else if (balance < MIN_WITHDRAWAL) {
+    reasonCode = 'MIN_BALANCE';
     reason = `You need at least ${MIN_WITHDRAWAL.toLocaleString()} RWF to withdraw. Keep completing tasks!`;
   }
 
   return {
     canWithdraw: reason === null,
+    reasonCode,
     reason,
     balance,
     pendingAmount: wallet?.pendingWithdrawal ?? 0,

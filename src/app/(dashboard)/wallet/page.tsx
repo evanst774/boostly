@@ -7,10 +7,11 @@ import { Crown, Eye, EyeOff, RefreshCw, Smartphone } from 'lucide-react';
 import { useEarnToday } from '@/hooks/useEarnToday';
 import { PayoutCountdown } from '@/components/earn/PayoutCountdown';
 import { LedgerRow } from '@/components/earn/LedgerRow';
-import { PAYOUT_TIME_LABEL, formatRwandaPhone } from '@/lib/constants/payouts';
+import { formatRwandaPhone } from '@/lib/constants/payouts';
+import { useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { usePayoutText, useRwf, wallet as walletMsg } from '@/lib/i18n/messages/wallet';
 import { cn } from '@/lib/utils';
-
-const rwf = (n: number) => `${Math.round(n).toLocaleString('en-US')} RWF`;
 const card =
   'bg-white dark:bg-[#1E293B] rounded-2xl border border-[#E2E8F0] dark:border-[#334155]';
 
@@ -24,17 +25,21 @@ interface WithdrawalRow {
   failureReason: string | null;
 }
 
-const STATUS_UI: Record<WithdrawalRow['status'], { label: string; cls: string }> = {
-  PENDING: { label: `Paid at ${PAYOUT_TIME_LABEL}`, cls: 'bg-[#FFFBEB] text-[#B45309] dark:bg-[#F59E0B]/15 dark:text-[#FBBF24]' },
-  PROCESSING: { label: 'Sending', cls: 'bg-[#EFF6FF] text-[#1D4ED8] dark:bg-[#2563EB]/15 dark:text-[#93C5FD]' },
-  COMPLETED: { label: 'Paid', cls: 'bg-[#F0FDF4] text-[#15803D] dark:bg-[#22C55E]/15 dark:text-[#4ADE80]' },
-  FAILED: { label: 'Refunded', cls: 'bg-[#FEF2F2] text-[#B91C1C] dark:bg-[#EF4444]/15 dark:text-[#F87171]' },
+const STATUS_UI: Record<WithdrawalRow['status'], { label: 'statusPaidAt' | 'statusSending' | 'statusPaid' | 'statusRefunded'; cls: string }> = {
+  PENDING: { label: 'statusPaidAt', cls: 'bg-[#FFFBEB] text-[#B45309] dark:bg-[#F59E0B]/15 dark:text-[#FBBF24]' },
+  PROCESSING: { label: 'statusSending', cls: 'bg-[#EFF6FF] text-[#1D4ED8] dark:bg-[#2563EB]/15 dark:text-[#93C5FD]' },
+  COMPLETED: { label: 'statusPaid', cls: 'bg-[#F0FDF4] text-[#15803D] dark:bg-[#22C55E]/15 dark:text-[#4ADE80]' },
+  FAILED: { label: 'statusRefunded', cls: 'bg-[#FEF2F2] text-[#B91C1C] dark:bg-[#EF4444]/15 dark:text-[#F87171]' },
 };
 
 export default function WalletPage() {
   const { data, isLoading, error, refetch } = useEarnToday();
   const [hidden, setHidden] = useState(false);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRow[]>([]);
+  const t = useT(walletMsg);
+  const tc = useT(common);
+  const rwf = useRwf();
+  const { payoutTime, frequency, tag } = usePayoutText();
 
   useEffect(() => {
     fetch('/api/wallet/withdrawals?limit=10', { cache: 'no-store' })
@@ -55,9 +60,9 @@ export default function WalletPage() {
   if (error || !data) {
     return (
       <div className={cn(card, 'p-8 text-center font-outfit')}>
-        <p className="text-sm text-[#64748B] mb-3">{error || 'Something went wrong.'}</p>
+        <p className="text-sm text-[#64748B] mb-3">{error || t('somethingWrong')}</p>
         <button type="button" onClick={refetch} className="inline-flex items-center gap-2 text-sm font-semibold text-[#2563EB]">
-          <RefreshCw size={14} /> Try again
+          <RefreshCw size={14} /> {tc('retry')}
         </button>
       </div>
     );
@@ -76,7 +81,7 @@ export default function WalletPage() {
             onClick={() => setHidden((v) => !v)}
             className="flex items-center gap-1.5 text-sm text-white/75 hover:text-white"
           >
-            Available to withdraw {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+            {t('availableToWithdraw')} {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
           </button>
           <p className="text-3xl sm:text-4xl font-extrabold tracking-tight tabular-nums mt-1">
             {hidden ? '••••••' : rwf(wallet.balance)}
@@ -84,15 +89,15 @@ export default function WalletPage() {
 
           <dl className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-white/15 text-sm">
             <div>
-              <dt className="text-[11px] text-white/65">On its way</dt>
+              <dt className="text-[11px] text-white/65">{t('onItsWay')}</dt>
               <dd className="font-bold tabular-nums">{rwf(wallet.pendingWithdrawal)}</dd>
             </div>
             <div>
-              <dt className="text-[11px] text-white/65">Withdrawn</dt>
+              <dt className="text-[11px] text-white/65">{t('withdrawn')}</dt>
               <dd className="font-bold tabular-nums">{rwf(wallet.totalWithdrawn)}</dd>
             </div>
             <div>
-              <dt className="text-[11px] text-white/65">Earned today</dt>
+              <dt className="text-[11px] text-white/65">{t('earnedToday')}</dt>
               <dd className="font-bold tabular-nums">{rwf(earnings.today)}</dd>
             </div>
           </dl>
@@ -103,7 +108,7 @@ export default function WalletPage() {
               href="/wallet/withdraw"
               className="inline-flex items-center justify-center gap-2 bg-white text-[#1E3A8A] text-sm font-bold px-5 py-3 rounded-xl hover:bg-white/90 transition-colors"
             >
-              <Smartphone size={16} /> Withdraw
+              <Smartphone size={16} /> {t('withdraw')}
             </Link>
           </div>
         </div>
@@ -116,23 +121,23 @@ export default function WalletPage() {
         </span>
         <p className="flex-1 text-sm text-[#475569] dark:text-[#CBD5E1]">
           <span className="font-semibold text-[#0F172A] dark:text-white">
-            {withdrawal.plan.isFree ? 'Free plan' : withdrawal.plan.name}:
+            {withdrawal.plan.isFree ? t('freePlan') : withdrawal.plan.name}:
           </span>{' '}
-          withdraw {withdrawal.frequencyLabel.toLowerCase()}, paid at {PAYOUT_TIME_LABEL}.
+          {t('planRule', { frequency: frequency(withdrawal.intervalDays).toLowerCase(), time: payoutTime })}
         </p>
         {withdrawal.plan.isFree && (
           <Link href="/plans" className="text-xs font-bold text-[#2563EB] dark:text-[#60A5FA] shrink-0">
-            Upgrade
+            {t('upgrade')}
           </Link>
         )}
       </div>
 
       {/* Withdrawals */}
       <section className={cn(card, 'p-4 sm:p-5')}>
-        <h2 className="text-sm font-bold text-[#0F172A] dark:text-white mb-1">Withdrawals</h2>
+        <h2 className="text-sm font-bold text-[#0F172A] dark:text-white mb-1">{t('withdrawals')}</h2>
         {withdrawals.length === 0 ? (
           <p className="text-sm text-[#64748B] dark:text-[#94A3B8] py-6 text-center">
-            No withdrawals yet. Once you have {rwf(withdrawal.minAmount)}, you can cash out.
+            {t('noWithdrawals', { amount: rwf(withdrawal.minAmount) })}
           </p>
         ) : (
           <ul className="divide-y divide-[#F1F5F9] dark:divide-[#334155]/60">
@@ -142,7 +147,7 @@ export default function WalletPage() {
                   <p className="text-sm font-semibold tabular-nums text-[#0F172A] dark:text-white">{rwf(w.amount)}</p>
                   <p className="text-[11px] text-[#94A3B8] truncate">
                     {formatRwandaPhone(w.phoneNumber)} ·{' '}
-                    {new Date(w.completedAt || w.requestedAt).toLocaleDateString('en-GB', {
+                    {new Date(w.completedAt || w.requestedAt).toLocaleDateString(tag, {
                       day: 'numeric',
                       month: 'short',
                     })}
@@ -150,7 +155,7 @@ export default function WalletPage() {
                   </p>
                 </div>
                 <span className={cn('text-[10px] font-bold px-2 py-1 rounded-lg shrink-0', STATUS_UI[w.status]?.cls)}>
-                  {STATUS_UI[w.status]?.label ?? w.status}
+                  {STATUS_UI[w.status] ? t(STATUS_UI[w.status].label, { time: payoutTime }) : w.status}
                 </span>
               </li>
             ))}
@@ -161,19 +166,19 @@ export default function WalletPage() {
       {/* Activity */}
       <section className={cn(card, 'p-4 sm:p-5')}>
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">Recent activity</h2>
+          <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">{t('recentActivity')}</h2>
           <div className="flex gap-3">
             <Link href="/wallet/earnings" className="text-xs font-semibold text-[#2563EB] dark:text-[#60A5FA]">
-              Earnings
+              {t('earnings')}
             </Link>
             <Link href="/wallet/history" className="text-xs font-semibold text-[#2563EB] dark:text-[#60A5FA]">
-              All history
+              {t('allHistory')}
             </Link>
           </div>
         </div>
         {data.recentTransactions.length === 0 ? (
           <p className="text-sm text-[#64748B] dark:text-[#94A3B8] py-6 text-center">
-            No activity yet. <Link href="/dashboard" className="text-[#2563EB] font-semibold">Start a task</Link>
+            {t('noActivity')} <Link href="/dashboard" className="text-[#2563EB] font-semibold">{t('startTask')}</Link>
           </p>
         ) : (
           <ul className="divide-y divide-[#F1F5F9] dark:divide-[#334155]/60">

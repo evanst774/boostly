@@ -2,11 +2,31 @@
 
 'use client';
 
-import { formatDistanceToNow } from 'date-fns';
 import { Info } from 'lucide-react';
 import { NotificationTypeColors, NotificationTypeIcons } from '@/lib/notifications/types';
 import type { Notification } from '@/lib/notifications/types';
 import { cn } from '@/lib/utils';
+import { LOCALE_TAGS, useLocale, useT, type Locale } from '@/lib/i18n';
+import { notifications as notificationsMsg } from '@/lib/i18n/messages/notifications';
+
+const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ['year', 31536000],
+  ['month', 2592000],
+  ['week', 604800],
+  ['day', 86400],
+  ['hour', 3600],
+  ['minute', 60],
+];
+
+/** "5 minutes ago" / "il y a 5 minutes" / "dakika 5 zilizopita". */
+function timeAgo(date: Date, locale: Locale, justNow: string) {
+  const seconds = Math.round((date.getTime() - Date.now()) / 1000);
+  const rtf = new Intl.RelativeTimeFormat(LOCALE_TAGS[locale], { numeric: 'auto' });
+  for (const [unit, size] of UNITS) {
+    if (Math.abs(seconds) >= size) return rtf.format(Math.round(seconds / size), unit);
+  }
+  return justNow;
+}
 
 /** Older notifications were saved with an emoji prefix; the type icon replaces it. */
 function stripLeadingEmoji(title: string) {
@@ -19,13 +39,13 @@ interface NotificationItemProps {
 }
 
 export function NotificationItem({ notification, onClick }: NotificationItemProps) {
+  const t = useT(notificationsMsg);
+  const { locale } = useLocale();
   const type = notification.type ?? 'INFO';
   const colorClasses = NotificationTypeColors[type] || NotificationTypeColors.INFO;
   const Icon = NotificationTypeIcons[type] || Info;
 
-  const timeAgo = formatDistanceToNow(new Date(notification.createdAt), {
-    addSuffix: true,
-  });
+  const ago = timeAgo(new Date(notification.createdAt), locale, t('justNow'));
 
   return (
     <div
@@ -57,7 +77,7 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
           {notification.message}
         </p>
         <div className="flex items-center gap-2 mt-1.5">
-          <span className="text-xs text-[#9CA3AF]">{timeAgo}</span>
+          <span className="text-xs text-[#9CA3AF]">{ago}</span>
           {notification.linkText && (
             <>
               <span className="w-1 h-1 rounded-full bg-[#9CA3AF]" />

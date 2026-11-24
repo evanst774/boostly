@@ -8,17 +8,15 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { getGameCategoryIcon } from './GameCategoryIcon';
+import { useT } from '@/lib/i18n';
+import { earn } from '@/lib/i18n/messages/earn';
 
-const TIPS = [
-  'Your reward unlocks after the minimum play time.',
-  'Play time only counts while the game is on screen.',
-  'Tap Claim when the bar turns green to collect your reward.',
-  'Each game has its own daily plays. Try a few different ones.',
-];
+const TIPS = ['tip1', 'tip2', 'tip3', 'tip4'] as const;
 
 export function GameLoader({ name, category }: { name: string; category?: string | null }) {
   const Icon = getGameCategoryIcon(category);
   const [tip, setTip] = useState(0);
+  const t = useT(earn);
 
   useEffect(() => {
     const t = setInterval(() => setTip((i) => (i + 1) % TIPS.length), 2800);
@@ -64,7 +62,7 @@ export function GameLoader({ name, category }: { name: string; category?: string
       </div>
 
       <p className="mt-6 text-base font-bold text-white">{name}</p>
-      <p className="mt-0.5 text-xs text-white/50">Getting your game ready</p>
+      <p className="mt-0.5 text-xs text-white/50">{t('gettingReady')}</p>
 
       {/* shimmer line */}
       <div className="relative mt-4 h-1 w-40 overflow-hidden rounded-full bg-white/10">
@@ -81,7 +79,7 @@ export function GameLoader({ name, category }: { name: string; category?: string
         animate={{ opacity: 1, y: 0 }}
         className="mt-5 min-h-[2.5rem] text-xs leading-relaxed text-white/60"
       >
-        {TIPS[tip]}
+        {t(TIPS[tip])}
       </motion.p>
     </div>
   );

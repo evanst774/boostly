@@ -21,9 +21,18 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { shell } from '@/lib/i18n/messages/shell';
+
+type CommonKey = keyof typeof common.en;
+type ShellKey = keyof typeof shell.en;
 
 interface Tab {
+  /** Stable id (badges, data-tour); the shown text comes from `text`. */
   label: string;
+  /** Translated label: a shared word or a shell string. */
+  text: { common: CommonKey } | { shell: ShellKey };
   href: string;
   icon: LucideIcon;
   /** Path prefixes that mark this tab active (app variant). */
@@ -34,12 +43,13 @@ interface Tab {
 }
 
 export const APP_TABS: Tab[] = [
-  { label: 'Home', href: '/dashboard', icon: Home, match: ['/dashboard'] },
-  { label: 'Earn', href: '/earn/videos', icon: PlayCircle, match: ['/earn'] },
-  { label: 'Wallet', href: '/wallet', icon: Wallet, match: ['/wallet'] },
-  { label: 'Plans', href: '/plans', icon: Crown, match: ['/plans'] },
+  { label: 'Home', text: { common: 'home' }, href: '/dashboard', icon: Home, match: ['/dashboard'] },
+  { label: 'Earn', text: { common: 'earn' }, href: '/earn/videos', icon: PlayCircle, match: ['/earn'] },
+  { label: 'Wallet', text: { common: 'wallet' }, href: '/wallet', icon: Wallet, match: ['/wallet'] },
+  { label: 'Plans', text: { common: 'plans' }, href: '/plans', icon: Crown, match: ['/plans'] },
   {
     label: 'Me',
+    text: { common: 'me' },
     href: '/me',
     icon: UserCircle2,
     match: ['/me', '/settings', '/referrals', '/badges', '/notifications'],
@@ -47,11 +57,11 @@ export const APP_TABS: Tab[] = [
 ];
 
 const GUEST_TABS: Tab[] = [
-  { label: 'Home', href: '/#top', icon: Home, section: 'top' },
-  { label: 'Earn', href: '/#earn', icon: PlayCircle, section: 'earn' },
-  { label: 'Payouts', href: '/#payouts', icon: Banknote, section: 'payouts' },
-  { label: 'Help', href: '/#faq', icon: HelpCircle, section: 'faq' },
-  { label: 'Join', href: '/register', icon: UserPlus, primary: true },
+  { label: 'Home', text: { common: 'home' }, href: '/#top', icon: Home, section: 'top' },
+  { label: 'Earn', text: { common: 'earn' }, href: '/#earn', icon: PlayCircle, section: 'earn' },
+  { label: 'Payouts', text: { shell: 'tabPayouts' }, href: '/#payouts', icon: Banknote, section: 'payouts' },
+  { label: 'Help', text: { shell: 'tabHelp' }, href: '/#faq', icon: HelpCircle, section: 'faq' },
+  { label: 'Join', text: { shell: 'tabJoin' }, href: '/register', icon: UserPlus, primary: true },
 ];
 
 /** Which landing section is on screen (for the guest variant). */
@@ -84,6 +94,9 @@ export function TabBar({
   badges?: Record<string, number>;
 }) {
   const pathname = usePathname() || '/';
+  const tc = useT(common);
+  const ts = useT(shell);
+  const labelOf = (t: Tab) => ('common' in t.text ? tc(t.text.common) : ts(t.text.shell));
   const tabs = variant === 'app' ? APP_TABS : GUEST_TABS;
   const sectionIds = GUEST_TABS.filter((t) => t.section).map((t) => t.section!);
   const activeSection = useActiveSection(sectionIds, variant === 'guest');
@@ -97,7 +110,7 @@ export function TabBar({
 
   return (
     <nav
-      aria-label="Main"
+      aria-label={ts('mainNav')}
       className={cn(
         'lg:hidden fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur-xl',
         dark
@@ -121,7 +134,7 @@ export function TabBar({
                   className="flex h-11 min-w-[64px] flex-col items-center justify-center rounded-2xl bg-gold px-3 text-[#111827] shadow-[0_8px_20px_-8px_rgba(251,191,36,0.7)] active:scale-95 transition-transform"
                 >
                   <Icon size={18} strokeWidth={2.4} />
-                  <span className="text-[10px] font-bold leading-tight">{t.label}</span>
+                  <span className="text-[10px] font-bold leading-tight">{labelOf(t)}</span>
                 </Link>
               </li>
             );
@@ -177,7 +190,7 @@ export function TabBar({
                         : 'text-[#64748B] dark:text-[#94A3B8]',
                   )}
                 >
-                  {t.label}
+                  {labelOf(t)}
                 </span>
               </Link>
             </li>

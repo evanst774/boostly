@@ -21,10 +21,13 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { useT } from '@/lib/i18n';
+import { auth } from '@/lib/i18n/messages/auth';
 
 export default function AccountLockedPage() {
   const router = useRouter();
   const { user, logout, refreshUser } = useAuth();
+  const t = useT(auth);
   const [countdown, setCountdown] = useState(30);
   const [isSending, setIsSending] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -50,10 +53,10 @@ export default function AccountLockedPage() {
           reason: 'account_locked',
         }),
       });
-      toast.success('Support team notified successfully');
+      toast.success(t('notifiedOk'));
       setCountdown(30);
     } catch {
-      toast.error('Failed to notify support');
+      toast.error(t('notifyFailed'));
     } finally {
       setIsSending(false);
     }
@@ -102,10 +105,10 @@ export default function AccountLockedPage() {
             </motion.div>
 
             <h1 className="text-2xl font-bold text-white font-outfit mb-2">
-              Account Locked
+              {t('lockedTitle')}
             </h1>
             <p className="text-sm text-red-300 font-medium">
-              Your account has been temporarily locked for security
+              {t('lockedSub')}
             </p>
           </div>
 
@@ -122,12 +125,10 @@ export default function AccountLockedPage() {
                 <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                 <div>
                   <h3 className="text-sm font-semibold text-white mb-1 font-outfit">
-                    Why is my account locked?
+                    {t('whyLocked')}
                   </h3>
                   <p className="text-xs text-gray-400 leading-relaxed">
-                    Too many failed login attempts or suspicious activity
-                    detected. This is a security measure to protect your account
-                    and earnings.
+                    {t('whyLockedBody')}
                   </p>
                 </div>
               </div>
@@ -142,7 +143,7 @@ export default function AccountLockedPage() {
                 className="space-y-3"
               >
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider font-outfit">
-                  Account Information
+                  {t('accountInfo')}
                 </h3>
                 <div className="space-y-2 bg-[#0F172A]/50 rounded-xl p-3 border border-[#334155]">
                   <div className="flex items-center gap-3 text-sm">
@@ -158,8 +159,8 @@ export default function AccountLockedPage() {
                   <div className="flex items-center gap-3 text-sm">
                     <Clock className="w-4 h-4 text-gray-400" />
                     <span className="text-gray-300">
-                      Status:{' '}
-                      <span className="text-red-400 font-semibold">Locked</span>
+                      {t('status')}{' '}
+                      <span className="text-red-400 font-semibold">{t('locked')}</span>
                     </span>
                   </div>
                 </div>
@@ -174,7 +175,7 @@ export default function AccountLockedPage() {
               className="space-y-3"
             >
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider font-outfit">
-                How to regain access
+                {t('howRegain')}
               </h3>
               <div className="space-y-2.5">
                 <button
@@ -187,12 +188,12 @@ export default function AccountLockedPage() {
                   ) : countdown > 0 ? (
                     <>
                       <Clock className="w-4 h-4" />
-                      Notify Support ({countdown}s)
+                      {t('notifyIn', { s: countdown })}
                     </>
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
-                      Notify Support Team
+                      {t('notifyTeam')}
                     </>
                   )}
                 </button>
@@ -203,7 +204,7 @@ export default function AccountLockedPage() {
                   </div>
                   <div className="relative flex justify-center text-xs">
                     <span className="px-2 bg-[#1E293B] text-gray-500 font-medium">
-                      or
+                      {t('or')}
                     </span>
                   </div>
                 </div>
@@ -214,14 +215,14 @@ export default function AccountLockedPage() {
                     className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#0F172A]/50 border border-[#334155] text-gray-300 hover:text-white hover:bg-[#334155] transition-all text-sm font-medium"
                   >
                     <Mail className="w-4 h-4" />
-                    Email
+                    {t('email')}
                   </Link>
                   <a
                     href="tel:+250788123456"
                     className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#0F172A]/50 border border-[#334155] text-gray-300 hover:text-white hover:bg-[#334155] transition-all text-sm font-medium"
                   >
                     <Phone className="w-4 h-4" />
-                    Call
+                    {t('call')}
                   </a>
                 </div>
               </div>
@@ -244,14 +245,14 @@ export default function AccountLockedPage() {
                 ) : (
                   <RefreshCw className="w-4 h-4" />
                 )}
-                Check Status
+                {t('checkStatus')}
               </button>
               <button
                 onClick={handleLogout}
                 className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#0F172A]/50 border border-[#334155] text-gray-400 hover:text-white hover:bg-[#334155]/50 transition-all text-sm font-medium"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Sign Out
+                {t('signOut')}
               </button>
             </motion.div>
 
@@ -265,9 +266,7 @@ export default function AccountLockedPage() {
               <div className="flex items-start gap-2">
                 <Shield className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-gray-400 leading-relaxed">
-                  For security reasons, account recovery requires admin
-                  verification. Our support team will reach out to you shortly
-                  after notification.
+                  {t('securityNotice')}
                 </p>
               </div>
             </motion.div>
@@ -281,12 +280,12 @@ export default function AccountLockedPage() {
             >
               <div className="flex items-center gap-1.5">
                 <Headphones className="w-3.5 h-3.5" />
-                <span>24/7 Support</span>
+                <span>{t('support247')}</span>
               </div>
               <span className="text-[#334155]">•</span>
               <div className="flex items-center gap-1.5">
                 <MessageSquare className="w-3.5 h-3.5" />
-                <span>Live Chat Available</span>
+                <span>{t('liveChat')}</span>
               </div>
             </motion.div>
           </div>
@@ -310,10 +309,10 @@ export default function AccountLockedPage() {
             </div>
             <span className="font-medium text-gray-400">Boostly</span>
             <span className="text-gray-600">•</span>
-            <span>Security &amp; Trust</span>
+            <span>{t('securityTrust')}</span>
           </div>
           <p className="text-[10px] text-gray-600 mt-2">
-            Your account security is our priority
+            {t('securityPriority')}
           </p>
         </motion.div>
       </motion.div>

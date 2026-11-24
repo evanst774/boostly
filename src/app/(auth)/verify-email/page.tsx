@@ -15,6 +15,8 @@ import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import AuthShell from '@/components/auth/AuthShell';
+import { useT } from '@/lib/i18n';
+import { auth } from '@/lib/i18n/messages/auth';
 
 export default function VerifyEmailPage() {
   const router = useRouter();
@@ -22,6 +24,7 @@ export default function VerifyEmailPage() {
   const email = searchParams.get('email') || '';
   const token = searchParams.get('token') || '';
   const from = searchParams.get('from') || '';
+  const t = useT(auth);
 
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
@@ -60,11 +63,11 @@ export default function VerifyEmailPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to send code');
+        throw new Error(data.message || t('sendCodeFailed'));
       }
 
       setAutoSent(true);
-      toast.success('Verification code sent to your email', {
+      toast.success(t('codeSentToast'), {
         icon: <Mail size={18} className="text-[#2563EB]" />,
         duration: 4000,
       });
@@ -80,7 +83,7 @@ export default function VerifyEmailPage() {
         });
       }, 1000);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to send code');
+      toast.error(err instanceof Error ? err.message : t('sendCodeFailed'));
       setAutoSent(false);
     } finally {
       setIsSending(false);
@@ -111,7 +114,7 @@ export default function VerifyEmailPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Verification failed');
+        throw new Error(data.message || t('verificationFailed'));
       }
 
       setVerified(true);
@@ -120,8 +123,8 @@ export default function VerifyEmailPage() {
         router.push('/dashboard');
       }, 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Verification failed');
-      toast.error(err instanceof Error ? err.message : 'Verification failed');
+      setError(err instanceof Error ? err.message : t('verificationFailed'));
+      toast.error(err instanceof Error ? err.message : t('verificationFailed'));
     } finally {
       setIsVerifying(false);
     }
@@ -131,7 +134,7 @@ export default function VerifyEmailPage() {
   const handleVerify = async () => {
     const fullCode = code.join('');
     if (fullCode.length !== 6) {
-      toast.error('Please enter the 6-digit code');
+      toast.error(t('enter6'));
       return;
     }
 
@@ -148,7 +151,7 @@ export default function VerifyEmailPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Verification failed');
+        throw new Error(data.message || t('verificationFailed'));
       }
 
       setVerified(true);
@@ -157,8 +160,8 @@ export default function VerifyEmailPage() {
         router.push('/dashboard');
       }, 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Verification failed');
-      toast.error(err instanceof Error ? err.message : 'Verification failed');
+      setError(err instanceof Error ? err.message : t('verificationFailed'));
+      toast.error(err instanceof Error ? err.message : t('verificationFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -179,10 +182,10 @@ export default function VerifyEmailPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to resend code');
+        throw new Error(data.message || t('resendFailed'));
       }
 
-      toast.success('A new code has been sent to your email', {
+      toast.success(t('newCodeSent'), {
         icon: <Mail size={18} className="text-[#2563EB]" />,
         duration: 4000,
       });
@@ -201,7 +204,7 @@ export default function VerifyEmailPage() {
         });
       }, 1000);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to resend code');
+      toast.error(err instanceof Error ? err.message : t('resendFailed'));
     } finally {
       setIsResending(false);
     }
@@ -245,20 +248,20 @@ export default function VerifyEmailPage() {
   };
 
   const backHref = from === 'login' ? '/login' : '/register';
-  const backLabel = from === 'login' ? 'Login' : 'Register';
+  const backLabel = from === 'login' ? t('backToLogin') : t('backToRegister');
 
   // ─── If verifying with token ────────────────────────
   if (isVerifying) {
     return (
       <AuthShell
-        bottomPrompt="Need help?"
-        bottomLinkText="Contact support"
+        bottomPrompt={t('needHelp')}
+        bottomLinkText={t('contactSupport')}
         bottomLinkHref="/support"
       >
         <div className="text-center py-12">
           <Loader2 className="w-10 h-10 text-[#93C5FD] animate-spin mx-auto mb-4" />
-          <p className="text-white font-medium">Verifying your email...</p>
-          <p className="text-white/45 text-sm mt-1">Please wait a moment</p>
+          <p className="text-white font-medium">{t('verifyingEmail')}</p>
+          <p className="text-white/45 text-sm mt-1">{t('pleaseWait')}</p>
         </div>
       </AuthShell>
     );
@@ -268,8 +271,8 @@ export default function VerifyEmailPage() {
   if (verified) {
     return (
       <AuthShell
-        bottomPrompt="Need help?"
-        bottomLinkText="Contact support"
+        bottomPrompt={t('needHelp')}
+        bottomLinkText={t('contactSupport')}
         bottomLinkHref="/support"
       >
         <div className="text-center py-4">
@@ -277,10 +280,10 @@ export default function VerifyEmailPage() {
             <CheckCircle className="w-8 h-8 text-[#4ADE80]" />
           </div>
           <h2 className="text-2xl font-bold text-white mb-1.5">
-            Email verified!
+            {t('emailVerified')}
           </h2>
-          <p className="text-white/45 mb-1">Your account is now active.</p>
-          <p className="text-white/45 text-sm">Redirecting to dashboard...</p>
+          <p className="text-white/45 mb-1">{t('accountActive')}</p>
+          <p className="text-white/45 text-sm">{t('redirecting')}</p>
         </div>
       </AuthShell>
     );
@@ -289,8 +292,8 @@ export default function VerifyEmailPage() {
   // ─── Main OTP verification screen ─────────────────────
   return (
     <AuthShell
-      bottomPrompt="Need help?"
-      bottomLinkText="Contact support"
+      bottomPrompt={t('needHelp')}
+      bottomLinkText={t('contactSupport')}
       bottomLinkHref="/support"
     >
       <Link
@@ -298,7 +301,7 @@ export default function VerifyEmailPage() {
         className="flex items-center gap-1.5 text-white/40 hover:text-white/70 text-sm transition-colors mb-6 group"
       >
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-        Back to {backLabel}
+        {backLabel}
       </Link>
 
       <div className="text-center lg:text-left mb-2">
@@ -306,22 +309,22 @@ export default function VerifyEmailPage() {
           <Mail className="w-7 h-7 text-[#93C5FD]" />
         </div>
         <h2 className="text-2xl sm:text-[26px] font-bold text-white mb-1.5">
-          Verify your email
+          {t('verifyTitle')}
         </h2>
         <p className="text-[13.5px] text-white/45">
           {autoSent ? (
             <>
-              We&apos;ve sent a 6-digit code to{' '}
+              {t('sentCodeTo')}{' '}
               <span className="text-white/70 font-medium">{email}</span>
             </>
           ) : from === 'login' ? (
             <>
-              Sending verification code to{' '}
+              {t('sendingCodeTo')}{' '}
               <span className="text-white/70 font-medium">{email}</span>
             </>
           ) : (
             <>
-              Enter the 6-digit code sent to{' '}
+              {t('enterCodeSentTo')}{' '}
               <span className="text-white/70 font-medium">{email}</span>
             </>
           )}
@@ -336,7 +339,7 @@ export default function VerifyEmailPage() {
         {isSending && (
           <div className="mt-3 p-3 bg-[#2563EB]/10 border border-[#2563EB]/20 rounded-xl text-[#93C5FD] text-sm flex items-center justify-center lg:justify-start gap-2">
             <Loader2 className="w-4 h-4 animate-spin" />
-            Sending code...
+            {t('sendingCode')}
           </div>
         )}
       </div>
@@ -356,6 +359,7 @@ export default function VerifyEmailPage() {
             onChange={(e) => handleChange(index, e.target.value)}
             onKeyDown={(e) => handleKeyDown(index, e)}
             onPaste={index === 0 ? handlePaste : undefined}
+            aria-label={t('digitN', { n: index + 1 })}
             className={cn(
               'w-12 h-14 text-center text-2xl font-bold bg-white/5 border-2 rounded-xl text-white focus:ring-2 focus:ring-[#2563EB]/20 transition-all',
               digit ? 'border-[#2563EB] text-[#93C5FD]' : 'border-white/10',
@@ -374,45 +378,45 @@ export default function VerifyEmailPage() {
         {isLoading ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            Verifying...
+            {t('verifying')}
           </>
         ) : (
           <>
             <Sparkles className="w-4 h-4" />
-            Verify Email
+            {t('verifyEmail')}
           </>
         )}
       </button>
 
       <div className="text-center lg:text-left mt-4">
         <span className="text-sm text-white/45">
-          Didn&apos;t get a code?{' '}
+          {t('noCode')}{' '}
           <button
             onClick={handleResend}
             disabled={isResending || countdown > 0 || !email || isSending}
             className="text-[#93C5FD] font-semibold hover:text-[#BFDBFE] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {countdown > 0
-              ? `Resend in ${countdown}s`
+              ? t('resendIn', { s: countdown })
               : isResending
-                ? 'Sending...'
-                : 'Resend'}
+                ? t('sending')
+                : t('resend')}
           </button>
         </span>
       </div>
 
       <div className="mt-6 p-4 bg-white/[0.03] border border-white/5 rounded-xl text-center lg:text-left">
         <p className="text-xs text-white/40">
-          Check your spam folder if you don&apos;t see it in your inbox.
+          {t('checkSpam')}
         </p>
         <p className="text-xs text-white/40 mt-1">
-          The code expires in{' '}
-          <strong className="text-white/70">24 hours</strong>
+          {t('codeExpires')}{' '}
+          <strong className="text-white/70">{t('hours24')}</strong>
         </p>
         {autoSent && (
           <p className="text-xs mt-2 text-[#4ADE80] flex items-center justify-center lg:justify-start gap-1">
             <CheckCircle className="w-3 h-3" />
-            Code sent successfully!
+            {t('codeSentOk')}
           </p>
         )}
       </div>

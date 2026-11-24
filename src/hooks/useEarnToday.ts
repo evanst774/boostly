@@ -13,6 +13,7 @@ export interface TaskProgress {
 export interface WithdrawalEligibility {
   canWithdraw: boolean;
   reason: string | null;
+  reasonCode?: 'ALREADY_TODAY' | 'INTERVAL' | 'MIN_BALANCE' | null;
   balance: number;
   pendingAmount: number;
   minAmount: number;

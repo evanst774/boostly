@@ -24,11 +24,11 @@ import {
 import { cn } from '@/lib/utils';
 import { useBadges, type SubscriptionPlan } from '@/hooks/useBadges';
 import { MomoCheckout } from '@/components/app/MomoCheckout';
-import {
-  FREE_WITHDRAWAL_INTERVAL_DAYS,
-  PAYOUT_TIME_LABEL,
-  describeIntervalDays,
-} from '@/lib/constants/payouts';
+import { FREE_WITHDRAWAL_INTERVAL_DAYS } from '@/lib/constants/payouts';
+import { useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { plans as plansMsg } from '@/lib/i18n/messages/plans';
+import { usePayoutText, useRwf } from '@/lib/i18n/messages/wallet';
 
 type BillingCycle = 'MONTHLY' | 'YEARLY';
 
@@ -49,23 +49,12 @@ interface PlanView {
   features: string[];
   /** Max RWF a member can earn from tasks per day; 0 = no maximum. */
   dailyMax: number;
-  withdrawLabel: string;
+  /** Days between withdrawals; shown as a localised frequency. */
+  withdrawDays: number;
   isPopular: boolean;
 }
 
-const MEMBERSHIP_BENEFITS = [
-  "Earn every day by completing your plan's tasks.",
-  'Access earning opportunities based on your membership level.',
-  'Track your daily earnings on your dashboard.',
-  "Upgrade your plan whenever you're ready.",
-];
-
-const rwf = (n: number) => `${Math.round(n).toLocaleString('en-US')} RWF`;
-/** 1 -> "Standard", 1.3 -> "+30%", 2.5 -> "2.5x" */
-function formatRate(rate: number) {
-  if (rate <= 1.001) return 'Standard';
-  return `+${Math.round((rate - 1) * 100)}%`;
-}
+const MEMBERSHIP_BENEFITS = ['benefit1', 'benefit2', 'benefit3', 'benefit4'] as const;
 
 /** Plans exactly as the API returns them (admin-managed, display order). */
 function buildPlans(apiPlans: SubscriptionPlan[]): PlanView[] {
@@ -88,9 +77,7 @@ function buildPlans(apiPlans: SubscriptionPlan[]): PlanView[] {
     surveys: p.maxDailySurveys ?? 0,
     features: Array.isArray(p.features) ? (p.features as string[]) : [],
     dailyMax: p.dailyEarnings ?? 0,
-    withdrawLabel: describeIntervalDays(
-      p.withdrawalIntervalDays ?? (p.tier === 'FREE' ? 7 : 1),
-    ),
+    withdrawDays: p.withdrawalIntervalDays ?? (p.tier === 'FREE' ? 7 : 1),
     isPopular: p.isPopular === true,
   }));
 }
@@ -117,6 +104,13 @@ interface PlanPaymentView {
 
 export default function PlansPage() {
   const { data, isLoading, error: loadError, refetch } = useBadges();
+  const t = useT(plansMsg);
+  const tc = useT(common);
+  const rwf = useRwf();
+  const { frequency, payoutTime, tag } = usePayoutText();
+  /** 1 -> "Standard", 1.3 -> "+30%" */
+  const formatRate = (rate: number) =>
+    rate <= 1.001 ? t('rateStandard') : `+${Math.round((rate - 1) * 100)}%`;
   const [cycle, setCycle] = useState<BillingCycle>('MONTHLY');
   const [checkoutPlan, setCheckoutPlan] = useState<PlanView | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
@@ -225,12 +219,12 @@ export default function PlansPage() {
         },
       );
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || 'Could not activate plan');
-      setSuccess(`${checkoutPlan.name} is active. Your new daily tasks and limits apply right away.`);
+      if (!res.ok) throw new Error(json?.error || t('activateFailed'));
+      setSuccess(t('activated', { plan: checkoutPlan.name }));
       setCheckoutPlan(null);
       await Promise.all([refetch(), loadBalance()]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not activate plan');
+      setError(e instanceof Error ? e.message : t('activateFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -242,12 +236,12 @@ export default function PlansPage() {
     try {
       const res = await fetch('/api/subscriptions/cancel', { method: 'POST' });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || 'Could not cancel plan');
+      if (!res.ok) throw new Error(json?.error || t('cancelFailed'));
       setConfirmCancel(false);
-      setSuccess('Your plan was cancelled. You are now on the Free plan.');
+      setSuccess(t('cancelled'));
       await refetch();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not cancel plan');
+      setError(e instanceof Error ? e.message : t('cancelFailed'));
     } finally {
       setCancelling(false);
     }
@@ -274,7 +268,7 @@ export default function PlansPage() {
     return (
       <div className="space-y-4 font-outfit">
         <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] dark:text-white">
-          Choose your plan
+          {t('choosePlan')}
         </h1>
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#1E293B] p-8 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FEF3C7] text-[#B45309] dark:bg-[#F59E0B]/15 dark:text-[#FBBF24]">
@@ -282,10 +276,10 @@ export default function PlansPage() {
           </div>
           <div>
             <p className="font-bold text-[#0F172A] dark:text-white">
-              We couldn&apos;t load the plans
+              {t('loadFailed')}
             </p>
             <p className="mt-1 text-sm text-[#64748B] dark:text-[#94A3B8]">
-              Check your connection and try again.
+              {t('checkConnection')}
             </p>
           </div>
           <button
@@ -293,7 +287,7 @@ export default function PlansPage() {
             onClick={() => refetch()}
             className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#1D4ED8]"
           >
-            <RefreshCw size={16} /> Try again
+            <RefreshCw size={16} /> {tc('retry')}
           </button>
         </div>
       </div>
@@ -311,27 +305,21 @@ export default function PlansPage() {
       {/* Header */}
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] dark:text-white">
-          Choose your plan
+          {t('choosePlan')}
         </h1>
         <p className="mt-1 text-sm text-[#64748B] dark:text-[#94A3B8] max-w-2xl">
-          Each plan sets how many tasks you can do a day, the most you can earn
-          from them, and how often you can withdraw (Free: once every{' '}
-          {FREE_WITHDRAWAL_INTERVAL_DAYS} days). Withdrawals are paid to mobile
-          money at {PAYOUT_TIME_LABEL} Kigali time.
+          {t('intro', { days: FREE_WITHDRAWAL_INTERVAL_DAYS, time: payoutTime })}
         </p>
         <p className="mt-2 max-w-2xl rounded-xl border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#1E293B] p-3 text-xs text-[#475569] dark:text-[#CBD5E1]">
-          <strong className="text-[#0F172A] dark:text-white">How rewards are funded:</strong>{' '}
-          every task reward is paid from real sponsor and advertising budgets.
-          There are no fixed or guaranteed daily earnings: each plan&apos;s daily
-          amount is a maximum, and when a sponsor&apos;s budget is used up, its
-          tasks pause until new budget is added.
+          <strong className="text-[#0F172A] dark:text-white">{t('fundingTitle')}</strong>{' '}
+          {t('fundingBody')}
         </p>
       </div>
 
       {/* Membership benefits */}
       <div className="rounded-2xl border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#1E293B] p-4 sm:p-5">
         <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">
-          Membership benefits
+          {t('benefitsTitle')}
         </h2>
         <ul className="mt-3 grid gap-2 sm:grid-cols-2">
           {MEMBERSHIP_BENEFITS.map((b) => (
@@ -340,7 +328,7 @@ export default function PlansPage() {
               className="flex items-start gap-2 text-sm text-[#475569] dark:text-[#CBD5E1]"
             >
               <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0 text-[#22C55E]" />
-              {b}
+              {t(b)}
             </li>
           ))}
         </ul>
@@ -351,7 +339,7 @@ export default function PlansPage() {
         <div className="flex items-start gap-3 rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] p-4 text-sm text-[#166534] dark:border-[#22C55E]/30 dark:bg-[#22C55E]/10 dark:text-[#4ADE80]">
           <Check size={18} className="mt-0.5 flex-shrink-0" />
           <p className="flex-1">{success}</p>
-          <button type="button" onClick={() => setSuccess(null)} aria-label="Dismiss">
+          <button type="button" onClick={() => setSuccess(null)} aria-label={t('dismiss')}>
             <X size={16} />
           </button>
         </div>
@@ -361,11 +349,10 @@ export default function PlansPage() {
           <Clock size={18} className="mt-0.5 shrink-0 text-[#2563EB]" />
           <div className="text-sm">
             <p className="font-semibold text-[#0F172A] dark:text-white">
-              Checking your payment for {pendingPayment.plan?.name ?? 'your plan'}
+              {t('checkingPayment', { plan: pendingPayment.plan?.name ?? t('yourPlanFallback') })}
             </p>
             <p className="text-[#475569] dark:text-[#CBD5E1]">
-              {rwf(pendingPayment.amount)} · transaction {pendingPayment.transactionRef}. Your plan
-              activates as soon as an admin confirms it.
+              {t('pendingBody', { amount: rwf(pendingPayment.amount), ref: pendingPayment.transactionRef })}
             </p>
           </div>
         </div>
@@ -375,10 +362,10 @@ export default function PlansPage() {
           <X size={18} className="mt-0.5 shrink-0 text-[#DC2626]" />
           <div className="text-sm">
             <p className="font-semibold text-[#0F172A] dark:text-white">
-              We couldn&apos;t confirm your last payment
+              {t('rejectedTitle')}
             </p>
             <p className="text-[#475569] dark:text-[#CBD5E1]">
-              {lastRejected.rejectionReason || 'Please check the details and try again.'}
+              {lastRejected.rejectionReason || t('rejectedFallback')}
             </p>
           </div>
         </div>
@@ -387,7 +374,7 @@ export default function PlansPage() {
       {error && !checkoutPlan && (
         <div className="flex items-start gap-3 rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-4 text-sm text-[#B91C1C] dark:border-[#EF4444]/30 dark:bg-[#EF4444]/10 dark:text-[#FCA5A5]">
           <p className="flex-1">{error}</p>
-          <button type="button" onClick={() => setError(null)} aria-label="Dismiss">
+          <button type="button" onClick={() => setError(null)} aria-label={t('dismiss')}>
             <X size={16} />
           </button>
         </div>
@@ -402,17 +389,28 @@ export default function PlansPage() {
             </div>
             <div className="min-w-0">
               <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-                Your current plan
+                {t('currentPlan')}
               </p>
               <p className="font-bold text-[#0F172A] dark:text-white">
-                {currentPlan?.name ?? 'Free'}
+                {currentPlan?.name ?? t('free')}
               </p>
               <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
                 {currentPlan
-                  ? `${currentPlan.videos} videos · ${currentPlan.games} games · ${currentPlan.surveys} surveys a day · Withdraw ${currentPlan.withdrawLabel.toLowerCase()}`
+                  ? t('planSummary', {
+                      videos: currentPlan.videos,
+                      games: currentPlan.games,
+                      surveys: currentPlan.surveys,
+                      frequency: frequency(currentPlan.withdrawDays).toLowerCase(),
+                    })
                   : ''}
                 {subscription?.expiresAt &&
-                  ` · Renews or ends ${new Date(subscription.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                  t('renewsOn', {
+                    date: new Date(subscription.expiresAt).toLocaleDateString(tag, {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    }),
+                  })}
               </p>
             </div>
           </div>
@@ -422,7 +420,7 @@ export default function PlansPage() {
               {confirmCancel ? (
                 <>
                   <span className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-                    Cancel and go back to Free?
+                    {t('confirmCancel')}
                   </span>
                   <button
                     type="button"
@@ -430,14 +428,14 @@ export default function PlansPage() {
                     disabled={cancelling}
                     className="rounded-lg bg-[#EF4444] px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
                   >
-                    {cancelling ? 'Cancelling…' : 'Yes, cancel'}
+                    {cancelling ? t('cancelling') : t('yesCancel')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setConfirmCancel(false)}
                     className="rounded-lg border border-[#E2E8F0] dark:border-[#334155] px-3 py-2 text-xs font-semibold text-[#0F172A] dark:text-white"
                   >
-                    Keep plan
+                    {t('keepPlan')}
                   </button>
                 </>
               ) : (
@@ -446,7 +444,7 @@ export default function PlansPage() {
                   onClick={() => setConfirmCancel(true)}
                   className="text-xs font-semibold text-[#64748B] hover:text-[#EF4444] dark:text-[#94A3B8]"
                 >
-                  Cancel plan
+                  {t('cancelPlan')}
                 </button>
               )}
             </div>
@@ -469,10 +467,10 @@ export default function PlansPage() {
                   : 'text-[#64748B] dark:text-[#94A3B8]',
               )}
             >
-              {c === 'MONTHLY' ? 'Monthly' : 'Yearly'}
+              {c === 'MONTHLY' ? t('monthly') : t('yearly')}
               {c === 'YEARLY' && (
                 <span className="ml-1.5 rounded-full bg-[#DCFCE7] px-1.5 py-0.5 text-[10px] font-bold text-[#15803D] dark:bg-[#22C55E]/15 dark:text-[#4ADE80]">
-                  Save
+                  {t('save')}
                 </span>
               )}
             </button>
@@ -507,12 +505,12 @@ export default function PlansPage() {
             >
               {isRecommended && (
                 <span className="absolute -top-2.5 left-5 inline-flex items-center gap-1 rounded-full bg-[#2563EB] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                  <Sparkles size={10} /> Most popular
+                  <Sparkles size={10} /> {t('mostPopular')}
                 </span>
               )}
               {isCurrent && (
                 <span className="absolute -top-2.5 left-5 rounded-full bg-[#22C55E] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                  Current plan
+                  {t('currentBadge')}
                 </span>
               )}
 
@@ -521,7 +519,7 @@ export default function PlansPage() {
                   {plan.name}
                 </h3>
                 <span className="text-xs font-semibold text-[#22C55E] dark:text-[#4ADE80]">
-                  {formatRate(plan.rate)} per task
+                  {t('perTask', { rate: formatRate(plan.rate) })}
                 </span>
               </div>
               <p className="mt-0.5 text-xs text-[#64748B] dark:text-[#94A3B8]">
@@ -529,26 +527,30 @@ export default function PlansPage() {
               </p>
               {plan.rates && (
                 <p className="mt-1 text-[11px] font-medium text-[#16A34A] dark:text-[#4ADE80]">
-                  Videos {formatRate(plan.rates.videos)} · Games {formatRate(plan.rates.games)} · Surveys {formatRate(plan.rates.surveys)}
+                  {t('typeRates', {
+                    videos: formatRate(plan.rates.videos),
+                    games: formatRate(plan.rates.games),
+                    surveys: formatRate(plan.rates.surveys),
+                  })}
                 </p>
               )}
 
               <div className="mt-4">
                 {isFree ? (
                   <p className="text-2xl font-extrabold text-[#0F172A] dark:text-white">
-                    Free
+                    {t('free')}
                   </p>
                 ) : (
                   <p className="text-2xl font-extrabold text-[#0F172A] dark:text-white tabular-nums">
                     {rwf(price)}
                     <span className="ml-1 text-xs font-medium text-[#64748B] dark:text-[#94A3B8]">
-                      /{cycle === 'MONTHLY' ? 'month' : 'year'}
+                      /{cycle === 'MONTHLY' ? t('perMonth') : t('perYear')}
                     </span>
                   </p>
                 )}
                 {savings > 0 && (
                   <p className="text-xs font-semibold text-[#15803D] dark:text-[#4ADE80]">
-                    Save {rwf(savings)} vs monthly
+                    {t('saveVsMonthly', { amount: rwf(savings) })}
                   </p>
                 )}
               </div>
@@ -557,11 +559,11 @@ export default function PlansPage() {
                 <div className="mt-3 rounded-xl border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 dark:border-[#F59E0B]/30 dark:bg-[#F59E0B]/10">
                   <p className="flex items-center gap-1.5 text-sm font-bold text-[#0F172A] dark:text-white">
                     <TrendingUp size={15} className="flex-shrink-0 text-[#F59E0B]" />
-                    Earn up to{' '}
-                    <span className="tabular-nums">{rwf(plan.dailyMax)}</span>/day
+                    {t('earnUpTo')}{' '}
+                    <span className="tabular-nums">{rwf(plan.dailyMax)}</span>{t('perDaySuffix')}
                   </p>
                   <p className="mt-0.5 text-[11px] text-[#64748B] dark:text-[#94A3B8]">
-                    Daily maximum · paid from sponsor budgets
+                    {t('dailyMaxNote')}
                   </p>
                 </div>
               )}
@@ -569,14 +571,14 @@ export default function PlansPage() {
               {/* Daily tasks */}
               <div className="mt-4 rounded-xl bg-[#F8FAFC] dark:bg-[#0F172A] p-3 space-y-2 text-sm">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">
-                  Daily tasks
+                  {t('dailyTasks')}
                 </p>
-                <Row icon={<PlayCircle size={14} />} label="Sponsored videos" value={plan.videos} />
-                <Row icon={<Gamepad2 size={14} />} label="Games" value={plan.games} />
-                <Row icon={<ClipboardList size={14} />} label="Surveys" value={plan.surveys} />
+                <Row icon={<PlayCircle size={14} />} label={t('sponsoredVideos')} value={plan.videos} />
+                <Row icon={<Gamepad2 size={14} />} label={t('games')} value={plan.games} />
+                <Row icon={<ClipboardList size={14} />} label={t('surveys')} value={plan.surveys} />
                 <div className="flex items-center justify-between border-t border-[#E2E8F0] dark:border-[#334155] pt-2">
                   <span className="flex items-center gap-2 text-[#475569] dark:text-[#CBD5E1]">
-                    <Smartphone size={14} /> Withdraw
+                    <Smartphone size={14} /> {t('withdraw')}
                   </span>
                   <span
                     className={cn(
@@ -586,7 +588,7 @@ export default function PlansPage() {
                         : 'text-[#2563EB] dark:text-[#60A5FA]',
                     )}
                   >
-                    {plan.withdrawLabel}
+                    {frequency(plan.withdrawDays)}
                   </span>
                 </div>
               </div>
@@ -608,22 +610,22 @@ export default function PlansPage() {
                     disabled={!plan.id || !!pendingPayment}
                     className="w-full rounded-xl border border-[#E2E8F0] dark:border-[#334155] py-2.5 text-sm font-semibold text-[#0F172A] dark:text-white hover:bg-[#F8FAFC] dark:hover:bg-[#0F172A] disabled:opacity-50"
                   >
-                    Your plan · Renew
+                    {t('yourPlanRenew')}
                   </button>
                 ) : isCurrent ? (
                   <div className="w-full rounded-xl bg-[#F1F5F9] dark:bg-[#0F172A] py-2.5 text-center text-sm font-semibold text-[#64748B] dark:text-[#94A3B8]">
-                    Your plan
+                    {t('yourPlan')}
                   </div>
                 ) : isFree || isDowngrade ? (
                   <div className="w-full py-2.5 text-center text-xs text-[#94A3B8]">
-                    {isFree ? 'Included for everyone' : 'Lower than your current plan'}
+                    {isFree ? t('includedForEveryone') : t('lowerThanCurrent')}
                   </div>
                 ) : (
                   <button
                     type="button"
                     onClick={() => openCheckout(plan)}
                     disabled={!plan.id || !!pendingPayment}
-                    title={pendingPayment ? 'A payment is waiting for review' : undefined}
+                    title={pendingPayment ? t('paymentWaiting') : undefined}
                     className={cn(
                       'w-full rounded-xl py-2.5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
                       isRecommended
@@ -631,7 +633,7 @@ export default function PlansPage() {
                         : 'border border-[#2563EB] text-[#2563EB] hover:bg-[#EFF6FF] dark:text-[#60A5FA] dark:hover:bg-[#2563EB]/10',
                     )}
                   >
-                    Upgrade to {plan.name}
+                    {t('upgradeTo', { plan: plan.name })}
                   </button>
                 )}
               </div>
@@ -642,7 +644,7 @@ export default function PlansPage() {
 
       {subscription && currentTier !== 'FREE' && (
         <p className="text-center text-xs text-[#94A3B8]">
-          To switch plans, cancel your current plan first, then pick a new one.
+          {t('switchHint')}
         </p>
       )}
 
@@ -653,7 +655,7 @@ export default function PlansPage() {
           onClick={() => setShowCompare((v) => !v)}
           className="flex w-full items-center justify-between p-4 text-sm font-bold text-[#0F172A] dark:text-white"
         >
-          Compare all plans
+          {t('compareAll')}
           <ChevronDown
             size={18}
             className={cn('transition-transform', showCompare && 'rotate-180')}
@@ -664,7 +666,7 @@ export default function PlansPage() {
             <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="text-left text-xs text-[#64748B] dark:text-[#94A3B8]">
-                  <th className="p-3 font-semibold">Per day</th>
+                  <th className="p-3 font-semibold">{t('perDay')}</th>
                   {plans.map((p) => (
                     <th
                       key={p.id}
@@ -679,13 +681,13 @@ export default function PlansPage() {
                 </tr>
               </thead>
               <tbody className="text-[#0F172A] dark:text-white tabular-nums">
-                <CompareRow label={cycle === 'MONTHLY' ? 'Price / month' : 'Price / year'} plans={plans} render={(p) => (p.tier === 'FREE' ? 'Free' : rwf(priceFor(p, cycle)))} />
-                <CompareRow label="Max per day" plans={plans} render={(p) => (p.dailyMax > 0 ? rwf(p.dailyMax) : 'No maximum')} />
-                <CompareRow label="Reward per task" plans={plans} render={(p) => formatRate(p.rate)} />
-                <CompareRow label="Sponsored videos" plans={plans} render={(p) => p.videos} />
-                <CompareRow label="Games" plans={plans} render={(p) => p.games} />
-                <CompareRow label="Surveys" plans={plans} render={(p) => p.surveys} />
-                <CompareRow label="Withdraw" plans={plans} render={(p) => p.withdrawLabel} />
+                <CompareRow label={cycle === 'MONTHLY' ? t('priceMonth') : t('priceYear')} plans={plans} render={(p) => (p.tier === 'FREE' ? t('free') : rwf(priceFor(p, cycle)))} />
+                <CompareRow label={t('maxPerDay')} plans={plans} render={(p) => (p.dailyMax > 0 ? rwf(p.dailyMax) : t('noMaximum'))} />
+                <CompareRow label={t('rewardPerTask')} plans={plans} render={(p) => formatRate(p.rate)} />
+                <CompareRow label={t('sponsoredVideos')} plans={plans} render={(p) => p.videos} />
+                <CompareRow label={t('games')} plans={plans} render={(p) => p.games} />
+                <CompareRow label={t('surveys')} plans={plans} render={(p) => p.surveys} />
+                <CompareRow label={t('withdraw')} plans={plans} render={(p) => frequency(p.withdrawDays)} />
               </tbody>
             </table>
           </div>
@@ -693,10 +695,9 @@ export default function PlansPage() {
       </div>
 
       <p className="text-center text-xs text-[#94A3B8]">
-        &ldquo;Earn up to&rdquo; is a daily maximum, not a guaranteed amount: what
-        you earn depends on the tasks you complete and available sponsor budgets.{' '}
+        {t('disclaimer')}{' '}
         <Link href="/badges" className="font-semibold text-[#2563EB] dark:text-[#60A5FA]">
-          Looking for earning boost badges? →
+          {t('badgesLink')}
         </Link>
       </p>
 
@@ -714,13 +715,13 @@ export default function PlansPage() {
           >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-[#0F172A] dark:text-white">
-                Upgrade to {checkoutPlan.name}
+                {t('upgradeTo', { plan: checkoutPlan.name })}
               </h2>
               <button
                 type="button"
                 onClick={() => setCheckoutPlan(null)}
                 disabled={submitting}
-                aria-label="Close"
+                aria-label={t('close')}
                 className="text-[#64748B]"
               >
                 <X size={20} />
@@ -742,7 +743,7 @@ export default function PlansPage() {
                         : 'text-[#64748B] dark:text-[#94A3B8]',
                     )}
                   >
-                    {m === 'MOMO' ? 'Mobile money' : 'Wallet balance'}
+                    {m === 'MOMO' ? t('mobileMoney') : t('walletBalance')}
                   </button>
                 );
               })}
@@ -767,7 +768,7 @@ export default function PlansPage() {
             <div className="mt-4 space-y-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0F172A] p-4 text-sm">
                 <div className="flex justify-between">
                   <span className="text-[#64748B] dark:text-[#94A3B8]">
-                    {cycle === 'MONTHLY' ? 'Monthly' : 'Yearly'} price
+                    {cycle === 'MONTHLY' ? t('monthlyPrice') : t('yearlyPrice')}
                   </span>
                   <span className="font-semibold text-[#0F172A] dark:text-white">
                     {rwf(listPrice)}
@@ -775,17 +776,17 @@ export default function PlansPage() {
                 </div>
                 {quote?.kind === 'UPGRADE' && quote.credit > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-[#64748B] dark:text-[#94A3B8]">Credit for unused days</span>
+                    <span className="text-[#64748B] dark:text-[#94A3B8]">{t('creditUnused')}</span>
                     <span className="font-semibold text-[#16A34A] dark:text-[#4ADE80]">−{rwf(quote.credit)}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="font-semibold text-[#0F172A] dark:text-white">To pay now</span>
+                  <span className="font-semibold text-[#0F172A] dark:text-white">{t('toPayNow')}</span>
                   <span className="font-bold text-[#0F172A] dark:text-white">{rwf(checkoutPrice)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="flex items-center gap-1.5 text-[#64748B] dark:text-[#94A3B8]">
-                    <Wallet size={14} /> Wallet balance
+                    <Wallet size={14} /> {t('walletBalance')}
                   </span>
                   <span
                     className={cn(
@@ -798,23 +799,25 @@ export default function PlansPage() {
                 </div>
                 <div className="flex justify-between border-t border-[#E2E8F0] dark:border-[#334155] pt-2">
                   <span className="flex items-center gap-1.5 text-[#64748B] dark:text-[#94A3B8]">
-                    <Clock size={14} /> Withdraw
+                    <Clock size={14} /> {t('withdraw')}
                   </span>
                   <span className="font-semibold text-[#2563EB] dark:text-[#60A5FA]">
-                    {checkoutPlan.withdrawLabel}, paid at {PAYOUT_TIME_LABEL}
+                    {t('withdrawPaidAt', { frequency: frequency(checkoutPlan.withdrawDays), time: payoutTime })}
                   </span>
                 </div>
               </div>
   
               <p className="mt-3 text-xs text-[#64748B] dark:text-[#94A3B8]">
                 {quote?.kind === 'UPGRADE'
-                  ? 'Your current plan is replaced now and the unused days are credited. '
+                  ? t('upgradeNote')
                   : quote?.kind === 'RENEWAL'
-                    ? 'The new period is added after your current one. '
+                    ? t('renewalNote')
                     : ''}
-                Paid from your Boostly wallet balance. Your new daily
-                tasks ({checkoutPlan.videos} videos, {checkoutPlan.games} games,{' '}
-                {checkoutPlan.surveys} surveys) start right away.
+                {t('walletNote', {
+                  videos: checkoutPlan.videos,
+                  games: checkoutPlan.games,
+                  surveys: checkoutPlan.surveys,
+                })}
               </p>
   
               {error && (
@@ -831,21 +834,21 @@ export default function PlansPage() {
               >
                 {submitting ? (
                   <>
-                    <Loader2 size={16} className="animate-spin" /> Activating…
+                    <Loader2 size={16} className="animate-spin" /> {t('activating')}
                   </>
                 ) : notEnough ? (
-                  'Not enough balance'
+                  t('notEnough')
                 ) : checkoutPrice === 0 ? (
-                  'Upgrade now (covered by your credit)'
+                  t('coveredByCredit')
                 ) : (
-                  `Pay ${rwf(checkoutPrice)} and activate`
+                  t('payAndActivate', { amount: rwf(checkoutPrice) })
                 )}
               </button>
               {notEnough && (
                 <p className="mt-2 text-center text-xs text-[#64748B] dark:text-[#94A3B8]">
-                  You need {rwf(checkoutPrice - (balance ?? 0))} more.{' '}
+                  {t('needMore', { amount: rwf(checkoutPrice - (balance ?? 0)) })}{' '}
                   <Link href="/dashboard" className="font-semibold text-[#2563EB] dark:text-[#60A5FA]">
-                    Complete today&apos;s tasks
+                    {t('completeTasks')}
                   </Link>
                 </p>
               )}

@@ -1,0 +1,25 @@
+{
+  "_comment": "Manual curation. 'exclude' slugs are never processed and never enter manifest.json. 'items' overrides title/description/category/tags per slug in the manifest.",
+  "exclude": [
+    "puppy-linux-overview", "fractal-and-dogplayingtetris-rolling-during-ctwc-2", "hiirepyyk-kass-koer-2022",
+    "intersection-pie-ix-sherbrooke", "horrela-funtzionatzen-dute-geyserrek", "so-funktionieren-geysire-cc-by-4-0-redub-eo",
+    "jsc2022m000106-down-to-earth-season-2-conversation", "magnolia-first-robotics-competition-2026-laurel-ms",
+    "sandbag-operation-at-venice-beach-california", "sea-surface-height-anomaly-ssha-updated-weekly",
+    "landsat-9-3d-visualizations-and-asset-library", "heliophysics-satellite-fleet-2026", "firesense-satellite-fleet",
+    "trmm-b-roll-launch-with-japanese-vo", "nasa-psyche-media-day-video-clips",
+    "do-robots-help-humans-in-space-we-asked-a-nasa-exp", "how-can-i-see-the-northern-lights-we-asked-a-nasa-",
+    "what-are-the-chances-of-another-katrina", "celebrating-the-nasa-worm-on-this-week-nasa-novemb",
+    "bathing-beneath-waterfalls-capturing-serenity-belo", "creation-of-a-papa-murphy-s-pizza",
+    "raddison-blu-hotel-and-convention-centre-in-kigali", "bits-and-pieces-bp84-with-coach-and-horses-through",
+    "kahvin-tiputtelu-moccamasterilla", "birmingham-big-wheel-2015-scrolling-messages-10am-",
+    "roma-vs-feijenoord-association-football-match-riot", "bb-17000-rib-pont-cardinet", "come-funziona-il-foiling",
+    "comment-fonctionne-un-foil", "logo-da-wikipedia-em-impressao-3d", "museum-tour-at-monggo-chocolate-museum",
+    "ocicat-on-leash-climbing-a-tree", "cycling-fans-before-the-finish-line-2021-tour-of-s",
+    "0425-fashions-on-the-ice-and-snow-m00916-00-15-31", "bits-and-pieces-bp187-glass-blowing-eye-ob-105677",
+    "wasps-eating-grilled-chicken", "the-top-5-solar-discoveries-number", "international-observe-the-moon-night-sept-26-2020",
+    "nasa-takes-delivery-of-x-57-first-all-electric-x-p", "apollo-11-introduction-720p"
+  ],
+  "items": {
+    "a-bamboo-basket-making-depiction-video": { "category": "LIFESTYLE", "tags": ["crafts", "bamboo", "basket weaving"] }
+  }
+}

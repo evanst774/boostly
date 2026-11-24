@@ -3,11 +3,9 @@
 
 import { useEffect, useState } from 'react';
 import { Clock } from 'lucide-react';
-import {
-  formatCountdown,
-  formatPayoutDay,
-  getNextPayoutAt,
-} from '@/lib/constants/payouts';
+import { getNextPayoutAt } from '@/lib/constants/payouts';
+import { useT } from '@/lib/i18n';
+import { usePayoutText, wallet } from '@/lib/i18n/messages/wallet';
 import { cn } from '@/lib/utils';
 
 /** "Next payout: Today at 3:00 PM · in 2h 14m", ticking every 30s. */
@@ -19,6 +17,8 @@ export function PayoutCountdown({
   tone?: 'light' | 'dark';
 }) {
   const [now, setNow] = useState<Date | null>(null);
+  const t = useT(wallet);
+  const { payoutDay, countdown } = usePayoutText();
 
   useEffect(() => {
     setNow(new Date());
@@ -41,9 +41,9 @@ export function PayoutCountdown({
       )}
     >
       <Clock size={13} className="shrink-0" />
-      Next payout {formatPayoutDay(payoutAt, now).toLowerCase()} ·{' '}
+      {t('nextPayout', { when: payoutDay(payoutAt, now).toLowerCase() })} ·{' '}
       <span className="font-bold tabular-nums">
-        in {formatCountdown(payoutAt.getTime() - now.getTime())}
+        {t('inTime', { time: countdown(payoutAt.getTime() - now.getTime()) })}
       </span>
     </span>
   );

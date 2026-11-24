@@ -9,11 +9,16 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { NotificationItem } from '@/components/notifications/NotificationItem';
 import { cn } from '@/lib/utils';
 import type { Notification } from '@/lib/notifications/types';
+import { useT } from '@/lib/i18n';
+import { notifications as notificationsMsg } from '@/lib/i18n/messages/notifications';
+import { common } from '@/lib/i18n/messages/common';
 
 type FilterType = 'all' | 'unread' | 'read';
 
 export default function NotificationsPage() {
   const router = useRouter();
+  const t = useT(notificationsMsg);
+  const tc = useT(common);
   const [filter, setFilter] = useState<FilterType>('all');
   const {
     notifications,
@@ -47,15 +52,15 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
-          className="hidden lg:flex w-10 h-10 rounded-xl border border-[#F3F4F6] items-center justify-center hover:border-[#2563EB] transition-colors" aria-label="Back"
+          className="hidden lg:flex w-10 h-10 rounded-xl border border-[#F3F4F6] items-center justify-center hover:border-[#2563EB] transition-colors" aria-label={tc('back')}
           onClick={() => router.back()}
         >
           <ArrowLeft size={18} />
         </button>
         <div>
-          <h1 className="text-xl font-bold">Notifications</h1>
+          <h1 className="text-xl font-bold">{t('title')}</h1>
           <p className="text-sm text-[#6B7280]">
-            Stay updated with your activity
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -67,19 +72,19 @@ export default function NotificationsPage() {
             <p className="text-2xl font-extrabold text-[#2563EB]">
               {stats.total}
             </p>
-            <p className="text-xs text-[#6B7280]">Total</p>
+            <p className="text-xs text-[#6B7280]">{t('total')}</p>
           </div>
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
             <p className="text-2xl font-extrabold text-[#EF4444]">
               {stats.unread}
             </p>
-            <p className="text-xs text-[#6B7280]">Unread</p>
+            <p className="text-xs text-[#6B7280]">{t('unread')}</p>
           </div>
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
             <p className="text-2xl font-extrabold text-[#22C55E]">
               {stats.read}
             </p>
-            <p className="text-xs text-[#6B7280]">Read</p>
+            <p className="text-xs text-[#6B7280]">{t('read')}</p>
           </div>
         </div>
       )}
@@ -88,9 +93,9 @@ export default function NotificationsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4">
         <div className="flex gap-1 bg-[#F8FAFC] rounded-xl p-1">
           {[
-            { value: 'all', label: 'All' },
-            { value: 'unread', label: `Unread (${unreadCount})` },
-            { value: 'read', label: 'Read' },
+            { value: 'all', label: t('all') },
+            { value: 'unread', label: t('unreadCount', { count: unreadCount }) },
+            { value: 'read', label: t('read') },
           ].map((option) => (
             <button
               key={option.value}
@@ -114,7 +119,7 @@ export default function NotificationsPage() {
               className="px-4 py-2 rounded-xl border border-[#F3F4F6] hover:border-[#2563EB] transition-colors text-sm font-medium flex items-center gap-2"
             >
               <CheckCheck size={16} />
-              Mark all read
+              {t('markAllRead')}
             </button>
           )}
           <button
@@ -122,7 +127,7 @@ export default function NotificationsPage() {
             className="px-4 py-2 rounded-xl border border-[#F3F4F6] hover:border-[#2563EB] transition-colors text-sm font-medium flex items-center gap-2"
           >
             <Loader2 size={16} className={isLoading ? 'animate-spin' : ''} />
-            Refresh
+            {t('refresh')}
           </button>
         </div>
       </div>
@@ -140,13 +145,13 @@ export default function NotificationsPage() {
             </div>
             <p className="text-sm font-medium text-[#6B7280]">
               {filter === 'all'
-                ? 'No notifications'
+                ? t('none')
                 : filter === 'unread'
-                  ? 'All caught up!'
-                  : 'No read notifications'}
+                  ? t('caughtUp')
+                  : t('noRead')}
             </p>
             <p className="text-xs text-[#9CA3AF] mt-1">
-              {filter === 'unread' ? 'You have no unread notifications' : ''}
+              {filter === 'unread' ? t('noUnread') : ''}
             </p>
           </div>
         ) : (
@@ -170,7 +175,7 @@ export default function NotificationsPage() {
           {isLoading ? (
             <Loader2 size={16} className="animate-spin inline" />
           ) : (
-            'Load More'
+            t('loadMore')
           )}
         </button>
       )}

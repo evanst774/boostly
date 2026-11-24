@@ -4,8 +4,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Clock, CheckCircle2, XCircle, Loader2, RefreshCw, Landmark } from 'lucide-react';
-import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { LOCALE_TAGS, useFormatNumber, useLocale, useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { wallet } from '@/lib/i18n/messages/wallet';
+
+const STATUS_LABEL = {
+  PENDING: 'pending',
+  PROCESSING: 'statusSending',
+  COMPLETED: 'completed',
+  FAILED: 'failed',
+} as const;
 
 interface WithdrawalActivityItem {
   id: string;
@@ -32,6 +41,10 @@ export function WithdrawalActivity() {
   const [activities, setActivities] = useState<WithdrawalActivityItem[]>([]);
   const [stats, setStats] = useState<WithdrawalStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const t = useT(wallet);
+  const tc = useT(common);
+  const fmt = useFormatNumber();
+  const { locale } = useLocale();
   const [filter, setFilter] = useState<
     'all' | 'pending' | 'completed' | 'failed'
   >('all');
@@ -108,27 +121,27 @@ export function WithdrawalActivity() {
         <div className="grid grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
             <p className="text-2xl font-extrabold text-[#2563EB]">
-              {stats.totalWithdrawn.toLocaleString()} RWF
+              {tc('rwf', { amount: fmt(stats.totalWithdrawn) })}
             </p>
-            <p className="text-xs text-[#6B7280]">Total Withdrawn</p>
+            <p className="text-xs text-[#6B7280]">{t('totalWithdrawn')}</p>
           </div>
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
             <p className="text-2xl font-extrabold text-[#F59E0B]">
               {stats.pendingCount}
             </p>
-            <p className="text-xs text-[#6B7280]">Pending</p>
+            <p className="text-xs text-[#6B7280]">{t('pending')}</p>
           </div>
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
             <p className="text-2xl font-extrabold text-[#22C55E]">
               {stats.completedCount}
             </p>
-            <p className="text-xs text-[#6B7280]">Completed</p>
+            <p className="text-xs text-[#6B7280]">{t('completed')}</p>
           </div>
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
             <p className="text-2xl font-extrabold text-[#EF4444]">
               {stats.failedCount}
             </p>
-            <p className="text-xs text-[#6B7280]">Failed</p>
+            <p className="text-xs text-[#6B7280]">{t('failed')}</p>
           </div>
         </div>
       )}
@@ -148,7 +161,7 @@ export function WithdrawalActivity() {
                 )}
                 onClick={() => setFilter(status)}
               >
-                {status}
+                {t(status)}
               </button>
             ),
           )}
@@ -156,6 +169,7 @@ export function WithdrawalActivity() {
         <button
           className="ml-auto p-2 rounded-xl hover:bg-[#F8FAFC] transition-colors"
           onClick={() => fetchActivity()}
+          aria-label={t('refresh')}
         >
           <RefreshCw size={16} className="text-[#6B7280]" />
         </button>
@@ -165,9 +179,9 @@ export function WithdrawalActivity() {
       {activities.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border border-[#F3F4F6]">
           <Landmark size={36} className="mx-auto mb-4 text-[#9CA3AF]" />
-          <p className="text-[#6B7280] font-medium">No withdrawal activity</p>
+          <p className="text-[#6B7280] font-medium">{t('noWithdrawalActivity')}</p>
           <p className="text-sm text-[#9CA3AF] mt-1">
-            Your withdrawals will appear here
+            {t('withdrawalsAppear')}
           </p>
         </div>
       ) : (
@@ -189,7 +203,7 @@ export function WithdrawalActivity() {
                     {activity.formattedAmount}
                   </span>
                   <span className="text-xs text-[#6B7280]">
-                    via {activity.method.replace('_', ' ')}
+                    {t('via', { method: activity.method.replace('_', ' ') })}
                   </span>
                 </div>
                 <div className="flex items-center gap-3 mt-1">
@@ -202,7 +216,7 @@ export function WithdrawalActivity() {
                       getStatusColor(activity.status),
                     )}
                   >
-                    {activity.status}
+                    {t(STATUS_LABEL[activity.status] ?? 'pending')}
                   </span>
                 </div>
               </div>
@@ -219,11 +233,16 @@ export function WithdrawalActivity() {
                         : 'text-[#F59E0B]',
                   )}
                 >
-                  {activity.amount.toLocaleString()} {activity.currency}
+                  {fmt(activity.amount)} {activity.currency}
                 </p>
                 {activity.completedAt && (
                   <p className="text-[10px] text-[#6B7280]">
-                    {format(new Date(activity.completedAt), 'MMM d, h:mm a')}
+                    {new Date(activity.completedAt).toLocaleString(LOCALE_TAGS[locale], {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
                   </p>
                 )}
               </div>

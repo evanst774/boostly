@@ -26,6 +26,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n';
+import { auth } from '@/lib/i18n/messages/auth';
 
 // ─── Custom SVG Icons ──────────────────────────────
 
@@ -90,6 +92,7 @@ const RewardChip = ({
 export default function RegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useT(auth);
   const [isLoading, setIsLoading] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -142,14 +145,14 @@ export default function RegisterPage() {
       if (response.ok && data.valid) {
         setReferralValid(true);
         toast.success(
-          data.referrer ? `Valid code: invited by ${data.referrer}` : 'Valid referral code',
+          data.referrer ? t('refValidBy', { name: data.referrer }) : t('refValidToast'),
           {
           duration: 3000,
           icon: <BadgeCheck className="w-5 h-5 text-[#22C55E]" />,
         });
       } else {
         setReferralValid(false);
-        toast.error('Invalid referral code. Please check and try again.', {
+        toast.error(t('refInvalidToast'), {
           duration: 3000,
           icon: <AlertCircle className="w-5 h-5 text-[#EF4444]" />,
         });
@@ -159,7 +162,7 @@ export default function RegisterPage() {
     } finally {
       setIsCheckingReferral(false);
     }
-  }, []);
+  }, [t]);
 
   // ─── Capture referral code from URL ──────────────
   useEffect(() => {
@@ -167,7 +170,7 @@ export default function RegisterPage() {
     if (ref) {
       const code = ref.toUpperCase().trim();
       setForm((prev) => ({ ...prev, referralCode: code }));
-      toast.success(`Referral code applied: ${code}`, {
+      toast.success(t('refAppliedToast', { code }), {
         duration: 4000,
         icon: <Gift className="w-5 h-5 text-[#FBBF24]" />,
       });
@@ -246,31 +249,31 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     if (!form.name.trim()) {
-      toast.error('Please enter your full name');
+      toast.error(t('enterName'));
       setIsLoading(false);
       return;
     }
 
     if (!form.email.trim()) {
-      toast.error('Please enter your email address');
+      toast.error(t('enterEmail'));
       setIsLoading(false);
       return;
     }
 
     if (form.password.length < 8) {
-      toast.error('Password must be at least 8 characters');
+      toast.error(t('pwMin8'));
       setIsLoading(false);
       return;
     }
 
     if (form.password !== form.confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error(t('pwMismatch'));
       setIsLoading(false);
       return;
     }
 
     if (!agreeTerms) {
-      toast.error('Please accept the Terms of Service');
+      toast.error(t('acceptTerms'));
       setIsLoading(false);
       return;
     }
@@ -291,22 +294,22 @@ export default function RegisterPage() {
 
       if (!response.ok) {
         if (data.code === 'INVALID_REFERRAL') {
-          toast.error(data.message || 'Invalid referral code');
+          toast.error(data.message || t('invalidReferral'));
           setIsLoading(false);
           return;
         }
         if (data.code === 'SELF_REFERRAL') {
-          toast.error('You cannot refer yourself');
+          toast.error(t('selfReferral'));
           setIsLoading(false);
           return;
         }
-        throw new Error(data.message || 'Registration failed');
+        throw new Error(data.message || t('registrationFailed'));
       }
 
       const successMessage =
         data.referral?.status === 'PENDING'
-          ? `Account created! ${data.referral.message}`
-          : 'Account created! Check your email to verify.';
+          ? t('accountCreatedRef', { message: data.referral.message })
+          : t('accountCreated');
 
       toast.success(successMessage, {
         duration: 5000,
@@ -319,7 +322,7 @@ export default function RegisterPage() {
 
       router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Registration failed');
+      toast.error(err instanceof Error ? err.message : t('registrationFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -375,12 +378,12 @@ export default function RegisterPage() {
             </span>
           </div>
           <p className="relative z-10 text-sm text-white/50 mb-5">
-            Watch. Refer. Earn.
+            {t('shellTagline')}
           </p>
           <div className="relative z-10 w-9 h-0.5 bg-[#FBBF24] mb-7" />
 
           <h1 className="relative z-10 text-[28px] leading-[1.25] font-bold text-white mb-3.5">
-            Built to reward{' '}
+            {t('shellHeadline1')}{' '}
             <span
               style={{
                 background: 'linear-gradient(135deg, #FBBF24, #F59E0B)',
@@ -389,13 +392,12 @@ export default function RegisterPage() {
                 color: 'transparent',
               }}
             >
-              every minute
+              {t('shellHeadline2')}
             </span>{' '}
-            you spend here
+            {t('shellHeadline3')}
           </h1>
           <p className="relative z-10 text-sm text-white/50 leading-relaxed max-w-[280px] mb-9">
-            Earn from sponsored videos, games and surveys, and get paid to
-            your mobile money.
+            {t('regIntro')}
           </p>
 
           {/* Feature list */}
@@ -406,10 +408,10 @@ export default function RegisterPage() {
               </div>
               <div>
                 <div className="text-sm font-bold text-white mb-0.5">
-                  Watch &amp; Earn
+                  {t('featWatchTitle')}
                 </div>
                 <div className="text-[12.5px] text-white/45 leading-relaxed">
-                  Get rewarded in points for every video you watch
+                  {t('featWatchBody')}
                 </div>
               </div>
             </div>
@@ -419,10 +421,10 @@ export default function RegisterPage() {
               </div>
               <div>
                 <div className="text-sm font-bold text-white mb-0.5">
-                  Refer Friends
+                  {t('featReferTitle')}
                 </div>
                 <div className="text-[12.5px] text-white/45 leading-relaxed">
-                  {`Earn ${REFERRAL_COMMISSION_LABEL} of every plan your friends buy`}
+                  {t('featReferCommission', { commission: REFERRAL_COMMISSION_LABEL })}
                 </div>
               </div>
             </div>
@@ -432,10 +434,10 @@ export default function RegisterPage() {
               </div>
               <div>
                 <div className="text-sm font-bold text-white mb-0.5">
-                  Instant Payouts
+                  {t('featPayoutTitle')}
                 </div>
                 <div className="text-[12.5px] text-white/45 leading-relaxed">
-                  Cash out to fiat or crypto whenever you like
+                  {t('featPayoutBody')}
                 </div>
               </div>
             </div>
@@ -445,31 +447,31 @@ export default function RegisterPage() {
           <div className="relative z-10 flex-1 min-h-[140px] mt-8">
             <RewardChip
               icon={<Gift className="w-3.5 h-3.5" />}
-              label={`${REFERRAL_COMMISSION_LABEL} referral commission`}
+              label={t('chipCommission', { commission: REFERRAL_COMMISSION_LABEL })}
               tone="gold"
               style={{ top: 8, left: 8, animationDelay: '0s' }}
             />
             <RewardChip
               icon={<PlayCircle className="w-3.5 h-3.5" />}
-              label="+50 pts watched"
+              label={t('chipWatched')}
               tone="primary"
               style={{ top: 64, left: 96, animationDelay: '.8s' }}
             />
             <RewardChip
               icon={<Wallet className="w-3.5 h-3.5" />}
-              label="$24.80 available"
+              label={t('chipAvailable')}
               tone="success"
               style={{ top: 128, left: 16, animationDelay: '1.6s' }}
             />
           </div>
 
           <div className="relative z-10 mt-auto pt-6 text-sm text-white/50">
-            Already have an account?{' '}
+            {t('alreadyAccount')}{' '}
             <Link
               href="/login"
               className="text-[#FBBF24] font-semibold hover:text-[#F59E0B] transition-colors"
             >
-              Log in
+              {t('logIn')}
             </Link>
           </div>
         </div>
@@ -488,19 +490,19 @@ export default function RegisterPage() {
 
           <div className="text-center lg:text-left mb-7">
             <h2 className="text-2xl sm:text-[26px] font-bold text-white mb-1.5">
-              Create your account
+              {t('createYourAccount')}
             </h2>
             <p className="text-[13.5px] text-white/45">
-              Join Boostly and start earning daily rewards.
+              {t('regSubtitle')}
             </p>
           </div>
 
           {/* Step indicator */}
           <div className="flex items-center justify-center lg:justify-start mb-8">
             {[
-              { n: 1, label: 'Account', state: 'active' as const },
-              { n: 2, label: 'Verify Email', state: 'upcoming' as const },
-              { n: 3, label: 'Start Earning', state: 'upcoming' as const },
+              { n: 1, label: t('stepAccount'), state: 'active' as const },
+              { n: 2, label: t('stepVerify'), state: 'upcoming' as const },
+              { n: 3, label: t('stepStart'), state: 'upcoming' as const },
             ].map((step, i, arr) => (
               <div key={step.n} className="flex items-center">
                 <div className="flex flex-col items-center gap-1.5">
@@ -545,7 +547,7 @@ export default function RegisterPage() {
               ) : (
                 <GoogleIcon />
               )}
-              <span>Continue with Google</span>
+              <span>{t('continueGoogle')}</span>
             </button>
           </div>
 
@@ -553,7 +555,7 @@ export default function RegisterPage() {
           <div className="flex items-center gap-4 mb-6">
             <div className="flex-1 h-px bg-white/10" />
             <span className="text-[10px] text-white/30 font-medium uppercase tracking-wider">
-              or continue with email
+              {t('orEmail')}
             </span>
             <div className="flex-1 h-px bg-white/10" />
           </div>
@@ -580,17 +582,17 @@ export default function RegisterPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-white">
                   {referralValid === true
-                    ? 'Valid referral code!'
+                    ? t('refValidTitle')
                     : referralValid === false
-                      ? 'Invalid referral code'
-                      : 'Referral code applied'}
+                      ? t('invalidReferral')
+                      : t('refAppliedTitle')}
                 </p>
                 <p className="text-[10px] text-white/40 truncate">
                   {referralValid === true
-                    ? 'Your friend will be credited when you sign up'
+                    ? t('refValidBody')
                     : referralValid === false
-                      ? 'Please check the code and try again'
-                      : `Code: ${form.referralCode}`}
+                      ? t('refInvalidBody')
+                      : t('refCode', { code: form.referralCode })}
                 </p>
               </div>
               <button
@@ -599,6 +601,7 @@ export default function RegisterPage() {
                   setForm((prev) => ({ ...prev, referralCode: '' }));
                   setReferralValid(null);
                 }}
+                aria-label={t('removeReferral')}
                 className="text-white/30 hover:text-white/70 transition-colors flex-shrink-0 p-1 touch-manipulation"
               >
                 <X className="w-3.5 h-3.5" />
@@ -611,7 +614,7 @@ export default function RegisterPage() {
             {/* Name */}
             <div>
               <label className="text-xs font-semibold text-white/70 block mb-1.5">
-                Full Name
+                {t('fullName')}
               </label>
               <div className="relative">
                 {/* Icon hidden on mobile */}
@@ -636,7 +639,7 @@ export default function RegisterPage() {
             {/* Email */}
             <div>
               <label className="text-xs font-semibold text-white/70 block mb-1.5">
-                Email Address
+                {t('emailLabel')}
               </label>
               <div className="relative">
                 {!isMobile && (
@@ -661,7 +664,7 @@ export default function RegisterPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-white/70 block mb-1.5">
-                  Password
+                  {t('passwordLabel')}
                 </label>
                 <div className="relative">
                   {!isMobile && (
@@ -679,15 +682,13 @@ export default function RegisterPage() {
                       'w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all touch-manipulation',
                       !isMobile ? 'pl-10 pr-10' : 'px-4 pr-10',
                     )}
-                    placeholder="Create a password"
+                    placeholder={t('createPasswordPh')}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors p-1 touch-manipulation"
-                    aria-label={
-                      showPassword ? 'Hide password' : 'Show password'
-                    }
+                    aria-label={showPassword ? t('hidePassword') : t('showPassword')}
                   >
                     {showPassword ? (
                       <EyeOff className="w-4 h-4" />
@@ -700,7 +701,7 @@ export default function RegisterPage() {
 
               <div>
                 <label className="text-xs font-semibold text-white/70 block mb-1.5">
-                  Confirm Password
+                  {t('confirmPassword')}
                 </label>
                 <div className="relative">
                   {!isMobile && (
@@ -718,13 +719,13 @@ export default function RegisterPage() {
                       'w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all touch-manipulation',
                       !isMobile ? 'pl-10 pr-10' : 'px-4 pr-10',
                     )}
-                    placeholder="Confirm your password"
+                    placeholder={t('confirmPasswordPh')}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirm(!showConfirm)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors p-1 touch-manipulation"
-                    aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                    aria-label={showConfirm ? t('hidePassword') : t('showPassword')}
                   >
                     {showConfirm ? (
                       <EyeOff className="w-4 h-4" />
@@ -758,10 +759,10 @@ export default function RegisterPage() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
                   {[
-                    { key: 'length', label: 'At least 8 characters' },
-                    { key: 'upper', label: 'One uppercase letter' },
-                    { key: 'number', label: 'One number' },
-                    { key: 'special', label: 'One special character' },
+                    { key: 'length', label: t('req8') },
+                    { key: 'upper', label: t('reqUpper') },
+                    { key: 'number', label: t('reqNumber') },
+                    { key: 'special', label: t('reqSpecial') },
                   ].map((req) => {
                     const met =
                       passwordRequirements[
@@ -796,8 +797,8 @@ export default function RegisterPage() {
             {/* Referral Code */}
             <div>
               <label className="text-xs font-semibold text-white/70 block mb-1.5">
-                Referral Code{' '}
-                <span className="text-white/30 font-normal">(optional)</span>
+                {t('referralCode')}{' '}
+                <span className="text-white/30 font-normal">{t('optional')}</span>
               </label>
               <div className="relative">
                 {!isMobile && (
@@ -811,7 +812,7 @@ export default function RegisterPage() {
                     'w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all uppercase touch-manipulation',
                     !isMobile ? 'pl-10 pr-10' : 'px-4 pr-10',
                   )}
-                  placeholder="e.g. BOOSTLY123"
+                  placeholder={t('referralPh')}
                 />
                 {isCheckingReferral && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -842,24 +843,24 @@ export default function RegisterPage() {
                     ? 'bg-[#2563EB] border-[#2563EB]'
                     : 'border-white/30',
                 )}
-                aria-label={agreeTerms ? 'Agree to terms' : 'Disagree to terms'}
+                aria-label={agreeTerms ? t('agreeTermsAria') : t('disagreeTermsAria')}
               >
                 {agreeTerms && <Check className="w-2.5 h-2.5 text-white" />}
               </button>
               <span className="text-[11px] text-white/50 leading-relaxed">
-                I agree to the{' '}
+                {t('iAgree')}{' '}
                 <Link
                   href="/terms"
                   className="text-[#93C5FD] hover:text-[#BFDBFE] transition-colors"
                 >
-                  Terms of Service
+                  {t('termsOfService')}
                 </Link>{' '}
-                and{' '}
+                {t('and')}{' '}
                 <Link
                   href="/privacy"
                   className="text-[#93C5FD] hover:text-[#BFDBFE] transition-colors"
                 >
-                  Privacy Policy
+                  {t('privacyPolicy')}
                 </Link>
               </span>
             </div>
@@ -873,11 +874,11 @@ export default function RegisterPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Creating account...
+                  {t('creatingAccount')}
                 </>
               ) : (
                 <>
-                  Create Account
+                  {t('createAccount')}
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -886,12 +887,12 @@ export default function RegisterPage() {
 
           {/* Footer */}
           <p className="text-center lg:hidden text-xs text-white/30 mt-6">
-            Already have an account?{' '}
+            {t('alreadyAccount')}{' '}
             <Link
               href="/login"
               className="text-white/60 hover:text-white font-semibold transition-colors"
             >
-              Sign in
+              {t('signInLink')}
             </Link>
           </p>
         </div>

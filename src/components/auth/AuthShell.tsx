@@ -4,6 +4,8 @@
 import Link from 'next/link';
 import { Gift, PlayCircle, Users, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n';
+import { auth } from '@/lib/i18n/messages/auth';
 
 // Colors are hardcoded on purpose (not pulled from tailwind.config theme
 // extensions) so this renders correctly regardless of whether the project's
@@ -54,6 +56,7 @@ export default function AuthShell({
   bottomLinkText,
   bottomLinkHref,
 }: AuthShellProps) {
+  const t = useT(auth);
   return (
     <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-0 lg:p-6">
       <style>{`
@@ -93,12 +96,12 @@ export default function AuthShell({
             </span>
           </div>
           <p className="relative z-10 text-sm text-white/50 mb-5">
-            Watch. Refer. Earn.
+            {t('shellTagline')}
           </p>
           <div className="relative z-10 w-9 h-0.5 bg-[#FBBF24] mb-7" />
 
           <h1 className="relative z-10 text-[28px] leading-[1.25] font-bold text-white mb-3.5">
-            Built to reward{' '}
+            {t('shellHeadline1')}{' '}
             <span
               style={{
                 background: 'linear-gradient(135deg, #FBBF24, #F59E0B)',
@@ -107,13 +110,12 @@ export default function AuthShell({
                 color: 'transparent',
               }}
             >
-              every minute
+              {t('shellHeadline2')}
             </span>{' '}
-            you spend here
+            {t('shellHeadline3')}
           </h1>
           <p className="relative z-10 text-sm text-white/50 leading-relaxed max-w-[280px] mb-9">
-            Join thousands earning daily points, referral bonuses, and cash
-            payouts on Boostly.
+            {t('shellIntro')}
           </p>
 
           <div className="relative z-10 flex flex-col gap-5">
@@ -123,10 +125,10 @@ export default function AuthShell({
               </div>
               <div>
                 <div className="text-sm font-bold text-white mb-0.5">
-                  Watch &amp; Earn
+                  {t('featWatchTitle')}
                 </div>
                 <div className="text-[12.5px] text-white/45 leading-relaxed">
-                  Get rewarded in points for every video you watch
+                  {t('featWatchBody')}
                 </div>
               </div>
             </div>
@@ -136,10 +138,10 @@ export default function AuthShell({
               </div>
               <div>
                 <div className="text-sm font-bold text-white mb-0.5">
-                  Refer Friends
+                  {t('featReferTitle')}
                 </div>
                 <div className="text-[12.5px] text-white/45 leading-relaxed">
-                  Earn a welcome bonus for every friend who joins
+                  {t('featReferBody')}
                 </div>
               </div>
             </div>
@@ -149,10 +151,10 @@ export default function AuthShell({
               </div>
               <div>
                 <div className="text-sm font-bold text-white mb-0.5">
-                  Instant Payouts
+                  {t('featPayoutTitle')}
                 </div>
                 <div className="text-[12.5px] text-white/45 leading-relaxed">
-                  Cash out to fiat or crypto whenever you like
+                  {t('featPayoutBody')}
                 </div>
               </div>
             </div>
@@ -161,19 +163,19 @@ export default function AuthShell({
           <div className="relative z-10 flex-1 min-h-[140px] mt-8">
             <RewardChip
               icon={<Gift className="w-3.5 h-3.5" />}
-              label="+500 referral bonus"
+              label={t('chipReferral')}
               tone="gold"
               style={{ top: 8, left: 8, animationDelay: '0s' }}
             />
             <RewardChip
               icon={<PlayCircle className="w-3.5 h-3.5" />}
-              label="+50 pts watched"
+              label={t('chipWatched')}
               tone="primary"
               style={{ top: 64, left: 96, animationDelay: '.8s' }}
             />
             <RewardChip
               icon={<Wallet className="w-3.5 h-3.5" />}
-              label="$24.80 available"
+              label={t('chipAvailable')}
               tone="success"
               style={{ top: 128, left: 16, animationDelay: '1.6s' }}
             />

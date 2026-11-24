@@ -1,36 +1,29 @@
 // src/components/landing/HowItWorks.tsx
+'use client';
+
 import { ListChecks, Smartphone, UserPlus, Wallet } from 'lucide-react';
 import {
   MIN_WITHDRAWAL,
   MOBILE_MONEY_PROVIDERS,
   PAYOUT_TIME_LABEL,
 } from '@/lib/constants/payouts';
+import { useFormatNumber, useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { landing } from '@/lib/i18n/messages/landing';
 
 const STEPS = [
-  {
-    icon: UserPlus,
-    title: 'Create a free account',
-    body: 'Sign up in under a minute. Joining costs nothing.',
-  },
-  {
-    icon: ListChecks,
-    title: 'Complete daily tasks',
-    body: 'Watch sponsored videos, play games, answer surveys. Each finished task adds RWF to your balance.',
-  },
-  {
-    icon: Wallet,
-    title: 'Request a withdrawal',
-    body: `Pick the amount and the mobile money number to pay. The amount is reserved right away.`,
-  },
-  {
-    icon: Smartphone,
-    title: `Paid at ${PAYOUT_TIME_LABEL}`,
-    body: `Every request is sent in one daily run. Requests after ${PAYOUT_TIME_LABEL} go out the next day.`,
-  },
-];
+  { icon: UserPlus, title: 'step1Title', body: 'step1Body' },
+  { icon: ListChecks, title: 'step2Title', body: 'step2Body' },
+  { icon: Wallet, title: 'step3Title', body: 'step3Body' },
+  { icon: Smartphone, title: 'step4Title', body: 'step4Body' },
+] as const;
 
 /** Light, precise explanation of how money moves. */
 export function HowItWorks() {
+  const t = useT(landing);
+  const tc = useT(common);
+  const fmt = useFormatNumber();
+  const time = t('payoutClock', { time: PAYOUT_TIME_LABEL });
   const providers = Object.values(MOBILE_MONEY_PROVIDERS)
     .map((p) => p.label)
     .join(' & ');
@@ -39,13 +32,12 @@ export function HowItWorks() {
     <section id="how-it-works" className="bg-white py-20 sm:py-28 scroll-mt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="max-w-2xl">
-          <p className="text-sm font-semibold text-primary">How it works</p>
+          <p className="text-sm font-semibold text-primary">{t('navHow')}</p>
           <h2 className="mt-2 font-rebond-bold text-3xl sm:text-5xl tracking-[-0.02em] text-slate-900">
-            From a task to your phone, in one day.
+            {t('howTitle')}
           </h2>
           <p className="mt-4 text-lg text-slate-600">
-            No points to convert, no gift cards. Your balance is in RWF and it
-            goes straight to your mobile money.
+            {t('howBody')}
           </p>
         </div>
 
@@ -61,9 +53,9 @@ export function HowItWorks() {
                 <Icon className="h-5 w-5" />
               </div>
               <div className="md:mt-6">
-                <p className="text-xs font-semibold text-slate-400">Step {i + 1}</p>
-                <h3 className="mt-1 text-lg font-semibold text-slate-900">{title}</h3>
-                <p className="mt-1.5 text-[15px] leading-relaxed text-slate-600">{body}</p>
+                <p className="text-xs font-semibold text-slate-400">{t('stepN', { n: i + 1 })}</p>
+                <h3 className="mt-1 text-lg font-semibold text-slate-900">{t(title, { time })}</h3>
+                <p className="mt-1.5 text-[15px] leading-relaxed text-slate-600">{t(body, { time })}</p>
               </div>
             </li>
           ))}
@@ -71,10 +63,10 @@ export function HowItWorks() {
 
         <dl className="mt-16 grid grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200">
           {[
-            { k: 'Paid to', v: providers },
-            { k: 'Payout time', v: `Every day, ${PAYOUT_TIME_LABEL}` },
-            { k: 'Minimum withdrawal', v: `${MIN_WITHDRAWAL.toLocaleString()} RWF` },
-            { k: 'Withdrawal fee', v: 'Free' },
+            { k: t('paidTo'), v: providers },
+            { k: t('payoutTime'), v: t('everyDayAt', { time }) },
+            { k: t('minWithdrawal'), v: tc('rwf', { amount: fmt(MIN_WITHDRAWAL) }) },
+            { k: t('withdrawalFee'), v: t('free') },
           ].map((r) => (
             <div key={r.k} className="bg-white p-5">
               <dt className="text-xs font-medium uppercase tracking-wider text-slate-400">{r.k}</dt>

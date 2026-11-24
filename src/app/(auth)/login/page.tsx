@@ -19,6 +19,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import AuthShell from '@/components/auth/AuthShell';
+import { useT } from '@/lib/i18n';
+import { auth } from '@/lib/i18n/messages/auth';
 
 // ─── Custom SVG Icons ──────────────────────────────
 
@@ -46,6 +48,7 @@ const GoogleIcon = () => (
 export default function LoginPage() {
   const router = useRouter();
   const { login, isLoading: authLoading } = useAuth();
+  const t = useT(auth);
 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -132,11 +135,11 @@ export default function LoginPage() {
 
       // If we get here with no user and no special cases
       if (!result?.user && !result?.requires2FA && !result?.needsVerification) {
-        setError('Login failed. Please try again.');
+        setError(t('loginFailed'));
       }
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Invalid email or password';
+        err instanceof Error ? err.message : t('invalidCredentials');
       setError(message);
       toast.error(message);
     } finally {
@@ -146,16 +149,16 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      bottomPrompt="New to Boostly?"
-      bottomLinkText="Create an account"
+      bottomPrompt={t('newToBoostly')}
+      bottomLinkText={t('createAccountLink')}
       bottomLinkHref="/register"
     >
       <div className="text-center lg:text-left mb-7">
         <h2 className="text-2xl sm:text-[26px] font-bold text-white mb-1.5">
-          Welcome back
+          {t('welcomeBack')}
         </h2>
         <p className="text-[13.5px] text-white/45">
-          Continue earning your daily rewards.
+          {t('loginSubtitle')}
         </p>
       </div>
 
@@ -172,14 +175,14 @@ export default function LoginPage() {
           ) : (
             <GoogleIcon />
           )}
-          <span>Continue with Google</span>
+          <span>{t('continueGoogle')}</span>
         </button>
       </div>
 
       <div className="flex items-center gap-4 mb-6">
         <div className="flex-1 h-px bg-white/10" />
         <span className="text-[10px] text-white/30 font-medium uppercase tracking-wider">
-          or continue with email
+          {t('orEmail')}
         </span>
         <div className="flex-1 h-px bg-white/10" />
       </div>
@@ -201,7 +204,7 @@ export default function LoginPage() {
             htmlFor="email"
             className="text-xs font-semibold text-white/70 block mb-1.5"
           >
-            Email Address
+            {t('emailLabel')}
           </label>
           <div className="relative">
             {!isMobile && (
@@ -230,13 +233,13 @@ export default function LoginPage() {
               htmlFor="password"
               className="text-xs font-semibold text-white/70"
             >
-              Password
+              {t('passwordLabel')}
             </label>
             <Link
               href="/forgot-password"
               className="text-xs text-[#93C5FD] font-medium hover:text-[#BFDBFE] transition-colors"
             >
-              Forgot password?
+              {t('forgotPassword')}
             </Link>
           </div>
           <div className="relative">
@@ -254,13 +257,13 @@ export default function LoginPage() {
                 'w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all',
                 !isMobile ? 'pl-10 pr-10' : 'px-4 pr-10',
               )}
-              placeholder="Enter your password"
+              placeholder={t('passwordPh')}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors p-1"
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-label={showPassword ? t('hidePassword') : t('showPassword')}
             >
               {showPassword ? (
                 <EyeOff className="w-4 h-4" />
@@ -280,11 +283,11 @@ export default function LoginPage() {
               'w-4 h-4 rounded border-2 transition-all flex items-center justify-center flex-shrink-0',
               rememberMe ? 'bg-[#2563EB] border-[#2563EB]' : 'border-white/30',
             )}
-            aria-label={rememberMe ? 'Remember me' : "Don't remember me"}
+            aria-label={rememberMe ? t('rememberMe') : t('dontRememberMe')}
           >
             {rememberMe && <Check className="w-2.5 h-2.5 text-white" />}
           </button>
-          <span className="text-[13px] text-white/50">Remember me</span>
+          <span className="text-[13px] text-white/50">{t('rememberMe')}</span>
         </div>
 
         {/* Submit */}
@@ -296,11 +299,11 @@ export default function LoginPage() {
           {isLoading || authLoading ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              Signing in...
+              {t('signingIn')}
             </>
           ) : (
             <>
-              Sign In
+              {t('signIn')}
               <ArrowRight className="w-4 h-4" />
             </>
           )}
@@ -308,12 +311,12 @@ export default function LoginPage() {
       </form>
 
       <p className="hidden lg:block text-center text-xs text-white/30 mt-6">
-        Don&apos;t have an account?{' '}
+        {t('noAccount')}{' '}
         <Link
           href="/register"
           className="text-[#93C5FD] font-semibold hover:text-[#BFDBFE] transition-colors"
         >
-          Create one
+          {t('createOne')}
         </Link>
       </p>
     </AuthShell>

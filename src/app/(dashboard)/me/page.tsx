@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Crown,
   HelpCircle,
+  Languages,
   LogOut,
   Settings,
   ShieldCheck,
@@ -24,6 +25,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
 import { startProductTour } from '@/components/app/ProductTour';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { useT } from '@/lib/i18n';
+import { account } from '@/lib/i18n/messages/account';
+import { common } from '@/lib/i18n/messages/common';
 
 const initials = (name?: string | null) =>
   (name || 'U')
@@ -73,6 +78,8 @@ function Group({ rows }: { rows: Row[] }) {
 
 export default function MePage() {
   const router = useRouter();
+  const t = useT(account);
+  const tc = useT(common);
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const isFree = !user?.plan || user.plan === 'Free';
@@ -90,14 +97,14 @@ export default function MePage() {
           {initials(user?.name)}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="text-lg font-bold text-[#0F172A] dark:text-white truncate">{user?.name || 'Your account'}</p>
+          <p className="text-lg font-bold text-[#0F172A] dark:text-white truncate">{user?.name || t('yourAccount')}</p>
           <p className="text-sm text-[#64748B] dark:text-[#94A3B8] truncate">{user?.email}</p>
         </div>
         <Link
           href="/settings?tab=profile"
           className="shrink-0 rounded-full border border-[#E2E8F0] dark:border-[#334155] px-3 py-1.5 text-xs font-semibold text-[#0F172A] dark:text-white"
         >
-          Edit
+          {t('edit')}
         </Link>
       </section>
 
@@ -116,10 +123,10 @@ export default function MePage() {
         </span>
         <span className="flex-1 min-w-0">
           <span className="block text-[15px] font-bold text-[#0F172A] dark:text-white">
-            {isFree ? 'Free plan' : `${user?.plan} plan`}
+            {isFree ? t('freePlan') : t('namedPlan', { plan: user?.plan ?? '' })}
           </span>
           <span className="block text-xs text-[#64748B] dark:text-[#94A3B8]">
-            {isFree ? 'Upgrade for a higher daily maximum' : 'See your plan and limits'}
+            {isFree ? t('upgradeHint') : t('seePlanHint')}
           </span>
         </span>
         <ChevronRight size={18} className="text-[#94A3B8]" />
@@ -127,19 +134,33 @@ export default function MePage() {
 
       <Group
         rows={[
-          { href: '/referrals', label: 'Invite friends', hint: `Earn ${REFERRAL_COMMISSION_LABEL} of every plan they buy`, icon: Users, tint: 'bg-[#F5F3FF] text-[#7C3AED] dark:bg-[#8B5CF6]/15 dark:text-[#A78BFA]' },
-          { href: '/badges', label: 'Badges', hint: 'Boost your task rewards', icon: BadgeCheck, tint: 'bg-[#FFFBEB] text-[#B45309] dark:bg-[#F59E0B]/15 dark:text-[#FBBF24]' },
-          { href: '/notifications', label: 'Notifications', icon: Bell, tint: 'bg-[#EFF6FF] text-[#2563EB] dark:bg-[#2563EB]/15 dark:text-[#60A5FA]', count: unreadCount },
+          { href: '/referrals', label: t('inviteFriends'), hint: t('inviteHint', { percent: REFERRAL_COMMISSION_LABEL }), icon: Users, tint: 'bg-[#F5F3FF] text-[#7C3AED] dark:bg-[#8B5CF6]/15 dark:text-[#A78BFA]' },
+          { href: '/badges', label: t('badges'), hint: t('badgesHint'), icon: BadgeCheck, tint: 'bg-[#FFFBEB] text-[#B45309] dark:bg-[#F59E0B]/15 dark:text-[#FBBF24]' },
+          { href: '/notifications', label: t('notifications'), icon: Bell, tint: 'bg-[#EFF6FF] text-[#2563EB] dark:bg-[#2563EB]/15 dark:text-[#60A5FA]', count: unreadCount },
         ]}
       />
 
       <Group
         rows={[
-          { href: '/settings?tab=profile', label: 'Account settings', icon: Settings, tint: 'bg-[#F1F5F9] text-[#475569] dark:bg-[#334155] dark:text-[#CBD5E1]' },
-          { href: '/settings?tab=security', label: 'Security & 2FA', icon: ShieldCheck, tint: 'bg-[#F0FDF4] text-[#16A34A] dark:bg-[#22C55E]/15 dark:text-[#4ADE80]' },
-          { href: '/help', label: 'Help & support', icon: HelpCircle, tint: 'bg-[#F1F5F9] text-[#475569] dark:bg-[#334155] dark:text-[#CBD5E1]' },
+          { href: '/settings?tab=profile', label: t('accountSettings'), icon: Settings, tint: 'bg-[#F1F5F9] text-[#475569] dark:bg-[#334155] dark:text-[#CBD5E1]' },
+          { href: '/settings?tab=security', label: t('security2fa'), icon: ShieldCheck, tint: 'bg-[#F0FDF4] text-[#16A34A] dark:bg-[#22C55E]/15 dark:text-[#4ADE80]' },
+          { href: '/help', label: t('helpSupport'), icon: HelpCircle, tint: 'bg-[#F1F5F9] text-[#475569] dark:bg-[#334155] dark:text-[#CBD5E1]' },
         ]}
       />
+
+      {/* Language */}
+      <section className="rounded-2xl border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#1E293B] p-4 space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#ECFEFF] text-[#0891B2] dark:bg-[#06B6D4]/15 dark:text-[#22D3EE]">
+            <Languages size={18} />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-[15px] font-medium text-[#0F172A] dark:text-white">{tc('language')}</span>
+            <span className="block text-xs text-[#64748B] dark:text-[#94A3B8] truncate">{t('languageHint')}</span>
+          </span>
+        </div>
+        <LanguageSwitcher />
+      </section>
 
       <button
         type="button"
@@ -149,7 +170,7 @@ export default function MePage() {
         }}
         className="w-full flex items-center justify-center gap-2 rounded-2xl border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#1E293B] py-3.5 text-[15px] font-semibold text-[#0F172A] dark:text-white"
       >
-        <Compass size={18} /> Replay the app tour
+        <Compass size={18} /> {t('replayTour')}
       </button>
 
       <button
@@ -157,7 +178,7 @@ export default function MePage() {
         onClick={signOut}
         className="w-full flex items-center justify-center gap-2 rounded-2xl border border-[#FECACA] dark:border-[#EF4444]/30 bg-white dark:bg-[#1E293B] py-3.5 text-[15px] font-semibold text-[#DC2626] dark:text-[#F87171] active:bg-[#FEF2F2]"
       >
-        <LogOut size={18} /> Log out
+        <LogOut size={18} /> {t('logOut')}
       </button>
     </div>
   );

@@ -17,12 +17,16 @@ import {
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import AuthShell from '@/components/auth/AuthShell';
+import { useT } from '@/lib/i18n';
+import { auth } from '@/lib/i18n/messages/auth';
+import { common } from '@/lib/i18n/messages/common';
 
-const STEP_LABELS = ['Email', 'Reset'];
+const STEP_LABELS = ['stepEmail', 'stepReset'] as const;
 
 // ─── Step Indicator ──────────────────────────────────
 
 function StepIndicator({ step }: { step: number }) {
+  const t = useT(auth);
   return (
     <div className="flex items-center justify-center lg:justify-start mb-8">
       {STEP_LABELS.map((label, i) => {
@@ -54,7 +58,7 @@ function StepIndicator({ step }: { step: number }) {
                       : 'text-white/30',
                 )}
               >
-                {label}
+                {t(label)}
               </div>
             </div>
             {i < STEP_LABELS.length - 1 && (
@@ -86,6 +90,7 @@ function TokenValidator({
   onEmailFound: (email: string) => void;
 }) {
   const [isValidating, setIsValidating] = useState(true);
+  const t = useT(auth);
   // ✅ FIX: React Strict Mode (dev only) intentionally mounts,
   // fake-unmounts, and remounts every component once to surface
   // effects that aren't safe to run twice. Without a guard, that
@@ -132,7 +137,7 @@ function TokenValidator({
       <div className="flex flex-col items-center justify-center py-8">
         <Loader2 className="w-8 h-8 animate-spin text-[#2563EB]" />
         <p className="text-sm text-white/50 mt-4">
-          Validating your reset link...
+          {t('validatingLink')}
         </p>
       </div>
     );
@@ -147,6 +152,8 @@ function ForgotPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tokenFromUrl = searchParams.get('token');
+  const t = useT(auth);
+  const tc = useT(common);
 
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
@@ -192,8 +199,8 @@ function ForgotPasswordContent() {
   // ─── Handle token validation failure ─────────────
   const handleTokenInvalid = useCallback(() => {
     setIsTokenValid(false);
-    toast.error('Invalid or expired reset link. Please request a new one.');
-  }, []);
+    toast.error(t('invalidLinkToast'));
+  }, [t]);
 
   // ─── Handle email found from token ──────────────
   const handleEmailFound = useCallback((foundEmail: string) => {
@@ -204,7 +211,7 @@ function ForgotPasswordContent() {
   // ─── Handle sending reset link ──────────────────
   const handleSendReset = async () => {
     if (!email) {
-      toast.error('Please enter your email address');
+      toast.error(t('enterEmail'));
       return;
     }
 
@@ -219,14 +226,14 @@ function ForgotPasswordContent() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to send reset link');
+        throw new Error(data.message || t('sendLinkFailed'));
       }
 
-      toast.success('Reset link sent to your email!');
+      toast.success(t('resetSent'));
       setStep(2);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : 'Failed to send reset link',
+        err instanceof Error ? err.message : t('sendLinkFailed'),
       );
     } finally {
       setIsLoading(false);
@@ -236,12 +243,12 @@ function ForgotPasswordContent() {
   // ─── Handle password reset ──────────────────────
   const handleResetPassword = async () => {
     if (newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters');
+      toast.error(t('pwMin8'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error(t('pwMismatch'));
       return;
     }
 
@@ -260,14 +267,14 @@ function ForgotPasswordContent() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to reset password');
+        throw new Error(data.message || t('resetFailed'));
       }
 
-      toast.success('Password reset successfully!');
+      toast.success(t('resetSuccess'));
       setStep(4);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : 'Failed to reset password',
+        err instanceof Error ? err.message : t('resetFailed'),
       );
     } finally {
       setIsLoading(false);
@@ -295,21 +302,20 @@ function ForgotPasswordContent() {
             <AlertCircle className="w-8 h-8 text-red-400" />
           </div>
           <h2 className="text-2xl font-bold text-white mb-1.5">
-            Invalid or Expired Link
+            {t('invalidLinkTitle')}
           </h2>
           <p className="text-[13.5px] text-white/45">
-            This password reset link is no longer valid. It may have expired or
-            already been used.
+            {t('invalidLinkBody')}
           </p>
         </div>
         <button
           onClick={() => router.push('/forgot-password')}
           className="w-full py-3 bg-[#FBBF24] hover:bg-[#F59E0B] text-[#0F172A] font-semibold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#FBBF24]/20 hover:shadow-[#FBBF24]/40 min-h-[48px] text-sm"
         >
-          Request New Reset Link
+          {t('requestNewLink')}
         </button>
         <p className="text-center text-xs text-white/30 mt-4">
-          Reset links expire after 1 hour for security reasons.
+          {t('linkExpiry')}
         </p>
       </>
     );
@@ -323,16 +329,16 @@ function ForgotPasswordContent() {
           <CheckCircle2 className="w-8 h-8 text-[#4ADE80]" />
         </div>
         <h2 className="text-2xl font-bold text-white mb-1.5">
-          Password reset!
+          {t('resetDoneTitle')}
         </h2>
         <p className="text-[13.5px] text-white/45 mb-6">
-          Your password has been updated successfully.
+          {t('resetDoneBody')}
         </p>
         <button
           onClick={() => router.push('/login')}
           className="w-full py-3 bg-[#FBBF24] hover:bg-[#F59E0B] text-[#0F172A] font-semibold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#FBBF24]/20 hover:shadow-[#FBBF24]/40 min-h-[48px] text-sm"
         >
-          Back to Login
+          {t('backToLogin')}
         </button>
       </div>
     );
@@ -351,7 +357,7 @@ function ForgotPasswordContent() {
           className="flex items-center gap-1.5 text-white/40 hover:text-white/70 text-sm transition-colors mb-6 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-          Back
+          {tc('back')}
         </button>
       )}
 
@@ -362,10 +368,10 @@ function ForgotPasswordContent() {
         <>
           <div className="text-center lg:text-left mb-7">
             <h2 className="text-2xl sm:text-[26px] font-bold text-white mb-1.5">
-              Forgot password?
+              {t('forgotPassword')}
             </h2>
             <p className="text-[13.5px] text-white/45">
-              Enter your email and we&apos;ll send you a reset link.
+              {t('forgotBody')}
             </p>
           </div>
 
@@ -393,7 +399,7 @@ function ForgotPasswordContent() {
             {isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              'Send Reset Link'
+              t('sendResetLink')
             )}
           </button>
         </>
@@ -407,15 +413,14 @@ function ForgotPasswordContent() {
               <Mail className="w-8 h-8 text-[#93C5FD]" />
             </div>
             <h2 className="text-2xl font-bold text-white mb-1.5">
-              Check your email
+              {t('checkEmail')}
             </h2>
             <p className="text-[13.5px] text-white/45">
-              We&apos;ve sent a password reset link to{' '}
+              {t('sentResetTo')}{' '}
               <span className="text-white/70 font-medium">{email}</span>.
             </p>
             <p className="text-xs text-white/30 mt-4">
-              Click the link in the email to reset your password. The link
-              expires in 1 hour.
+              {t('clickLink')}
             </p>
           </div>
 
@@ -423,13 +428,13 @@ function ForgotPasswordContent() {
             onClick={() => setStep(1)}
             className="w-full py-3 bg-[#FBBF24] hover:bg-[#F59E0B] text-[#0F172A] font-semibold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#FBBF24]/20 hover:shadow-[#FBBF24]/40 min-h-[48px] text-sm"
           >
-            Resend Link
+            {t('resendLink')}
           </button>
           <button
             onClick={() => router.push('/login')}
             className="w-full py-3 mt-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 rounded-xl flex items-center justify-center gap-2 transition-all min-h-[48px] text-sm"
           >
-            Back to Login
+            {t('backToLogin')}
           </button>
         </>
       )}
@@ -439,12 +444,12 @@ function ForgotPasswordContent() {
         <>
           <div className="text-center lg:text-left mb-7">
             <h2 className="text-2xl sm:text-[26px] font-bold text-white mb-1.5">
-              Set new password
+              {t('setNewPassword')}
             </h2>
             <p className="text-[13.5px] text-white/45">
               {tokenFromUrl
-                ? `Create a new password for ${validatedEmail || 'your account'}`
-                : "Choose a strong password you haven't used before."}
+                ? t('createNewFor', { email: validatedEmail || t('yourAccount') })
+                : t('chooseStrong')}
             </p>
           </div>
 
@@ -457,7 +462,7 @@ function ForgotPasswordContent() {
                 type={showNewPassword ? 'text' : 'password'}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Min. 8 characters"
+                placeholder={t('min8Ph')}
                 className={cn(
                   'w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all pr-11',
                   !isMobile ? 'pl-10' : 'pl-4',
@@ -468,7 +473,7 @@ function ForgotPasswordContent() {
                 onClick={() => setShowNewPassword((v) => !v)}
                 tabIndex={-1}
                 aria-label={
-                  showNewPassword ? 'Hide password' : 'Show password'
+                  showNewPassword ? t('hidePassword') : t('showPassword')
                 }
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
               >
@@ -487,7 +492,7 @@ function ForgotPasswordContent() {
                 type={showConfirmPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter password"
+                placeholder={t('reenterPh')}
                 className={cn(
                   'w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 text-sm focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/20 transition-all pr-11',
                   !isMobile ? 'pl-10' : 'pl-4',
@@ -498,7 +503,7 @@ function ForgotPasswordContent() {
                 onClick={() => setShowConfirmPassword((v) => !v)}
                 tabIndex={-1}
                 aria-label={
-                  showConfirmPassword ? 'Hide password' : 'Show password'
+                  showConfirmPassword ? t('hidePassword') : t('showPassword')
                 }
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
               >
@@ -519,7 +524,7 @@ function ForgotPasswordContent() {
             {isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              'Reset Password'
+              t('resetPassword')
             )}
           </button>
         </>
@@ -531,10 +536,11 @@ function ForgotPasswordContent() {
 // ─── Main Page ──────────────────────────────────────
 
 export default function ForgotPasswordPage() {
+  const t = useT(auth);
   return (
     <AuthShell
-      bottomPrompt="Remembered it?"
-      bottomLinkText="Back to log in"
+      bottomPrompt={t('rememberedIt')}
+      bottomLinkText={t('backToLogInLower')}
       bottomLinkHref="/login"
     >
       <Suspense

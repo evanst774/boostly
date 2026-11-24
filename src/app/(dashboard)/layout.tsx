@@ -33,9 +33,20 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { TabBar } from '@/components/app/TabBar';
 import { cn } from '@/lib/utils';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { shell } from '@/lib/i18n/messages/shell';
+
+type CommonKey = keyof typeof common.en;
+type ShellKey = keyof typeof shell.en;
+/** A translatable label: a shared word or a shell string. */
+type Label = { common: CommonKey } | { shell: ShellKey };
 
 interface NavItem {
+  /** Stable id (keys, tour targets). */
   name: string;
+  label: Label;
   href: string;
   icon: React.ReactNode;
   badge?: number;
@@ -48,6 +59,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   {
     name: 'Home',
+    label: { common: 'home' },
     href: '/dashboard',
     icon: <LayoutDashboard size={18} />,
     section: 'main',
@@ -55,6 +67,7 @@ const navItems: NavItem[] = [
   },
   {
     name: 'Sponsored Videos',
+    label: { shell: 'navSponsoredVideos' },
     href: '/earn/videos',
     icon: <PlayCircle size={18} />,
     section: 'main',
@@ -62,6 +75,7 @@ const navItems: NavItem[] = [
   },
   {
     name: 'Games',
+    label: { common: 'games' },
     href: '/earn/games',
     icon: <Trophy size={18} />,
     section: 'main',
@@ -69,6 +83,7 @@ const navItems: NavItem[] = [
   },
   {
     name: 'Surveys',
+    label: { common: 'surveys' },
     href: '/earn/surveys',
     icon: <ClipboardCheck size={18} />,
     section: 'main',
@@ -76,6 +91,7 @@ const navItems: NavItem[] = [
   },
   {
     name: 'Withdraw',
+    label: { shell: 'navWithdraw' },
     href: '/wallet/withdraw',
     icon: <Smartphone size={18} />,
     section: 'finance',
@@ -83,6 +99,7 @@ const navItems: NavItem[] = [
   },
   {
     name: 'Wallet',
+    label: { common: 'wallet' },
     href: '/wallet',
     icon: <Wallet size={18} />,
     section: 'finance',
@@ -90,6 +107,7 @@ const navItems: NavItem[] = [
   },
   {
     name: 'Plans',
+    label: { common: 'plans' },
     href: '/plans',
     icon: <Crown size={18} />,
     section: 'account',
@@ -97,6 +115,7 @@ const navItems: NavItem[] = [
   },
   {
     name: 'Badges',
+    label: { shell: 'navBadges' },
     href: '/badges',
     icon: <BadgeCheck size={18} />,
     section: 'account',
@@ -104,6 +123,7 @@ const navItems: NavItem[] = [
   },
   {
     name: 'Referrals',
+    label: { shell: 'navReferrals' },
     href: '/referrals',
     icon: <Users size={18} />,
     section: 'account',
@@ -111,6 +131,7 @@ const navItems: NavItem[] = [
   },
   {
     name: 'Settings',
+    label: { shell: 'navSettings' },
     href: '/settings',
     icon: <Settings size={18} />,
     section: 'account',
@@ -121,9 +142,9 @@ const navItems: NavItem[] = [
 
 // Quick actions
 const quickActions = [
-  { icon: <Smartphone size={14} />, label: 'Withdraw', href: '/wallet/withdraw' },
-  { icon: <Crown size={14} />, label: 'Plans', href: '/plans' },
-];
+  { icon: <Smartphone size={14} />, id: 'Withdraw', label: { shell: 'navWithdraw' }, href: '/wallet/withdraw' },
+  { icon: <Crown size={14} />, id: 'Plans', label: { common: 'plans' }, href: '/plans' },
+] satisfies { icon: React.ReactNode; id: string; label: Label; href: string }[];
 
 /** Desktop sidebar items that the welcome tour points at. */
 const DESKTOP_TOUR_IDS: Record<string, string> = {
@@ -133,25 +154,25 @@ const DESKTOP_TOUR_IDS: Record<string, string> = {
   Settings: 'nav-me',
 };
 
-const MOBILE_SCREENS: { prefix: string; title: string; back?: string }[] = [
-  { prefix: '/wallet/withdraw', title: 'Withdraw', back: '/wallet' },
-  { prefix: '/wallet/history', title: 'History', back: '/wallet' },
-  { prefix: '/wallet/earnings', title: 'Earnings', back: '/wallet' },
-  { prefix: '/wallet', title: 'Wallet' },
-  { prefix: '/earn', title: 'Earn' },
-  { prefix: '/plans', title: 'Plans' },
-  { prefix: '/referrals', title: 'Invite friends', back: '/me' },
-  { prefix: '/badges', title: 'Badges', back: '/me' },
-  { prefix: '/notifications', title: 'Notifications', back: '/me' },
-  { prefix: '/settings', title: 'Settings', back: '/me' },
-  { prefix: '/me', title: 'Me' },
-  { prefix: '/dashboard', title: 'Home' },
+const MOBILE_SCREENS: { prefix: string; title: Label; back?: string }[] = [
+  { prefix: '/wallet/withdraw', title: { shell: 'navWithdraw' }, back: '/wallet' },
+  { prefix: '/wallet/history', title: { shell: 'titleHistory' }, back: '/wallet' },
+  { prefix: '/wallet/earnings', title: { shell: 'titleEarnings' }, back: '/wallet' },
+  { prefix: '/wallet', title: { common: 'wallet' } },
+  { prefix: '/earn', title: { common: 'earn' } },
+  { prefix: '/plans', title: { common: 'plans' } },
+  { prefix: '/referrals', title: { shell: 'titleInvite' }, back: '/me' },
+  { prefix: '/badges', title: { shell: 'navBadges' }, back: '/me' },
+  { prefix: '/notifications', title: { shell: 'titleNotifications' }, back: '/me' },
+  { prefix: '/settings', title: { shell: 'navSettings' }, back: '/me' },
+  { prefix: '/me', title: { common: 'me' } },
+  { prefix: '/dashboard', title: { common: 'home' } },
 ];
 
-function getMobileScreen(pathname: string) {
+function getMobileScreen(pathname: string): { title: Label | null; back?: string } {
   return (
     MOBILE_SCREENS.find((s) => pathname === s.prefix || pathname.startsWith(`${s.prefix}/`)) ?? {
-      title: 'Boostly',
+      title: null, // shows "Boostly"
       back: '/dashboard',
     }
   );
@@ -172,6 +193,9 @@ export default function DashboardLayout({
   const router = useRouter();
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
+  const tc = useT(common);
+  const t = useT(shell);
+  const say = (l: Label) => ('common' in l ? tc(l.common) : t(l.shell));
 
   // ─── Restore desktop sidebar collapse preference ──────
   useEffect(() => {
@@ -236,7 +260,7 @@ export default function DashboardLayout({
     )
     .sort((a, b) => b.len - a.len)[0]?.i;
 
-  const getPageTitle = () => activeNavItem?.name || 'Dashboard';
+  const getPageTitle = () => (activeNavItem ? say(activeNavItem.label) : t('dashboard'));
 
   // Phone title + back target. Tab roots have no back arrow; sub-screens go
   // back to their tab.
@@ -328,8 +352,8 @@ export default function DashboardLayout({
           <button
             type="button"
             onClick={toggleCollapsed}
-            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={isCollapsed ? t('expandSidebar') : t('collapseSidebar')}
+            title={isCollapsed ? t('expandSidebar') : t('collapseSidebar')}
             className="hidden lg:flex w-8 h-8 rounded-lg items-center justify-center text-[#94A3B8] dark:text-[#64748B] hover:text-[#2563EB] dark:hover:text-[#60A5FA] hover:bg-[#EFF6FF] dark:hover:bg-[#2563EB]/10 transition-colors flex-shrink-0"
           >
             {isCollapsed ? (
@@ -363,9 +387,9 @@ export default function DashboardLayout({
                     isCollapsed && 'lg:hidden',
                   )}
                 >
-                  {section === 'main' && 'Earn'}
-                  {section === 'finance' && 'Money'}
-                  {section === 'account' && 'Account'}
+                  {section === 'main' && t('sectionEarn')}
+                  {section === 'finance' && t('sectionMoney')}
+                  {section === 'account' && t('sectionAccount')}
                 </span>
                 {isCollapsed && (
                   <span className="hidden lg:block w-6 h-px bg-[#E2E8F0] dark:bg-[#334155]" />
@@ -380,7 +404,7 @@ export default function DashboardLayout({
                       key={item.name}
                       href={item.href}
                       data-tour={DESKTOP_TOUR_IDS[item.name]}
-                      title={isCollapsed ? item.name : undefined}
+                      title={isCollapsed ? say(item.label) : undefined}
                       className={cn(
                         'flex items-center rounded-lg text-sm font-medium transition-colors duration-150 group relative',
                         isCollapsed
@@ -405,7 +429,7 @@ export default function DashboardLayout({
                       <span
                         className={cn('flex-1', isCollapsed && 'lg:hidden')}
                       >
-                        {item.name}
+                        {say(item.label)}
                       </span>
                       {item.badge && (
                         <span
@@ -431,7 +455,7 @@ export default function DashboardLayout({
                             isCollapsed && 'lg:hidden',
                           )}
                         >
-                          New
+                          {t('newBadge')}
                         </span>
                       )}
                       {/* Collapsed rail: swap the badge/new pill for a small dot
@@ -453,7 +477,7 @@ export default function DashboardLayout({
         <div className="border-t border-[#F1F5F9] dark:border-[#334155] p-3">
           <button
             type="button"
-            title={isCollapsed ? user?.name || 'Profile' : undefined}
+            title={isCollapsed ? user?.name || t('profile') : undefined}
             className={cn(
               'w-full flex items-center rounded-lg hover:bg-[#F8FAFC] dark:hover:bg-[#334155] transition-colors group text-left',
               isCollapsed
@@ -467,7 +491,7 @@ export default function DashboardLayout({
             </div>
             <div className={cn('flex-1 min-w-0', isCollapsed && 'lg:hidden')}>
               <div className="text-sm font-semibold text-[#0F172A] dark:text-white truncate">
-                {user?.name || 'User'}
+                {user?.name || t('user')}
               </div>
               <div className="text-xs text-[#64748B] dark:text-[#94A3B8] flex items-center gap-1.5">
                 <span className="inline-flex items-center gap-1">
@@ -508,7 +532,7 @@ export default function DashboardLayout({
           {mobileScreen.back ? (
             <Link
               href={mobileScreen.back}
-              aria-label="Back"
+              aria-label={tc('back')}
               className="lg:hidden -ml-2 w-10 h-10 rounded-full flex items-center justify-center text-[#0F172A] dark:text-white active:bg-[#F1F5F9] dark:active:bg-[#334155]"
             >
               <ChevronLeft size={24} />
@@ -528,7 +552,7 @@ export default function DashboardLayout({
           {/* Title: screen name on phones, section name on desktop */}
           <div className="flex-1 min-w-0">
             <h1 className="text-[19px] lg:text-xl font-bold tracking-tight text-[#0F172A] dark:text-white truncate font-outfit">
-              <span className="lg:hidden">{mobileScreen.title}</span>
+              <span className="lg:hidden">{mobileScreen.title ? say(mobileScreen.title) : 'Boostly'}</span>
               <span className="hidden lg:inline">{getPageTitle()}</span>
             </h1>
           </div>
@@ -537,13 +561,13 @@ export default function DashboardLayout({
           <div className="hidden md:flex items-center gap-1">
             {quickActions.map((action) => (
               <button
-                key={action.label}
+                key={action.id}
                 type="button"
                 onClick={() => router.push(action.href)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-[#64748B] dark:text-[#94A3B8] hover:bg-[#F8FAFC] dark:hover:bg-[#334155] hover:text-[#0F172A] dark:hover:text-white transition-colors"
               >
                 {action.icon}
-                <span className="hidden xl:inline">{action.label}</span>
+                <span className="hidden xl:inline">{say(action.label)}</span>
               </button>
             ))}
             <span className="w-px h-6 bg-[#E2E8F0] dark:bg-[#334155] mx-1.5" />
@@ -553,7 +577,7 @@ export default function DashboardLayout({
             {/* Dark Mode Toggle */}
             <button
               type="button"
-              aria-label="Toggle dark mode"
+              aria-label={t('toggleDark')}
               onClick={toggleDarkMode}
               className="hidden sm:flex w-10 h-10 rounded-lg border border-[#F1F5F9] dark:border-[#334155] items-center justify-center hover:border-[#2563EB] hover:bg-[#EFF6FF] dark:hover:bg-[#2563EB]/10 transition-colors"
             >
@@ -570,7 +594,7 @@ export default function DashboardLayout({
             {/* Phones: avatar opens the Me screen */}
             <Link
               href="/me"
-              aria-label="Me"
+              aria-label={tc('me')}
               className="lg:hidden w-9 h-9 rounded-full bg-[#2563EB] flex items-center justify-center text-white text-xs font-bold"
             >
               {user?.name ? getInitials(user.name) : 'U'}
@@ -580,7 +604,7 @@ export default function DashboardLayout({
             <div className="relative profile-dropdown hidden lg:block">
               <button
                 type="button"
-                aria-label="Account menu"
+                aria-label={t('accountMenu')}
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 className="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-[#F1F5F9] dark:bg-[#334155] border border-transparent hover:border-[#2563EB] transition-colors hover:bg-white dark:hover:bg-[#2D3A4F]"
               >
@@ -605,7 +629,7 @@ export default function DashboardLayout({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-[#0F172A] dark:text-white truncate">
-                        {user?.name || 'User'}
+                        {user?.name || t('user')}
                       </p>
                       <p className="text-xs text-[#64748B] dark:text-[#94A3B8] truncate">
                         {user?.email ?? ''}
@@ -624,7 +648,7 @@ export default function DashboardLayout({
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#64748B] dark:text-[#94A3B8] hover:bg-[#F8FAFC] dark:hover:bg-[#334155] hover:text-[#0F172A] dark:hover:text-white transition-colors"
                     >
                       <UserCircle size={16} />
-                      Profile
+                      {t('profile')}
                     </button>
                     <button
                       type="button"
@@ -635,7 +659,7 @@ export default function DashboardLayout({
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#64748B] dark:text-[#94A3B8] hover:bg-[#F8FAFC] dark:hover:bg-[#334155] hover:text-[#0F172A] dark:hover:text-white transition-colors"
                     >
                       <Wallet size={16} />
-                      Wallet
+                      {tc('wallet')}
                     </button>
                     <button
                       type="button"
@@ -646,7 +670,7 @@ export default function DashboardLayout({
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#64748B] dark:text-[#94A3B8] hover:bg-[#F8FAFC] dark:hover:bg-[#334155] hover:text-[#0F172A] dark:hover:text-white transition-colors"
                     >
                       <BadgeCheck size={16} />
-                      Badges
+                      {t('navBadges')}
                     </button>
                     <button
                       type="button"
@@ -657,8 +681,12 @@ export default function DashboardLayout({
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#64748B] dark:text-[#94A3B8] hover:bg-[#F8FAFC] dark:hover:bg-[#334155] hover:text-[#0F172A] dark:hover:text-white transition-colors"
                     >
                       <Users size={16} />
-                      Referrals
+                      {t('navReferrals')}
                     </button>
+                    <div className="border-t border-[#F1F5F9] dark:border-[#334155] my-1" />
+                    <div className="px-4 py-2">
+                      <LanguageSwitcher variant="compact" className="text-[#334155] dark:text-[#CBD5E1]" />
+                    </div>
                     <div className="border-t border-[#F1F5F9] dark:border-[#334155] my-1" />
                     <button
                       type="button"
@@ -669,7 +697,7 @@ export default function DashboardLayout({
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#64748B] dark:text-[#94A3B8] hover:bg-[#F8FAFC] dark:hover:bg-[#334155] hover:text-[#0F172A] dark:hover:text-white transition-colors"
                     >
                       <HelpCircle size={16} />
-                      Help & Support
+                      {t('helpSupport')}
                     </button>
                     <button
                       type="button"
@@ -677,7 +705,7 @@ export default function DashboardLayout({
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#EF4444] hover:bg-[#FEF2F2] dark:hover:bg-[#7F1D1D]/20 transition-colors"
                     >
                       <LogOutIcon size={16} />
-                      Sign Out
+                      {t('signOut')}
                     </button>
                   </div>
                 </div>

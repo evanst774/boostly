@@ -1,7 +1,8 @@
 // src/app/(dashboard)/settings/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -25,7 +26,6 @@ import {
   Check,
   ChevronRight,
   ChevronDown,
-  Plus,
   Eye,
   EyeOff,
   Loader2,
@@ -38,8 +38,6 @@ import {
   Volume2,
   BarChart3,
   Headphones,
-  Landmark,
-  Laptop,
   MessageCircle,
   Monitor,
   Smartphone,
@@ -49,6 +47,11 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useSettings } from '@/hooks/useSettings';
 import { cn, formatCurrency } from '@/lib/utils';
 import { ConfirmDialog, AlertDialog } from '@/components/ui/Dialog';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { LOCALE_TAGS, useLocale, useT } from '@/lib/i18n';
+import { account } from '@/lib/i18n/messages/account';
+import { common } from '@/lib/i18n/messages/common';
+import { REFERRAL_COMMISSION_LABEL } from '@/lib/constants/referrals';
 
 type SettingsTab =
   | 'profile'
@@ -74,6 +77,9 @@ interface DialogState {
 
 export default function SettingsPage() {
   const router = useRouter();
+  const t = useT(account);
+  const tc = useT(common);
+  const { locale } = useLocale();
   const { user, logout, refreshUser } = useAuth();
   const { dark, toggleTheme } = useTheme();
   // Accounts created with Google have no password until they set one.
@@ -83,6 +89,33 @@ export default function SettingsPage() {
     useSettings();
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+  // Real signed-in sessions and the last payout number.
+  const [sessionsList, setSessionsList] = useState<{ id: string; createdAt: string; current: boolean }[] | null>(null);
+  const [payoutNumber, setPayoutNumber] = useState<string | null>(null);
+  const loadSessions = useCallback(async () => {
+    try {
+      const res = await fetch('/api/user/sessions', { cache: 'no-store' });
+      if (res.ok) setSessionsList((await res.json()).sessions ?? []);
+    } catch {
+      setSessionsList([]);
+    }
+  }, []);
+  const revokeSession = useCallback(
+    async (id: string) => {
+      await fetch(`/api/user/sessions?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      await loadSessions();
+    },
+    [loadSessions],
+  );
+  useEffect(() => {
+    if (activeTab === 'security') void loadSessions();
+    if (activeTab === 'payment') {
+      fetch('/api/earn/today', { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => setPayoutNumber(d?.withdrawal?.lastPhoneNumber ?? null))
+        .catch(() => undefined);
+    }
+  }, [activeTab, loadSessions]);
 
   // Deep links: /settings?tab=security etc.
   useEffect(() => {
@@ -178,8 +211,8 @@ export default function SettingsPage() {
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch {
       showAlert({
-        title: 'Error',
-        message: 'Failed to update profile. Please try again.',
+        title: t('error'),
+        message: t('profileUpdateFailed'),
         variant: 'error',
       });
     } finally {
@@ -190,16 +223,16 @@ export default function SettingsPage() {
   const handleChangePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       showAlert({
-        title: 'Error',
-        message: 'Passwords do not match.',
+        title: t('error'),
+        message: t('passwordsMismatch'),
         variant: 'error',
       });
       return;
     }
     if (passwordData.newPassword.length < 8) {
       showAlert({
-        title: 'Error',
-        message: 'Password must be at least 8 characters.',
+        title: t('error'),
+        message: t('passwordTooShort'),
         variant: 'error',
       });
       return;
@@ -219,16 +252,14 @@ export default function SettingsPage() {
         confirmPassword: '',
       });
       showAlert({
-        title: 'Success',
-        message: hasPassword
-          ? 'Password updated successfully!'
-          : 'Password set. You can now also sign in with your email and password.',
+        title: t('success'),
+        message: hasPassword ? t('passwordUpdated') : t('passwordSet'),
         variant: 'success',
       });
     } catch (e) {
       showAlert({
-        title: 'Error',
-        message: e instanceof Error ? e.message : 'Failed to update password. Please try again.',
+        title: t('error'),
+        message: e instanceof Error ? e.message : t('passwordUpdateFailed'),
         variant: 'error',
       });
     } finally {
@@ -239,13 +270,13 @@ export default function SettingsPage() {
   const handleUpdatePreferences = async () => {
     setIsSaving(true);
     try {
-      await updatePreferences(preferences);
+      await updatePreferences({ ...preferences, language: locale });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch {
       showAlert({
-        title: 'Error',
-        message: 'Failed to update preferences.',
+        title: t('error'),
+        message: t('preferencesUpdateFailed'),
         variant: 'error',
       });
     } finally {
@@ -255,10 +286,10 @@ export default function SettingsPage() {
 
   const handleLogout = () => {
     showConfirm({
-      title: 'Sign Out',
-      message: 'Are you sure you want to sign out?',
-      confirmText: 'Sign Out',
-      cancelText: 'Cancel',
+      title: t('signOut'),
+      message: t('signOutConfirm'),
+      confirmText: t('signOut'),
+      cancelText: tc('cancel'),
       confirmVariant: 'danger',
       onConfirm: async () => {
         await logout();
@@ -269,11 +300,10 @@ export default function SettingsPage() {
 
   const handleDeleteAccount = () => {
     showConfirm({
-      title: 'Delete Account',
-      message:
-        'Are you sure you want to delete your account? This action cannot be undone.',
-      confirmText: 'Delete Account',
-      cancelText: 'Cancel',
+      title: t('deleteAccount'),
+      message: t('deleteAccountConfirm'),
+      confirmText: t('deleteAccount'),
+      cancelText: tc('cancel'),
       confirmVariant: 'danger',
       onConfirm: async () => {
         await logout();
@@ -294,15 +324,15 @@ export default function SettingsPage() {
   const getStrengthLabel = () => {
     switch (passwordStrength) {
       case 0:
-        return 'Very Weak';
+        return t('strengthVeryWeak');
       case 1:
-        return 'Weak';
+        return t('strengthWeak');
       case 2:
-        return 'Fair';
+        return t('strengthFair');
       case 3:
-        return 'Good';
+        return t('strengthGood');
       case 4:
-        return 'Strong';
+        return t('strengthStrong');
       default:
         return '';
     }
@@ -326,66 +356,44 @@ export default function SettingsPage() {
   };
 
   const settingsTabs = [
-    { id: 'profile', label: 'Profile', icon: <User size={18} /> },
-    { id: 'security', label: 'Security', icon: <Shield size={18} /> },
+    { id: 'profile', label: t('tabProfile'), icon: <User size={18} /> },
+    { id: 'security', label: t('tabSecurity'), icon: <Shield size={18} /> },
     {
       id: 'preferences',
-      label: 'Preferences',
+      label: t('tabPreferences'),
       icon: <SettingsIcon size={18} />,
     },
-    { id: 'payment', label: 'Payment', icon: <CreditCard size={18} /> },
-    { id: 'support', label: 'Support', icon: <HelpCircle size={18} /> },
+    { id: 'payment', label: t('tabPayment'), icon: <CreditCard size={18} /> },
+    { id: 'support', label: t('tabSupport'), icon: <HelpCircle size={18} /> },
   ];
 
-  // Payment methods
-  const paymentMethods = [
-    {
-      id: 'mobile',
-      name: 'Mobile Money',
-      detail: '+250 780 123 XXX · Airtime / MTN',
-      default: true,
-      icon: Smartphone,
-    },
-    {
-      id: 'bank',
-      name: 'Bank Account',
-      detail: 'BK · **** **** **** 1234',
-      default: false,
-      icon: Landmark,
-    },
-  ];
 
   // FAQ items
   const faqs = [
     {
       id: 1,
-      question: 'How do I withdraw my earnings?',
-      answer:
-        'Go to Withdraw, enter the MTN or Airtel number you want to be paid on and the amount, then confirm. All withdrawals are paid daily at 3:00 PM. How often you can withdraw depends on your plan (see Plans).',
+      question: t('faq1Q'),
+      answer: t('faq1A'),
     },
     {
       id: 2,
-      question: 'How do verification badges work?',
-      answer:
-        'Verification badges are one-time purchases that boost your earnings. Silver gives +15%, Gold gives +30%, and Platinum gives +30% plus VIP support.',
+      question: t('faq2Q'),
+      answer: t('faq2A'),
     },
     {
       id: 3,
-      question: 'How does the referral program work?',
-      answer:
-        'Share your unique referral code with friends. When they sign up and start earning, you receive 200 RWF per referral. No limit on referrals!',
+      question: t('faq3Q'),
+      answer: t('faq3A', { commission: REFERRAL_COMMISSION_LABEL }),
     },
     {
       id: 4,
-      question: "What's the minimum withdrawal amount?",
-      answer:
-        'The minimum withdrawal amount is 1,000 RWF. There are no fees for Mobile Money transfers.',
+      question: t('faq4Q'),
+      answer: t('faq4A'),
     },
     {
       id: 5,
-      question: 'Can I cancel my subscription?',
-      answer:
-        'Yes, you can cancel your subscription at any time from Settings → My Subscription → Manage Subscription.',
+      question: t('faq5Q'),
+      answer: t('faq5A'),
     },
   ];
 
@@ -419,15 +427,15 @@ export default function SettingsPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
-          className="hidden lg:flex w-10 h-10 rounded-xl border border-[#F3F4F6] items-center justify-center hover:border-[#2563EB] transition-colors" aria-label="Back"
+          className="hidden lg:flex w-10 h-10 rounded-xl border border-[#F3F4F6] items-center justify-center hover:border-[#2563EB] transition-colors" aria-label={tc('back')}
           onClick={() => router.back()}
         >
           <ArrowLeft size={18} />
         </button>
         <div>
-          <h1 className="text-xl font-bold">Settings</h1>
+          <h1 className="text-xl font-bold">{t('settings')}</h1>
           <p className="text-sm text-[#6B7280]">
-            Manage your account and preferences
+            {t('settingsSubtitle')}
           </p>
         </div>
       </div>
@@ -470,12 +478,13 @@ export default function SettingsPage() {
                 </div>
                 <button
                   className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center shadow-md hover:scale-110 transition-transform"
+                  aria-label={t('changePhoto')}
                   onClick={() => setIsEditing(true)}
                 >
                   <Camera size={14} className="text-[#2563EB]" />
                 </button>
               </div>
-              <h2 className="text-xl font-bold mt-4">{user?.name || 'User'}</h2>
+              <h2 className="text-xl font-bold mt-4">{user?.name || t('user')}</h2>
               <p className="text-white/75">
                 {user?.email ?? ''}
               </p>
@@ -484,7 +493,7 @@ export default function SettingsPage() {
                 onClick={() => setIsEditing(true)}
               >
                 <Edit2 size={14} />
-                Edit Profile
+                {t('editProfile')}
               </button>
             </div>
           </div>
@@ -495,19 +504,19 @@ export default function SettingsPage() {
               <p className="text-lg font-extrabold text-[#2563EB]">
                 {formatCurrency(data?.totalEarned ?? 0)}
               </p>
-              <p className="text-xs text-[#6B7280]">Total Earned</p>
+              <p className="text-xs text-[#6B7280]">{t('totalEarned')}</p>
             </div>
             <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
               <p className="text-lg font-extrabold text-[#F59E0B]">{user?.plan ?? 'Free'}</p>
-              <p className="text-xs text-[#6B7280]">{user?.badge ? `${user.badge} badge` : 'Plan'}</p>
+              <p className="text-xs text-[#6B7280]">{user?.badge ? t('badgeName', { badge: user.badge }) : t('plan')}</p>
             </div>
             <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-4 text-center">
               <p className="text-lg font-extrabold text-[#6B7280]">
                 {user?.createdAt
-                  ? new Date(user.createdAt).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+                  ? new Date(user.createdAt).toLocaleDateString(LOCALE_TAGS[locale], { month: 'short', year: 'numeric' })
                   : '—'}
               </p>
-              <p className="text-xs text-[#6B7280]">Member Since</p>
+              <p className="text-xs text-[#6B7280]">{t('memberSince')}</p>
             </div>
           </div>
 
@@ -515,9 +524,10 @@ export default function SettingsPage() {
           {isEditing && (
             <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-sm font-bold">Edit Profile</h3>
+                <h3 className="text-sm font-bold">{t('editProfile')}</h3>
                 <button
                   className="text-sm text-[#6B7280] hover:text-[#111827] transition-colors"
+                  aria-label={tc('close')}
                   onClick={() => setIsEditing(false)}
                 >
                   <X size={18} />
@@ -526,7 +536,7 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-[#6B7280]">
-                    Full Name
+                    {t('fullName')}
                   </label>
                   <div className="relative mt-1">
                     <User
@@ -545,7 +555,7 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-[#6B7280]">
-                    Email
+                    {t('email')}
                   </label>
                   <div className="relative mt-1">
                     <Mail
@@ -567,7 +577,7 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-[#6B7280]">
-                    Phone
+                    {t('phone')}
                   </label>
                   <div className="relative mt-1">
                     <Phone
@@ -597,12 +607,12 @@ export default function SettingsPage() {
                   ) : (
                     <Save size={18} />
                   )}
-                  {isSaving ? 'Saving...' : 'Save Changes'}
+                  {isSaving ? t('saving') : t('saveChanges')}
                 </button>
                 {saveSuccess && (
                   <div className="flex items-center gap-2 text-[#22C55E] text-sm font-medium justify-center">
                     <Check size={16} />
-                    Profile updated successfully!
+                    {t('profileUpdated')}
                   </div>
                 )}
               </div>
@@ -614,25 +624,25 @@ export default function SettingsPage() {
             {[
               {
                 icon: <Award size={18} />,
-                title: 'My Badges',
-                subtitle: 'Boost your task rewards',
+                title: t('myBadges'),
+                subtitle: t('badgesHint'),
                 onClick: () => router.push('/badges'),
               },
               {
                 icon: <Crown size={18} />,
-                title: 'My Plan',
+                title: t('myPlan'),
                 subtitle:
                   !user?.plan || user.plan === 'Free'
-                    ? 'Free — upgrade to earn more each day'
-                    : `${user.plan} plan`,
+                    ? t('freeUpgrade')
+                    : t('namedPlan', { plan: user.plan }),
                 badge: undefined as string | undefined,
                 badgeColor: undefined as string | undefined,
                 onClick: () => router.push('/plans'),
               },
               {
                 icon: <Users size={18} />,
-                title: 'Referrals',
-                subtitle: 'Invite friends and earn together',
+                title: t('referrals'),
+                subtitle: t('referralsHint'),
                 onClick: () => router.push('/referrals'),
               },
             ].map((item, index) => (
@@ -672,9 +682,9 @@ export default function SettingsPage() {
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-6">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-sm font-bold">Security Level</h3>
+                <h3 className="text-sm font-bold">{t('securityLevel')}</h3>
                 <p className="text-xs text-[#6B7280]">
-                  Enable 2FA to reach 100%
+                  {t('enable2faHint')}
                 </p>
               </div>
               <span className="text-2xl font-extrabold text-[#F59E0B]">
@@ -689,7 +699,7 @@ export default function SettingsPage() {
           {/* Security Settings */}
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-[#F3F4F6]">
-              <h3 className="text-sm font-bold">Account Security</h3>
+              <h3 className="text-sm font-bold">{t('accountSecurity')}</h3>
             </div>
 
             {/* Change Password */}
@@ -702,14 +712,14 @@ export default function SettingsPage() {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-bold">
-                  {hasPassword ? 'Change Password' : 'Set a Password'}
+                  {hasPassword ? t('changePassword') : t('setPassword')}
                 </p>
                 <p className="text-xs text-[#6B7280] dark:text-[#94A3B8]">
                   {hasPassword
                     ? viaGoogle
-                      ? 'You can sign in with Google or your password'
-                      : 'Use a strong password you don’t use elsewhere'
-                    : 'You sign in with Google. Add a password to also sign in with email.'}
+                      ? t('googleOrPassword')
+                      : t('strongPasswordHint')
+                    : t('googleOnlyHint')}
                 </p>
               </div>
               <ChevronDown
@@ -727,7 +737,7 @@ export default function SettingsPage() {
                   {hasPassword && (
                   <div>
                     <label className="text-sm font-medium text-[#6B7280]">
-                      Current Password
+                      {t('currentPassword')}
                     </label>
                     <div className="relative mt-1">
                       <input
@@ -743,6 +753,7 @@ export default function SettingsPage() {
                       />
                       <button
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-[#111827]"
+                        aria-label={showPassword ? t('hidePassword') : t('showPassword')}
                         onClick={() => setShowPassword(!showPassword)}
                       >
                         {showPassword ? (
@@ -756,7 +767,7 @@ export default function SettingsPage() {
                   )}
                   <div>
                     <label className="text-sm font-medium text-[#6B7280]">
-                      New Password
+                      {t('newPassword')}
                     </label>
                     <div className="relative mt-1">
                       <input
@@ -804,7 +815,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-[#6B7280]">
-                      Confirm Password
+                      {t('confirmPassword')}
                     </label>
                     <input
                       type={showPassword ? 'text' : 'password'}
@@ -828,7 +839,7 @@ export default function SettingsPage() {
                     ) : (
                       <Lock size={18} />
                     )}
-                    {isSaving ? 'Updating...' : 'Update Password'}
+                    {isSaving ? t('updating') : t('updatePassword')}
                   </button>
                 </div>
               </div>
@@ -840,9 +851,9 @@ export default function SettingsPage() {
                 <Fingerprint size={18} />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-bold">Two-Factor Authentication</p>
+                <p className="text-sm font-bold">{t('twoFactor')}</p>
                 <p className="text-xs text-[#6B7280]">
-                  Add an extra layer of security
+                  {t('twoFactorHint')}
                 </p>
               </div>
               <button
@@ -850,6 +861,8 @@ export default function SettingsPage() {
                   'w-12 h-7 rounded-full transition-colors relative',
                   show2FA ? 'bg-[#22C55E]' : 'bg-[#D1D5DB]',
                 )}
+                aria-label={t('twoFactor')}
+                aria-pressed={show2FA}
                 onClick={() => setShow2FA(!show2FA)}
               >
                 <div
@@ -861,78 +874,48 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            {/* Login Alerts */}
-            <div className="flex items-center gap-4 px-5 py-4">
-              <div className="w-10 h-10 rounded-xl bg-[#F0FDF4] flex items-center justify-center text-[#22C55E]">
-                <Bell size={18} />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-bold">Login Alerts</p>
-                <p className="text-xs text-[#6B7280]">
-                  Get notified on new logins
-                </p>
-              </div>
-              <button className="w-12 h-7 rounded-full bg-[#22C55E] relative">
-                <div className="absolute top-0.5 right-0.5 w-6 h-6 rounded-full bg-white shadow-sm" />
-              </button>
-            </div>
           </div>
 
           {/* Active Sessions */}
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-[#F3F4F6]">
-              <h3 className="text-sm font-bold">Active Sessions</h3>
+              <h3 className="text-sm font-bold">{t('activeSessions')}</h3>
             </div>
-            {[
-              {
-                device: 'iPhone 14 Pro',
-                location: 'Kigali, Rwanda',
-                time: 'Just now',
-                current: true,
-                icon: Smartphone,
-              },
-              {
-                device: 'MacBook Pro',
-                location: 'Kigali, Rwanda',
-                time: '2 hours ago',
-                current: false,
-                icon: Laptop,
-              },
-              {
-                device: 'Windows PC',
-                location: 'Musanze, Rwanda',
-                time: 'Yesterday',
-                current: false,
-                icon: Monitor,
-              },
-            ].map((session, index) => (
-              <div
-                key={index}
-                className={cn(
-                  'flex items-center gap-4 px-5 py-4',
-                  index !== 2 && 'border-b border-[#F3F4F6]',
-                )}
-              >
-                <div className="w-10 h-10 rounded-xl bg-[#F8FAFC] flex items-center justify-center text-xl flex-shrink-0">
-                  <session.icon size={20} className="text-[#6B7280]" />
+            {sessionsList === null ? (
+              <p className="px-5 py-4 text-xs text-[#6B7280]">{tc('loading')}</p>
+            ) : (
+              sessionsList.map((session, index) => (
+                <div
+                  key={session.id}
+                  className={cn(
+                    'flex items-center gap-4 px-5 py-4',
+                    index !== sessionsList.length - 1 && 'border-b border-[#F3F4F6]',
+                  )}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#F8FAFC] flex items-center justify-center flex-shrink-0">
+                    {session.current ? <Smartphone size={20} className="text-[#6B7280]" /> : <Monitor size={20} className="text-[#6B7280]" />}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold">{session.current ? t('thisDevice') : t('otherDevice')}</p>
+                    <p className="text-xs text-[#6B7280]">
+                      {t('signedInOn', { date: new Date(session.createdAt).toLocaleString(LOCALE_TAGS[locale], { dateStyle: 'medium', timeStyle: 'short' }) })}
+                    </p>
+                  </div>
+                  {session.current ? (
+                    <span className="text-xs font-bold text-[#22C55E] bg-[#F0FDF4] px-3 py-1 rounded-full">
+                      {t('current')}
+                    </span>
+                  ) : (
+                    <button
+                      className="text-xs font-semibold text-[#EF4444] hover:underline"
+                      onClick={() => void revokeSession(session.id)}
+                    >
+                      {t('revoke')}
+                    </button>
+                  )}
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold">{session.device}</p>
-                  <p className="text-xs text-[#6B7280]">
-                    {session.location} · {session.time}
-                  </p>
-                </div>
-                {session.current ? (
-                  <span className="text-xs font-bold text-[#22C55E] bg-[#F0FDF4] px-3 py-1 rounded-full">
-                    Current
-                  </span>
-                ) : (
-                  <button className="text-xs font-semibold text-[#EF4444] hover:underline">
-                    Revoke
-                  </button>
-                )}
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           {/* Logout All */}
@@ -940,24 +923,26 @@ export default function SettingsPage() {
             className="w-full py-4 rounded-xl border border-[#EF4444] text-[#EF4444] font-bold hover:bg-[#FEF2F2] transition-colors flex items-center justify-center gap-2"
             onClick={() => {
               showConfirm({
-                title: 'Logout All Devices',
-                message:
-                  'This will log out all devices including this one. Continue?',
-                confirmText: 'Logout All',
-                cancelText: 'Cancel',
+                title: t('logoutAllDevices'),
+                message: t('logoutAllConfirm'),
+                confirmText: t('logoutAll'),
+                cancelText: tc('cancel'),
                 confirmVariant: 'danger',
-                onConfirm: () => {
+                onConfirm: async () => {
+                  const res = await fetch('/api/user/sessions?all=others', { method: 'DELETE' });
+                  const json = await res.json().catch(() => ({}));
+                  await loadSessions();
                   showAlert({
-                    title: 'Success',
-                    message: 'All sessions terminated successfully.',
-                    variant: 'success',
+                    title: res.ok ? t('success') : t('error'),
+                    message: res.ok ? t('sessionsSignedOut', { count: json.signedOut ?? 0 }) : json.error || t('error'),
+                    variant: res.ok ? 'success' : 'error',
                   });
                 },
               });
             }}
           >
             <LogOut size={18} />
-            Logout All Devices
+            {t('logoutAllDevices')}
           </button>
         </div>
       )}
@@ -968,29 +953,29 @@ export default function SettingsPage() {
           {/* Notifications */}
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-[#F3F4F6]">
-              <h3 className="text-sm font-bold">Notifications</h3>
+              <h3 className="text-sm font-bold">{t('notifications')}</h3>
             </div>
             {[
               {
                 id: 'notifications',
-                label: 'Push Notifications',
-                desc: 'Get notified about rewards & bonuses',
+                label: t('pushNotifications'),
+                desc: t('pushHint'),
                 icon: <Bell size={18} />,
                 iconBg: 'bg-[#EFF6FF]',
                 iconColor: 'text-[#2563EB]',
               },
               {
                 id: 'emailNotifications',
-                label: 'Email Notifications',
-                desc: 'Weekly summaries and updates',
+                label: t('emailNotifications'),
+                desc: t('emailHint'),
                 icon: <Mail size={18} />,
                 iconBg: 'bg-[#F0FDF4]',
                 iconColor: 'text-[#22C55E]',
               },
               {
                 id: 'soundEffects',
-                label: 'Sound Effects',
-                desc: 'In-app sounds for rewards',
+                label: t('soundEffects'),
+                desc: t('soundHint'),
                 icon: <Volume2 size={18} />,
                 iconBg: 'bg-[#FFFBEB]',
                 iconColor: 'text-[#F59E0B]',
@@ -1047,22 +1032,22 @@ export default function SettingsPage() {
           {/* Appearance */}
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-[#F3F4F6]">
-              <h3 className="text-sm font-bold">Appearance</h3>
+              <h3 className="text-sm font-bold">{t('appearance')}</h3>
             </div>
             <div className="flex items-center gap-4 px-5 py-4 border-b border-[#F3F4F6]">
               <div className="w-10 h-10 rounded-xl bg-[#1E293B] flex items-center justify-center text-white">
                 {dark ? <Moon size={18} /> : <Sun size={18} />}
               </div>
               <div className="flex-1">
-                <p className="text-sm font-bold">Dark Mode</p>
-                <p className="text-xs text-[#6B7280]">Switch to dark theme</p>
+                <p className="text-sm font-bold">{t('darkMode')}</p>
+                <p className="text-xs text-[#6B7280]">{t('darkModeHint')}</p>
               </div>
               <button
                 className={cn(
                   'w-12 h-7 rounded-full transition-colors relative',
                   dark ? 'bg-[#22C55E]' : 'bg-[#D1D5DB]',
                 )}
-                aria-label="Dark mode"
+                aria-label={t('darkMode')}
                 aria-pressed={dark}
                 onClick={() => {
                   // Applies immediately and is remembered on this device; the
@@ -1079,49 +1064,41 @@ export default function SettingsPage() {
                 />
               </button>
             </div>
-            <div className="flex items-center gap-4 px-5 py-4">
-              <div className="w-10 h-10 rounded-xl bg-[#F8FAFC] border border-[#F3F4F6] flex items-center justify-center">
-                <Globe size={18} />
+            <div className="px-5 py-4 space-y-3">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-[#F8FAFC] border border-[#F3F4F6] flex items-center justify-center">
+                  <Globe size={18} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold">{tc('language')}</p>
+                  <p className="text-xs text-[#6B7280]">
+                    {t('languageHint')}
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-bold">Language</p>
-                <p className="text-xs text-[#6B7280]">
-                  Choose your preferred language
-                </p>
-              </div>
-              <select
-                className="px-3 py-2 border border-[#F3F4F6] rounded-xl text-sm bg-white focus:border-[#2563EB] outline-none"
-                value={preferences.language}
-                onChange={(e) =>
-                  setPreferences({ ...preferences, language: e.target.value })
-                }
-              >
-                <option value="en">English</option>
-                <option value="fr">Français</option>
-                <option value="rw">Kinyarwanda</option>
-                <option value="sw">Swahili</option>
-              </select>
+              {/* Applies immediately and is remembered on this device. */}
+              <LanguageSwitcher />
             </div>
           </div>
 
           {/* Privacy */}
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-[#F3F4F6]">
-              <h3 className="text-sm font-bold">Privacy</h3>
+              <h3 className="text-sm font-bold">{t('privacy')}</h3>
             </div>
             {[
               {
                 id: 'analytics',
-                label: 'Analytics',
-                desc: 'Share usage data to improve the app',
+                label: t('analytics'),
+                desc: t('analyticsHint'),
                 icon: <BarChart3 size={18} />,
                 iconBg: 'bg-[#EFF6FF]',
                 iconColor: 'text-[#2563EB]',
               },
               {
                 id: 'showOnLeaderboard',
-                label: 'Show on Leaderboard',
-                desc: 'Let others see your ranking',
+                label: t('showOnLeaderboard'),
+                desc: t('leaderboardHint'),
                 icon: <Users size={18} />,
                 iconBg: 'bg-[#F5F3FF]',
                 iconColor: 'text-[#8B5CF6]',
@@ -1187,12 +1164,12 @@ export default function SettingsPage() {
             ) : (
               <Save size={18} />
             )}
-            {isSaving ? 'Saving...' : 'Save Preferences'}
+            {isSaving ? t('saving') : t('savePreferences')}
           </button>
           {saveSuccess && (
             <div className="flex items-center gap-2 text-[#22C55E] text-sm font-medium justify-center">
               <Check size={16} />
-              Preferences updated successfully!
+              {t('preferencesUpdated')}
             </div>
           )}
         </div>
@@ -1202,60 +1179,27 @@ export default function SettingsPage() {
       {activeTab === 'payment' && (
         <div className="space-y-6">
           <p className="text-sm text-[#6B7280]">
-            Manage your withdrawal methods. The default method is used for
-            automatic payouts.
+            {t('paymentIntro')}
           </p>
 
-          {paymentMethods.map((method) => (
-            <div
-              key={method.id}
-              className={cn(
-                'bg-white rounded-2xl border-2 p-5 transition-all cursor-pointer',
-                method.default
-                  ? 'border-[#2563EB] shadow-sm'
-                  : 'border-[#F3F4F6] hover:border-[#2563EB]',
-              )}
-            >
-              <div className="flex items-center gap-4">
-                <method.icon size={30} className="text-[#2563EB] flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-bold">{method.name}</p>
-                  <p className="text-xs text-[#6B7280]">{method.detail}</p>
-                </div>
-                {method.default && (
-                  <span className="text-xs font-bold text-[#2563EB] bg-[#EFF6FF] px-3 py-1 rounded-full">
-                    Default
-                  </span>
-                )}
-                <button className="w-8 h-8 rounded-lg border border-[#F3F4F6] flex items-center justify-center hover:border-[#2563EB] transition-colors">
-                  <Edit2 size={14} className="text-[#6B7280]" />
-                </button>
+          <div className="bg-white rounded-2xl border-2 border-[#2563EB] p-5 shadow-sm">
+            <div className="flex items-center gap-4">
+              <Smartphone size={30} className="text-[#2563EB] flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold">{t('mobileMoney')}</p>
+                <p className="text-xs text-[#6B7280] truncate">
+                  {payoutNumber ? t('lastUsedNumber', { number: payoutNumber }) : t('noPayoutYet')}
+                </p>
               </div>
-              {method.default && (
-                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#F3F4F6]">
-                  <Check size={14} className="text-[#22C55E]" />
-                  <span className="text-xs text-[#22C55E] font-medium">
-                    Verified · Used for last withdrawal
-                  </span>
-                </div>
-              )}
+              <Link
+                href="/wallet/withdraw"
+                className="text-xs font-bold text-[#2563EB] bg-[#EFF6FF] px-3 py-1.5 rounded-full hover:bg-[#DBEAFE]"
+              >
+                {t('goWithdraw')}
+              </Link>
             </div>
-          ))}
-
-          {/* Add Method */}
-          <button
-            className="w-full py-4 rounded-2xl border-2 border-dashed border-[#F3F4F6] text-[#6B7280] font-semibold hover:border-[#2563EB] hover:text-[#2563EB] transition-colors flex items-center justify-center gap-2"
-            onClick={() => {
-              showAlert({
-                title: 'Coming Soon',
-                message: 'Add new payment method will be available soon.',
-                variant: 'info',
-              });
-            }}
-          >
-            <Plus size={18} />
-            Add New Method
-          </button>
+            <p className="mt-3 pt-3 border-t border-[#F3F4F6] text-xs text-[#6B7280]">{t('payoutNumberHint')}</p>
+          </div>
 
           {/* Info Note */}
           <div className="bg-[#EFF6FF] border border-[#BFDBFE] rounded-2xl p-4 flex gap-3">
@@ -1265,11 +1209,11 @@ export default function SettingsPage() {
             />
             <div>
               <p className="text-sm font-semibold text-[#2563EB]">
-                Withdrawals are paid to mobile money{' '}
-                <strong>every day at 3:00 PM</strong>
+                {t('payoutBefore')}{' '}
+                <strong>{t('payoutTime')}</strong>
               </p>
               <p className="text-sm text-[#2563EB]/80 mt-0.5">
-                Requests made after 3:00 PM are paid the next day.
+                {t('payoutAfter')}
               </p>
             </div>
           </div>
@@ -1288,33 +1232,33 @@ export default function SettingsPage() {
               <div className="w-16 h-16 rounded-full bg-white/15 border-2 border-white/25 flex items-center justify-center text-3xl mx-auto mb-4">
                 <Headphones size={28} />
               </div>
-              <h2 className="text-xl font-bold">How can we help?</h2>
-              <p className="text-white/75">Our support team is here 24/7</p>
+              <h2 className="text-xl font-bold">{t('howCanWeHelp')}</h2>
+              <p className="text-white/75">{t('support247')}</p>
             </div>
           </div>
 
           {/* Contact Options */}
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-[#F3F4F6]">
-              <h3 className="text-sm font-bold">Contact Us</h3>
+              <h3 className="text-sm font-bold">{t('contactUs')}</h3>
             </div>
             {[
               {
                 icon: MessageCircle,
-                title: 'Live Chat',
-                desc: 'Available 24/7 · Avg response: 2 min',
-                badge: 'Online',
+                title: t('liveChat'),
+                desc: t('liveChatHint'),
+                badge: t('online'),
                 badgeColor: 'bg-[#22C55E]',
               },
               {
                 icon: Mail,
-                title: 'Email Support',
+                title: t('emailSupport'),
                 desc: 'support@boostly.buzz',
               },
               {
                 icon: Phone,
-                title: 'Call Support',
-                desc: '+250 788 000 000 · Mon–Fri 8am–6pm',
+                title: t('callSupport'),
+                desc: `+250 788 000 000 · ${t('callHours')}`,
               },
             ].map((item, index) => (
               <div
@@ -1326,7 +1270,7 @@ export default function SettingsPage() {
                 onClick={() => {
                   showAlert({
                     title: item.title,
-                    message: `Opening ${item.title}... This feature will be available soon.`,
+                    message: t('openingSoon', { name: item.title }),
                     variant: 'info',
                   });
                 }}
@@ -1355,7 +1299,7 @@ export default function SettingsPage() {
           {/* FAQ */}
           <div className="bg-white rounded-2xl border border-[#F3F4F6] shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-[#F3F4F6]">
-              <h3 className="text-sm font-bold">Frequently Asked Questions</h3>
+              <h3 className="text-sm font-bold">{t('faqTitle')}</h3>
             </div>
             {faqs.map((faq) => (
               <div
@@ -1387,11 +1331,11 @@ export default function SettingsPage() {
           {/* App Version */}
           <div className="flex items-center justify-between bg-white rounded-2xl border border-[#F3F4F6] shadow-sm p-5">
             <div>
-              <p className="text-sm font-bold">App Version</p>
-              <p className="text-xs text-[#6B7280]">v2.4.1 · Up to date</p>
+              <p className="text-sm font-bold">{t('appVersion')}</p>
+              <p className="text-xs text-[#6B7280]">v2.4.1 · {t('upToDate')}</p>
             </div>
             <span className="inline-flex items-center gap-1 text-xs font-bold text-[#22C55E] bg-[#F0FDF4] px-3 py-1 rounded-full">
-              <Check size={12} /> Latest
+              <Check size={12} /> {t('latest')}
             </span>
           </div>
         </div>
@@ -1399,35 +1343,34 @@ export default function SettingsPage() {
 
       {/* Danger Zone */}
       <div className="bg-[#FEF2F2] border border-[#FECACA] rounded-2xl p-5 mt-6">
-        <h4 className="text-sm font-bold text-[#EF4444] mb-3">Danger Zone</h4>
+        <h4 className="text-sm font-bold text-[#EF4444] mb-3">{t('dangerZone')}</h4>
         <div className="flex flex-wrap gap-3">
           <button
             className="px-4 py-2 rounded-xl border border-[#EF4444] text-[#EF4444] text-sm font-medium hover:bg-[#FEF2F2] transition-colors"
             onClick={() => {
               showConfirm({
-                title: 'Logout All Devices',
-                message:
-                  'This will log out all devices including this one. Continue?',
-                confirmText: 'Logout All',
-                cancelText: 'Cancel',
+                title: t('logoutAllDevices'),
+                message: t('logoutAllConfirm'),
+                confirmText: t('logoutAll'),
+                cancelText: tc('cancel'),
                 confirmVariant: 'danger',
                 onConfirm: () => {
                   showAlert({
-                    title: 'Success',
-                    message: 'All sessions terminated successfully.',
+                    title: t('success'),
+                    message: t('sessionsTerminated'),
                     variant: 'success',
                   });
                 },
               });
             }}
           >
-            Logout All Devices
+            {t('logoutAllDevices')}
           </button>
           <button
             className="px-4 py-2 rounded-xl bg-[#EF4444] text-white text-sm font-medium hover:bg-[#DC2626] transition-colors"
             onClick={handleDeleteAccount}
           >
-            Delete Account
+            {t('deleteAccount')}
           </button>
         </div>
       </div>
@@ -1438,7 +1381,7 @@ export default function SettingsPage() {
         onClick={handleLogout}
       >
         <LogOut size={18} />
-        Sign Out
+        {t('signOut')}
       </button>
     </div>
   );

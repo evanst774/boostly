@@ -17,15 +17,14 @@ import { useWithdrawalEligibility } from '@/hooks/useEarnToday';
 import { PayoutCountdown } from '@/components/earn/PayoutCountdown';
 import {
   MOBILE_MONEY_PROVIDERS,
-  PAYOUT_TIME_LABEL,
   detectMobileProvider,
-  formatPayoutDay,
   formatRwandaPhone,
   normalizeRwandaPhone,
 } from '@/lib/constants/payouts';
+import { useFormatNumber, useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { usePayoutText, useRwf, useWithdrawReason, wallet } from '@/lib/i18n/messages/wallet';
 import { cn } from '@/lib/utils';
-
-const rwf = (n: number) => `${Math.round(n).toLocaleString('en-US')} RWF`;
 
 type Step = 'form' | 'review' | 'done';
 
@@ -38,11 +37,11 @@ interface WithdrawalRow {
   failureReason: string | null;
 }
 
-const STATUS_UI: Record<WithdrawalRow['status'], { label: string; cls: string }> = {
-  PENDING: { label: `Waiting for ${PAYOUT_TIME_LABEL}`, cls: 'bg-[#FFFBEB] text-[#B45309] dark:bg-[#F59E0B]/15 dark:text-[#FBBF24]' },
-  PROCESSING: { label: 'Sending', cls: 'bg-[#EFF6FF] text-[#1D4ED8] dark:bg-[#2563EB]/15 dark:text-[#93C5FD]' },
-  COMPLETED: { label: 'Paid', cls: 'bg-[#F0FDF4] text-[#15803D] dark:bg-[#22C55E]/15 dark:text-[#4ADE80]' },
-  FAILED: { label: 'Refunded', cls: 'bg-[#FEF2F2] text-[#B91C1C] dark:bg-[#EF4444]/15 dark:text-[#F87171]' },
+const STATUS_UI: Record<WithdrawalRow['status'], { label: 'statusWaiting' | 'statusSending' | 'statusPaid' | 'statusRefunded'; cls: string }> = {
+  PENDING: { label: 'statusWaiting', cls: 'bg-[#FFFBEB] text-[#B45309] dark:bg-[#F59E0B]/15 dark:text-[#FBBF24]' },
+  PROCESSING: { label: 'statusSending', cls: 'bg-[#EFF6FF] text-[#1D4ED8] dark:bg-[#2563EB]/15 dark:text-[#93C5FD]' },
+  COMPLETED: { label: 'statusPaid', cls: 'bg-[#F0FDF4] text-[#15803D] dark:bg-[#22C55E]/15 dark:text-[#4ADE80]' },
+  FAILED: { label: 'statusRefunded', cls: 'bg-[#FEF2F2] text-[#B91C1C] dark:bg-[#EF4444]/15 dark:text-[#F87171]' },
 };
 
 const input =
@@ -53,6 +52,12 @@ const card =
 export default function WithdrawPage() {
   const router = useRouter();
   const { data: elig, isLoading, refetch } = useWithdrawalEligibility();
+  const withdrawReason = useWithdrawReason();
+  const t = useT(wallet);
+  const tc = useT(common);
+  const rwf = useRwf();
+  const fmt = useFormatNumber();
+  const { payoutDay, payoutTime, frequency, tag } = usePayoutText();
 
   const [step, setStep] = useState<Step>('form');
   const [amount, setAmount] = useState('');
@@ -94,11 +99,11 @@ export default function WithdrawPage() {
     amount === ''
       ? null
       : amountNum < min
-        ? `Minimum is ${rwf(min)}`
+        ? t('minIs', { amount: rwf(min) })
         : amountNum > balance
-          ? 'More than your available balance'
+          ? t('moreThanBalance')
           : !Number.isInteger(amountNum)
-            ? 'Use a whole amount'
+            ? t('wholeAmount')
             : null;
 
   const formValid =
@@ -125,7 +130,7 @@ export default function WithdrawPage() {
         }),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || 'Could not submit your withdrawal.');
+      if (!res.ok) throw new Error(json.error || t('submitFailed'));
       setResult({
         amount: amountNum,
         phone: formatRwandaPhone(phone),
@@ -135,7 +140,7 @@ export default function WithdrawPage() {
       refetch();
       loadHistory();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not submit your withdrawal.');
+      setError(e instanceof Error ? e.message : t('submitFailed'));
       setStep('form');
     } finally {
       setSubmitting(false);
@@ -146,16 +151,16 @@ export default function WithdrawPage() {
     <div className="flex items-center gap-3">
       <button
         type="button"
-        aria-label="Back"
+        aria-label={tc('back')}
         onClick={() => (step === 'review' ? setStep('form') : router.push('/wallet'))}
         className="w-10 h-10 rounded-xl border border-[#E2E8F0] dark:border-[#334155] flex items-center justify-center hover:border-[#2563EB] transition-colors"
       >
         <ArrowLeft size={18} />
       </button>
       <div>
-        <h1 className="text-xl font-bold text-[#0F172A] dark:text-white">Withdraw</h1>
+        <h1 className="text-xl font-bold text-[#0F172A] dark:text-white">{t('withdraw')}</h1>
         <p className="text-sm text-[#64748B] dark:text-[#94A3B8]">
-          To mobile money · paid daily at {PAYOUT_TIME_LABEL}
+          {t('withdrawSubtitle', { time: payoutTime })}
         </p>
       </div>
     </div>
@@ -175,9 +180,9 @@ export default function WithdrawPage() {
   if (step === 'done' && result) {
     const payoutAt = new Date(result.payoutAt);
     const timeline = [
-      { title: 'Request received', body: `${rwf(result.amount)} reserved from your balance.`, done: true },
-      { title: `Paid ${formatPayoutDay(payoutAt).toLowerCase()}`, body: `Sent to ${result.phone} in the ${PAYOUT_TIME_LABEL} payout run.`, done: false },
-      { title: 'Money on your phone', body: 'You will get an SMS from your mobile money provider.', done: false },
+      { title: t('stepReceived'), body: t('stepReceivedBody', { amount: rwf(result.amount) }), done: true },
+      { title: t('stepPaid', { when: payoutDay(payoutAt).toLowerCase() }), body: t('stepPaidBody', { phone: result.phone, time: payoutTime }), done: false },
+      { title: t('stepPhone'), body: t('stepPhoneBody'), done: false },
     ];
     return (
       <div className="max-w-lg mx-auto space-y-5 pb-10 font-outfit">
@@ -185,9 +190,9 @@ export default function WithdrawPage() {
           <div className="w-14 h-14 mx-auto rounded-full bg-[#F0FDF4] dark:bg-[#22C55E]/15 flex items-center justify-center mb-3">
             <CheckCircle2 size={30} className="text-[#22C55E]" />
           </div>
-          <h1 className="text-xl font-bold text-[#0F172A] dark:text-white">Withdrawal requested</h1>
+          <h1 className="text-xl font-bold text-[#0F172A] dark:text-white">{t('requested')}</h1>
           <p className="text-sm text-[#64748B] dark:text-[#94A3B8] mt-1">
-            {rwf(result.amount)} to {result.phone}
+            {t('amountTo', { amount: rwf(result.amount), phone: result.phone })}
           </p>
           <PayoutCountdown className="mt-3 justify-center" />
         </div>
@@ -213,10 +218,10 @@ export default function WithdrawPage() {
 
         <div className="grid grid-cols-2 gap-3">
           <Link href="/dashboard" className="text-center py-3 rounded-xl border border-[#E2E8F0] dark:border-[#334155] text-sm font-bold">
-            Back to tasks
+            {t('backToTasks')}
           </Link>
           <Link href="/wallet" className="text-center py-3 rounded-xl bg-[#2563EB] text-white text-sm font-bold">
-            View wallet
+            {t('viewWallet')}
           </Link>
         </div>
       </div>
@@ -226,17 +231,17 @@ export default function WithdrawPage() {
   // ── Review ───────────────────────────────────────────────────────
   if (step === 'review' && elig) {
     const rows = [
-      ['Amount', rwf(amountNum)],
-      ['Send to', `${formatRwandaPhone(phone)}${provider ? ` · ${MOBILE_MONEY_PROVIDERS[provider].label}` : ''}`],
-      ['Account name', accountName.trim()],
-      ['Fee', 'Free'],
-      ['Paid', formatPayoutDay(new Date(elig.nextPayoutAt))],
+      [t('rowAmount'), rwf(amountNum)],
+      [t('rowSendTo'), `${formatRwandaPhone(phone)}${provider ? ` · ${MOBILE_MONEY_PROVIDERS[provider].label}` : ''}`],
+      [t('rowAccountName'), accountName.trim()],
+      [t('rowFee'), t('free')],
+      [t('rowPaid'), payoutDay(new Date(elig.nextPayoutAt))],
     ];
     return (
       <div className="max-w-lg mx-auto space-y-5 pb-10 font-outfit">
         {header}
         <div className={cn(card, 'p-5')}>
-          <p className="text-sm font-bold text-[#0F172A] dark:text-white mb-3">Check the details</p>
+          <p className="text-sm font-bold text-[#0F172A] dark:text-white mb-3">{t('checkDetails')}</p>
           <dl className="divide-y divide-[#F1F5F9] dark:divide-[#334155]">
             {rows.map(([k, v]) => (
               <div key={k} className="flex justify-between gap-4 py-2.5 text-sm">
@@ -246,7 +251,7 @@ export default function WithdrawPage() {
             ))}
           </dl>
           <p className="text-xs text-[#64748B] dark:text-[#94A3B8] mt-3">
-            Make sure the number is correct. Mobile money transfers can&apos;t be reversed once sent.
+            {t('irreversible')}
           </p>
         </div>
         <button
@@ -256,7 +261,7 @@ export default function WithdrawPage() {
           className="w-full bg-[#2563EB] text-white font-bold py-4 rounded-xl hover:bg-[#1D4ED8] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
         >
           {submitting ? <Loader2 size={18} className="animate-spin" /> : null}
-          {submitting ? 'Submitting…' : `Confirm ${rwf(amountNum)}`}
+          {submitting ? t('submitting') : t('confirmAmount', { amount: rwf(amountNum) })}
         </button>
       </div>
     );
@@ -269,16 +274,16 @@ export default function WithdrawPage() {
 
       {/* Balance + payout time */}
       <div className="rounded-2xl bg-gradient-to-br from-[#0F172A] to-[#1E3A8A] p-5 text-white">
-        <p className="text-sm text-white/70">Available balance</p>
+        <p className="text-sm text-white/70">{t('availableBalance')}</p>
         <p className="text-3xl font-extrabold tabular-nums">{rwf(balance)}</p>
         {elig && elig.pendingAmount > 0 && (
-          <p className="text-xs text-white/70 mt-1">{rwf(elig.pendingAmount)} already waiting for payout</p>
+          <p className="text-xs text-white/70 mt-1">{t('alreadyWaiting', { amount: rwf(elig.pendingAmount) })}</p>
         )}
         <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
           <PayoutCountdown tone="dark" />
           {elig && (
             <span className="text-[11px] font-semibold bg-white/10 px-2 py-0.5 rounded-full">
-              {elig.plan.isFree ? 'Free' : elig.plan.name.replace(/ Plan$/, '')} · {elig.frequencyLabel.toLowerCase()}
+              {elig.plan.isFree ? t('free') : elig.plan.name.replace(/ Plan$/, '')} · {frequency(elig.intervalDays).toLowerCase()}
             </span>
           )}
         </div>
@@ -289,24 +294,24 @@ export default function WithdrawPage() {
         <div className="rounded-2xl border border-[#FDE68A] bg-[#FFFBEB] dark:bg-[#F59E0B]/10 dark:border-[#F59E0B]/30 p-4 flex gap-3">
           <Clock size={20} className="text-[#B45309] shrink-0 mt-0.5" />
           <div className="text-sm">
-            <p className="font-semibold text-[#92400E] dark:text-[#FBBF24]">{elig.reason}</p>
+            <p className="font-semibold text-[#92400E] dark:text-[#FBBF24]">{withdrawReason(elig)}</p>
             {new Date(elig.nextAllowedAt) > new Date() && (
               <p className="text-[#B45309] dark:text-[#FCD34D] mt-0.5">
-                Next withdrawal available{' '}
-                {new Date(elig.nextAllowedAt).toLocaleString('en-GB', {
-                  weekday: 'short',
-                  day: 'numeric',
-                  month: 'short',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  timeZone: 'Africa/Kigali',
+                {t('nextWithdrawalAt', {
+                  date: new Date(elig.nextAllowedAt).toLocaleString(tag, {
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'Africa/Kigali',
+                  }),
                 })}
-                .
               </p>
             )}
             {elig.plan.isFree && (
               <Link href="/plans" className="inline-flex items-center gap-1 mt-2 font-bold text-[#B45309] dark:text-[#FBBF24]">
-                <Crown size={14} /> See plans that withdraw more often
+                <Crown size={14} /> {t('seePlans')}
               </Link>
             )}
           </div>
@@ -323,7 +328,7 @@ export default function WithdrawPage() {
         {/* Phone */}
         <div>
           <label htmlFor="phone" className="text-sm font-bold text-[#0F172A] dark:text-white">
-            Mobile money number
+            {t('phoneLabel')}
           </label>
           <div className="relative mt-2">
             <Smartphone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
@@ -344,20 +349,20 @@ export default function WithdrawPage() {
             )}
           </div>
           <p className="text-xs text-[#64748B] dark:text-[#94A3B8] mt-1.5">
-            {phone && !phoneValid ? 'Enter an MTN (078/079) or Airtel (072/073) number.' : 'Any MTN or Airtel Rwanda number. It can be different from your profile number.'}
+            {phone && !phoneValid ? t('phoneInvalid') : t('phoneHelp')}
           </p>
         </div>
 
         {/* Name */}
         <div>
           <label htmlFor="name" className="text-sm font-bold text-[#0F172A] dark:text-white">
-            Name on the account
+            {t('nameLabel')}
           </label>
           <input
             id="name"
             type="text"
             autoComplete="name"
-            placeholder="e.g. Jean Uwimana"
+            placeholder={t('namePlaceholder')}
             className={cn(input, 'mt-2')}
             value={accountName}
             onChange={(e) => setAccountName(e.target.value)}
@@ -367,7 +372,7 @@ export default function WithdrawPage() {
         {/* Amount */}
         <div>
           <label htmlFor="amount" className="text-sm font-bold text-[#0F172A] dark:text-white">
-            Amount
+            {t('amountLabel')}
           </label>
           <div className="relative mt-2">
             <input
@@ -384,7 +389,7 @@ export default function WithdrawPage() {
             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#94A3B8]">RWF</span>
           </div>
           <p className={cn('text-xs mt-1.5', amountError ? 'text-[#DC2626]' : 'text-[#64748B] dark:text-[#94A3B8]')}>
-            {amountError || `Minimum ${rwf(min)} · no fees`}
+            {amountError || t('minNoFees', { amount: rwf(min) })}
           </p>
           <div className="flex flex-wrap gap-2 mt-3">
             {quickAmounts.map((a) => (
@@ -399,7 +404,7 @@ export default function WithdrawPage() {
                     : 'border-[#E2E8F0] dark:border-[#334155] hover:border-[#2563EB]',
                 )}
               >
-                {a.toLocaleString()}
+                {fmt(a)}
               </button>
             ))}
             {balance >= min && (
@@ -413,7 +418,7 @@ export default function WithdrawPage() {
                     : 'border-[#E2E8F0] dark:border-[#334155] hover:border-[#2563EB]',
                 )}
               >
-                All
+                {t('all')}
               </button>
             )}
           </div>
@@ -426,24 +431,24 @@ export default function WithdrawPage() {
         disabled={!formValid}
         className="w-full bg-[#2563EB] text-white font-bold py-4 rounded-xl hover:bg-[#1D4ED8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Continue
+        {t('continue')}
       </button>
 
       {/* How payouts work */}
       <div className={cn(card, 'p-4 text-sm')}>
-        <p className="font-bold text-[#0F172A] dark:text-white mb-2">How payouts work</p>
+        <p className="font-bold text-[#0F172A] dark:text-white mb-2">{t('howPayouts')}</p>
         <ul className="space-y-1.5 text-[#64748B] dark:text-[#94A3B8] text-xs">
-          <li>• The amount is reserved from your balance as soon as you request.</li>
-          <li>• All requests are paid together every day at {PAYOUT_TIME_LABEL}. Requests after {PAYOUT_TIME_LABEL} go out the next day.</li>
-          <li>• Free plan: one withdrawal per week. Paid plans: one withdrawal every day.</li>
-          <li>• If a payout can&apos;t be sent, the full amount returns to your balance.</li>
+          <li>• {t('how1')}</li>
+          <li>• {t('how2', { time: payoutTime })}</li>
+          <li>• {t('how3')}</li>
+          <li>• {t('how4')}</li>
         </ul>
       </div>
 
       {/* Recent requests */}
       {history.length > 0 && (
         <div className={cn(card, 'p-4')}>
-          <p className="text-sm font-bold text-[#0F172A] dark:text-white mb-1">Your requests</p>
+          <p className="text-sm font-bold text-[#0F172A] dark:text-white mb-1">{t('yourRequests')}</p>
           <ul className="divide-y divide-[#F1F5F9] dark:divide-[#334155]">
             {history.map((w) => (
               <li key={w.id} className="flex items-center justify-between gap-3 py-2.5">
@@ -451,12 +456,12 @@ export default function WithdrawPage() {
                   <p className="text-sm font-semibold tabular-nums text-[#0F172A] dark:text-white">{rwf(w.amount)}</p>
                   <p className="text-[11px] text-[#94A3B8] truncate">
                     {formatRwandaPhone(w.phoneNumber)} ·{' '}
-                    {new Date(w.requestedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                    {new Date(w.requestedAt).toLocaleDateString(tag, { day: 'numeric', month: 'short' })}
                     {w.status === 'FAILED' && w.failureReason ? ` · ${w.failureReason}` : ''}
                   </p>
                 </div>
                 <span className={cn('text-[10px] font-bold px-2 py-1 rounded-lg shrink-0', STATUS_UI[w.status]?.cls)}>
-                  {STATUS_UI[w.status]?.label ?? w.status}
+                  {STATUS_UI[w.status] ? t(STATUS_UI[w.status].label, { time: payoutTime }) : w.status}
                 </span>
               </li>
             ))}

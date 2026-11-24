@@ -14,6 +14,9 @@ import {
 } from 'lucide-react';
 import { useBadges, type BadgeTier } from '@/hooks/useBadges';
 import { cn } from '@/lib/utils';
+import { LOCALE_TAGS, useFormatNumber, useLocale, useT } from '@/lib/i18n';
+import { badges as badgesMsg } from '@/lib/i18n/messages/badges';
+import { common } from '@/lib/i18n/messages/common';
 
 interface BadgeCardData {
   id: string | null; // null = fallback display only, not purchasable
@@ -24,8 +27,6 @@ interface BadgeCardData {
   oneTimeReward: number;
   features: string[];
 }
-
-const rwf = (n: number) => `${Math.round(n).toLocaleString('en-US')} RWF`;
 
 const TIER_STYLE: Record<
   BadgeTier,
@@ -48,14 +49,12 @@ function TierIcon({ tier }: { tier: BadgeTier }) {
   );
 }
 
-// Shown only when the badges API returns nothing (display only).
-const FALLBACK_BADGES: BadgeCardData[] = [
-  { id: null, tier: 'SILVER', name: 'Silver Badge', boost: '+15%', price: 5000, oneTimeReward: 5000, features: ['+15% earnings boost', 'Priority support'] },
-  { id: null, tier: 'GOLD', name: 'Gold Badge', boost: '+30%', price: 10000, oneTimeReward: 10000, features: ['+30% earnings boost', 'VIP support', 'Exclusive games'] },
-  { id: null, tier: 'PLATINUM', name: 'Platinum Badge', boost: '+30%', price: 20000, oneTimeReward: 20000, features: ['+30% earnings boost', 'Premium VIP support', 'Exclusive games', 'Faster withdrawals'] },
-];
-
 export default function BadgesPage() {
+  const t = useT(badgesMsg);
+  const tc = useT(common);
+  const { locale } = useLocale();
+  const formatNumber = useFormatNumber();
+  const rwf = (n: number) => tc('rwf', { amount: formatNumber(Math.round(n)) });
   const { data, isLoading, refetch } = useBadges();
   const [selected, setSelected] = useState<BadgeCardData | null>(null);
   const [isBuying, setIsBuying] = useState(false);
@@ -66,7 +65,14 @@ export default function BadgesPage() {
 
   const badges = useMemo<BadgeCardData[]>(() => {
     const all = data?.allBadges ?? [];
-    if (all.length === 0) return FALLBACK_BADGES;
+    // Shown only when the badges API returns nothing (display only).
+    if (all.length === 0) {
+      return [
+        { id: null, tier: 'SILVER', name: t('silverName'), boost: '+15%', price: 5000, oneTimeReward: 5000, features: [t('featBoost', { boost: '+15%' }), t('featPriority')] },
+        { id: null, tier: 'GOLD', name: t('goldName'), boost: '+30%', price: 10000, oneTimeReward: 10000, features: [t('featBoost', { boost: '+30%' }), t('featVip'), t('featGames')] },
+        { id: null, tier: 'PLATINUM', name: t('platinumName'), boost: '+30%', price: 20000, oneTimeReward: 20000, features: [t('featBoost', { boost: '+30%' }), t('featPremiumVip'), t('featGames'), t('featFaster')] },
+      ];
+    }
     return all.map((b) => {
       const tier = b.tier as BadgeTier;
       return {
@@ -79,7 +85,7 @@ export default function BadgesPage() {
         features: (b.features ?? []) as string[],
       };
     });
-  }, [data]);
+  }, [data, t]);
 
   const handleConfirmPurchase = async () => {
     if (!selected?.id) return;
@@ -90,12 +96,12 @@ export default function BadgesPage() {
         method: 'POST',
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || 'Could not buy badge');
-      setSuccess(`${selected.name} is active. ${selected.boost} boost applied to your earnings.`);
+      if (!res.ok) throw new Error(json?.error || t('buyFailed'));
+      setSuccess(t('bought', { name: selected.name, boost: selected.boost }));
       setSelected(null);
       await refetch();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not buy badge');
+      setError(e instanceof Error ? e.message : t('buyFailed'));
     } finally {
       setIsBuying(false);
     }
@@ -116,12 +122,12 @@ export default function BadgesPage() {
     <div className="space-y-6 pb-8 font-outfit">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] dark:text-white">
-          Earning badges
+          {t('title')}
         </h1>
         <p className="mt-1 text-sm text-[#64748B] dark:text-[#94A3B8]">
-          A one-time purchase that boosts every reward you earn.{' '}
+          {t('intro')}{' '}
           <Link href="/plans" className="font-semibold text-[#2563EB] dark:text-[#60A5FA]">
-            Looking for plans? See Plans →
+            {t('seePlans')}
           </Link>
         </p>
       </div>
@@ -130,7 +136,7 @@ export default function BadgesPage() {
         <div className="flex items-start gap-3 rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] p-4 text-sm text-[#166534] dark:border-[#22C55E]/30 dark:bg-[#22C55E]/10 dark:text-[#4ADE80]">
           <Check size={18} className="mt-0.5 flex-shrink-0" />
           <p className="flex-1">{success}</p>
-          <button type="button" onClick={() => setSuccess(null)} aria-label="Dismiss">
+          <button type="button" onClick={() => setSuccess(null)} aria-label={t('dismiss')}>
             <X size={16} />
           </button>
         </div>
@@ -140,11 +146,13 @@ export default function BadgesPage() {
         <div className="flex items-center gap-4 rounded-2xl border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#1E293B] p-4">
           <TierIcon tier={activeBadge.badge.tier as BadgeTier} />
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">Your active badge</p>
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">{t('activeBadge')}</p>
             <p className="font-bold text-[#0F172A] dark:text-white">{activeBadge.badge.name}</p>
             <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-              +{Math.round(activeBadge.badge.earningsBoost * 100)}% on every reward · since{' '}
-              {new Date(activeBadge.purchasedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+              {t('activeSince', {
+                percent: Math.round(activeBadge.badge.earningsBoost * 100),
+                date: new Date(activeBadge.purchasedAt).toLocaleDateString(LOCALE_TAGS[locale], { day: 'numeric', month: 'short', year: 'numeric' }),
+              })}
             </p>
           </div>
         </div>
@@ -169,12 +177,12 @@ export default function BadgesPage() {
                     <h3 className="font-bold text-[#0F172A] dark:text-white">{badge.name}</h3>
                     {isActive && (
                       <span className="rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[10px] font-bold text-[#15803D]">
-                        Active
+                        {t('active')}
                       </span>
                     )}
                   </div>
                   <p className="text-sm text-[#22C55E] dark:text-[#4ADE80] font-semibold">
-                    {badge.boost} on every reward
+                    {t('onEveryReward', { boost: badge.boost })}
                   </p>
                   <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
                     {badge.features.slice(0, 3).join(' · ')}
@@ -195,7 +203,7 @@ export default function BadgesPage() {
                     }}
                     className="rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-bold text-white hover:bg-[#1D4ED8] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Buy badge
+                    {t('buyBadge')}
                   </button>
                 )}
               </div>
@@ -217,24 +225,24 @@ export default function BadgesPage() {
           >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-[#0F172A] dark:text-white">
-                Buy {selected.name}
+                {t('buyTitle', { name: selected.name })}
               </h2>
-              <button type="button" onClick={() => setSelected(null)} disabled={isBuying} aria-label="Close" className="text-[#64748B]">
+              <button type="button" onClick={() => setSelected(null)} disabled={isBuying} aria-label={tc('close')} className="text-[#64748B]">
                 <X size={20} />
               </button>
             </div>
             <div className="mt-4 space-y-2 rounded-xl bg-[#F8FAFC] dark:bg-[#0F172A] p-4 text-sm">
               <div className="flex justify-between">
-                <span className="text-[#64748B] dark:text-[#94A3B8]">Price</span>
+                <span className="text-[#64748B] dark:text-[#94A3B8]">{t('price')}</span>
                 <span className="font-bold text-[#0F172A] dark:text-white">{rwf(selected.price)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#64748B] dark:text-[#94A3B8]">One-time reward</span>
+                <span className="text-[#64748B] dark:text-[#94A3B8]">{t('oneTimeReward')}</span>
                 <span className="font-bold text-[#22C55E]">+{rwf(selected.oneTimeReward)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#64748B] dark:text-[#94A3B8]">Paid from</span>
-                <span className="font-semibold text-[#0F172A] dark:text-white">Wallet balance</span>
+                <span className="text-[#64748B] dark:text-[#94A3B8]">{t('paidFrom')}</span>
+                <span className="font-semibold text-[#0F172A] dark:text-white">{t('walletBalance')}</span>
               </div>
             </div>
             {error && (
@@ -250,10 +258,10 @@ export default function BadgesPage() {
             >
               {isBuying ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" /> Processing…
+                  <Loader2 size={16} className="animate-spin" /> {t('processing')}
                 </>
               ) : (
-                `Pay ${rwf(selected.price)}`
+                t('pay', { amount: rwf(selected.price) })
               )}
             </button>
           </div>

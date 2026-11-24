@@ -1,19 +1,23 @@
 // src/components/earn/LedgerRow.tsx
+'use client';
+
 import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import type { LedgerEntry } from '@/hooks/useEarnToday';
-import { PAYOUT_TIME_LABEL } from '@/lib/constants/payouts';
+import { useT } from '@/lib/i18n';
+import { usePayoutText, useRwf, wallet } from '@/lib/i18n/messages/wallet';
 import { cn } from '@/lib/utils';
-
-const rwf = (n: number) => `${Math.round(n).toLocaleString('en-US')} RWF`;
 
 /** One wallet ledger line: earnings in green, withdrawals with payout status. */
 export function LedgerRow({ tx }: { tx: LedgerEntry }) {
+  const t = useT(wallet);
+  const rwf = useRwf();
+  const { payoutTime, tag } = usePayoutText();
   const credit = tx.type === 'CREDIT';
   const status =
     tx.status === 'PENDING'
-      ? { label: `Paid at ${PAYOUT_TIME_LABEL}`, cls: 'text-[#B45309] bg-[#FFFBEB] dark:bg-[#F59E0B]/15 dark:text-[#FBBF24]' }
+      ? { label: t('statusPaidAt', { time: payoutTime }), cls: 'text-[#B45309] bg-[#FFFBEB] dark:bg-[#F59E0B]/15 dark:text-[#FBBF24]' }
       : tx.status === 'FAILED' || tx.status === 'CANCELLED'
-        ? { label: 'Refunded', cls: 'text-[#B91C1C] bg-[#FEF2F2] dark:bg-[#EF4444]/15 dark:text-[#F87171]' }
+        ? { label: t('statusRefunded'), cls: 'text-[#B91C1C] bg-[#FEF2F2] dark:bg-[#EF4444]/15 dark:text-[#F87171]' }
         : null;
   return (
     <li className="flex items-center gap-3 py-2.5">
@@ -32,7 +36,7 @@ export function LedgerRow({ tx }: { tx: LedgerEntry }) {
           {tx.description}
         </p>
         <p className="text-[11px] text-[#94A3B8]">
-          {new Date(tx.createdAt).toLocaleString('en-GB', {
+          {new Date(tx.createdAt).toLocaleString(tag, {
             day: 'numeric',
             month: 'short',
             hour: '2-digit',

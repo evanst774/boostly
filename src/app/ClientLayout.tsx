@@ -1,6 +1,7 @@
 // src/app/ClientLayout.tsx
 'use client';
 
+import { LocaleProvider } from '@/lib/i18n';
 import { useState, useEffect } from 'react';
 import localFont from 'next/font/local';
 import {
@@ -241,12 +242,14 @@ export default function ClientLayout({
       />
 
       {/* Providers */}
-      <Providers>
-        <main className="min-h-screen bg-background-primary text-white font-outfit antialiased">
-          {children}
-        </main>
-        <CookieConsent />
-      </Providers>
+      <LocaleProvider>
+        <Providers>
+          <main className="min-h-screen bg-background-primary text-white font-outfit antialiased">
+            {children}
+          </main>
+          <CookieConsent />
+        </Providers>
+      </LocaleProvider>
 
       {/* ============================================
           WITHDRAWAL TOAST - Global Social Proof

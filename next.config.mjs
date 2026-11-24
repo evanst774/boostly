@@ -133,6 +133,20 @@ const pwaConfig = withPWA({
 });
 
 /** @type {import('next').NextConfig} */
+/** Where member videos are streamed from (R2 public/CDN domains). */
+const MEDIA_ORIGINS = (() => {
+  const origins = new Set(['https://cdn.boostly.buzz']);
+  for (const v of [process.env.NEXT_PUBLIC_R2_CDN_DOMAIN, process.env.R2_CDN_DOMAIN, process.env.R2_PUBLIC_URL]) {
+    if (!v) continue;
+    try {
+      origins.add(new URL(/^https?:\/\//.test(v) ? v : `https://${v}`).origin);
+    } catch {
+      /* ignore a malformed value */
+    }
+  }
+  return [...origins].join(' ');
+})();
+
 /** Origins allowed to be framed as games (the Boostly Games platform). */
 const GAMES_FRAME_ORIGINS = (() => {
   const origins = new Set(['https://games.boostly.buzz']);
@@ -334,7 +348,8 @@ const nextConfig = {
               "frame-ancestors 'none'",
               "worker-src 'self' blob:",
               "manifest-src 'self'",
-              "media-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://www.youtube.com/embed/*",
+              // Videos stream from our R2 CDN (cdn.boostly.buzz or the configured domain).
+              `media-src 'self' blob: https://www.youtube.com https://www.youtube-nocookie.com https://www.youtube.com/embed/* ${MEDIA_ORIGINS}`,
               `child-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://*.jivosite.com ${GAMES_FRAME_ORIGINS}`,
             ].join('; '),
           },

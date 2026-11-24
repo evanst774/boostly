@@ -9,35 +9,29 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { PAYOUT_TIME_LABEL } from '@/lib/constants/payouts';
+import { useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { shell } from '@/lib/i18n/messages/shell';
 
 const DONE_KEY = 'boostly:tour-v1-done';
 const START_EVENT = 'boostly:start-tour';
 
+type ShellKey = keyof typeof shell.en;
+type CommonKey = keyof typeof common.en;
+
 interface Step {
   target: string;
-  title: string;
-  body: string;
+  title: { common: CommonKey } | { shell: ShellKey };
+  body: ShellKey;
 }
 
 const STEPS: Step[] = [
-  {
-    target: 'balance',
-    title: 'Your balance',
-    body: `Every task you finish adds RWF here. Tap Withdraw to send it to your MTN or Airtel number. Payouts go out every day at ${PAYOUT_TIME_LABEL}.`,
-  },
-  {
-    target: 'tasks',
-    title: "Today's tasks",
-    body: 'Your plan decides how many videos, games and surveys pay each day. Tap a task to start.',
-  },
-  { target: 'nav-earn', title: 'Earn', body: 'All sponsored videos, games and surveys live here.' },
-  { target: 'nav-wallet', title: 'Wallet', body: 'See your balance, withdrawals and every reward you earned.' },
-  {
-    target: 'nav-plans',
-    title: 'Plans',
-    body: 'Lower plans give more tasks a day; higher plans give fewer tasks that pay more each. Each plan shows its daily maximum and how often you can withdraw.',
-  },
-  { target: 'nav-me', title: 'Me', body: 'Invite friends, manage notifications, security and your account.' },
+  { target: 'balance', title: { shell: 'tourBalanceTitle' }, body: 'tourBalanceBody' },
+  { target: 'tasks', title: { shell: 'tourTasksTitle' }, body: 'tourTasksBody' },
+  { target: 'nav-earn', title: { common: 'earn' }, body: 'tourEarnBody' },
+  { target: 'nav-wallet', title: { common: 'wallet' }, body: 'tourWalletBody' },
+  { target: 'nav-plans', title: { common: 'plans' }, body: 'tourPlansBody' },
+  { target: 'nav-me', title: { common: 'me' }, body: 'tourMeBody' },
 ];
 
 /** Replay the tour (e.g. from the Me screen). */
@@ -58,6 +52,8 @@ function visibleTarget(id: string): HTMLElement | null {
 export function ProductTour({ autoStart = true }: { autoStart?: boolean }) {
   const [index, setIndex] = useState<number | null>(null);
   const [rect, setRect] = useState<DOMRect | null>(null);
+  const t = useT(shell);
+  const tc = useT(common);
 
   // Steps whose target isn't on screen (e.g. a hidden menu) are skipped.
   const steps = STEPS;
@@ -153,9 +149,10 @@ export function ProductTour({ autoStart = true }: { autoStart?: boolean }) {
   const top = below ? rect.bottom + pad + 10 : Math.max(16, rect.top - pad - 10 - 190);
   const left = Math.min(Math.max(16, rect.left + rect.width / 2 - cardW / 2), vw - cardW - 16);
   const isLast = index === steps.length - 1;
+  const title = 'common' in step.title ? tc(step.title.common) : t(step.title.shell);
 
   return (
-    <div className="fixed inset-0 z-[10000]" role="dialog" aria-modal="true" aria-label={step.title}>
+    <div className="fixed inset-0 z-[10000]" role="dialog" aria-modal="true" aria-label={title}>
       {/* Spotlight: a transparent box with a huge shadow dims everything else */}
       <div
         className="pointer-events-none fixed rounded-2xl transition-all duration-300"
@@ -176,17 +173,17 @@ export function ProductTour({ autoStart = true }: { autoStart?: boolean }) {
       >
         <div className="flex items-start justify-between gap-3">
           <p className="text-xs font-semibold text-[#2563EB]">
-            {index + 1} of {steps.length}
+            {t('tourStepOf', { n: index + 1, total: steps.length })}
           </p>
-          <button type="button" onClick={finish} aria-label="Close tour" className="-mr-1 -mt-1 p-1 text-[#94A3B8] hover:text-[#0F172A]">
+          <button type="button" onClick={finish} aria-label={t('tourClose')} className="-mr-1 -mt-1 p-1 text-[#94A3B8] hover:text-[#0F172A]">
             <X size={16} />
           </button>
         </div>
-        <p className="mt-1 text-base font-bold">{step.title}</p>
-        <p className="mt-1 text-sm leading-relaxed text-[#475569]">{step.body}</p>
+        <p className="mt-1 text-base font-bold">{title}</p>
+        <p className="mt-1 text-sm leading-relaxed text-[#475569]">{t(step.body, { time: t('payoutClock', { time: PAYOUT_TIME_LABEL }) })}</p>
         <div className="mt-4 flex items-center justify-between gap-2">
           <button type="button" onClick={finish} className="text-sm font-medium text-[#64748B] hover:text-[#0F172A]">
-            Skip tour
+            {t('tourSkip')}
           </button>
           <div className="flex gap-2">
             {index > 0 && (
@@ -195,7 +192,7 @@ export function ProductTour({ autoStart = true }: { autoStart?: boolean }) {
                 onClick={() => go(index - 1, -1)}
                 className="rounded-xl border border-[#E2E8F0] px-3.5 py-2 text-sm font-semibold"
               >
-                Back
+                {tc('back')}
               </button>
             )}
             <button
@@ -203,7 +200,7 @@ export function ProductTour({ autoStart = true }: { autoStart?: boolean }) {
               onClick={() => (isLast ? finish() : go(index + 1, 1))}
               className="rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-bold text-white hover:bg-[#1D4ED8]"
             >
-              {isLast ? 'Start earning' : 'Next'}
+              {isLast ? t('tourStart') : t('tourNext')}
             </button>
           </div>
         </div>

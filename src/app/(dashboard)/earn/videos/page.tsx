@@ -78,6 +78,9 @@ import { useVideoWatch } from '@/hooks/useVideoWatch';
 import { Thumb } from '@/components/app/Thumb';
 import { useSystemCurrency } from '@/hooks/useSystemCurrency';
 import { cn, formatDuration } from '@/lib/utils';
+import { useFormatNumber, useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { earn } from '@/lib/i18n/messages/earn';
 import { type VideoCategory as SchemaVideoCategory } from '@/lib/db/schema';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -210,79 +213,79 @@ const categoryMap: Record<Exclude<UICategory, 'all'>, SchemaVideoCategory> = {
 
 const categories: {
   value: UICategory;
-  label: string;
+  label: `vcat_${UICategory}`;
   icon: React.ReactNode;
   color: string;
 }[] = [
   {
     value: 'all',
-    label: 'All',
+    label: 'vcat_all',
     icon: <TrendingUp className="w-3.5 h-3.5" />,
     color: 'from-blue-500 to-purple-500',
   },
   {
     value: 'business',
-    label: 'Business',
+    label: 'vcat_business',
     icon: <Briefcase className="w-3.5 h-3.5" />,
     color: 'from-emerald-500 to-teal-500',
   },
   {
     value: 'finance',
-    label: 'Finance',
+    label: 'vcat_finance',
     icon: <Coins className="w-3.5 h-3.5" />,
     color: 'from-amber-500 to-yellow-500',
   },
   {
     value: 'tech',
-    label: 'Tech',
+    label: 'vcat_tech',
     icon: <Cpu className="w-3.5 h-3.5" />,
     color: 'from-cyan-500 to-blue-500',
   },
   {
     value: 'education',
-    label: 'Education',
+    label: 'vcat_education',
     icon: <BookOpen className="w-3.5 h-3.5" />,
     color: 'from-indigo-500 to-purple-500',
   },
   {
     value: 'entertainment',
-    label: 'Entertainment',
+    label: 'vcat_entertainment',
     icon: <Film className="w-3.5 h-3.5" />,
     color: 'from-pink-500 to-rose-500',
   },
   {
     value: 'lifestyle',
-    label: 'Lifestyle',
+    label: 'vcat_lifestyle',
     icon: <Heart className="w-3.5 h-3.5" />,
     color: 'from-red-400 to-pink-500',
   },
   {
     value: 'gaming',
-    label: 'Gaming',
+    label: 'vcat_gaming',
     icon: <Trophy className="w-3.5 h-3.5" />,
     color: 'from-violet-500 to-purple-500',
   },
   {
     value: 'sports',
-    label: 'Sports',
+    label: 'vcat_sports',
     icon: <Flame className="w-3.5 h-3.5" />,
     color: 'from-orange-500 to-red-500',
   },
   {
     value: 'music',
-    label: 'Music',
+    label: 'vcat_music',
     icon: <Music className="w-3.5 h-3.5" />,
     color: 'from-fuchsia-500 to-pink-500',
   },
   {
     value: 'news',
-    label: 'News',
+    label: 'vcat_news',
     icon: <Newspaper className="w-3.5 h-3.5" />,
     color: 'from-slate-500 to-gray-500',
   },
   {
     value: 'tutorial',
-    label: 'Tutorial',
+    label: 'vcat_tutorial',
     icon: <Target className="w-3.5 h-3.5" />,
     color: 'from-blue-500 to-indigo-500',
   },
@@ -420,6 +423,9 @@ export default function VideosPage() {
   const hasResumedRef = useRef(false);
 
   const { formatAmount } = useSystemCurrency();
+  const t = useT(earn);
+  const tc = useT(common);
+  const fmt = useFormatNumber();
 
   useEffect(() => {
     setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
@@ -509,7 +515,7 @@ export default function VideosPage() {
       } else {
         setRewardToast({
           amount: 0,
-          message: result.message || 'No reward for this video right now.',
+          message: result.message || t('noRewardNow'),
         });
         // Network hiccups can be retried; everything else is final.
         if (result.code === 'NETWORK') rewardHandledRef.current = false;
@@ -518,7 +524,7 @@ export default function VideosPage() {
       // Refresh the list/stats so "today earned" reflects the credit.
       refetch?.();
     },
-    [completeWatch, refetch],
+    [completeWatch, refetch, t],
   );
 
   const flashSkipWarning = useCallback(() => {
@@ -553,9 +559,9 @@ export default function VideosPage() {
     startWatch(video.id).then((info) => {
       if (!info) return;
       if (info.alreadyEarnedToday) {
-        setRewardToast({ amount: 0, message: "You've already earned this video's reward today. Watching is still fine!" });
+        setRewardToast({ amount: 0, message: t('alreadyEarnedVideo') });
       } else if (info.remainingToday === 0) {
-        setRewardToast({ amount: 0, message: `You've used today's ${info.dailyLimit} rewarded videos. Come back tomorrow or upgrade for more.` });
+        setRewardToast({ amount: 0, message: t('videosUsedUp', { limit: info.dailyLimit }) });
       }
     });
 
@@ -873,19 +879,19 @@ export default function VideosPage() {
           <div className="flex items-center gap-1 bg-[#F0FDF4] dark:bg-[#22C55E]/20 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full flex-shrink-0">
             <Award className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#22C55E] dark:text-[#4ADE80]" />
             <span className="text-[10px] sm:text-xs font-bold text-[#22C55E] dark:text-[#4ADE80] whitespace-nowrap">
-              {formatAmount(stats.totalEarned)} earned
+              {t('amountEarned', { amount: formatAmount(stats.totalEarned) })}
             </span>
           </div>
           <div className="flex items-center gap-1 bg-[#EFF6FF] dark:bg-[#2563EB]/20 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full flex-shrink-0">
             <ClockIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#2563EB] dark:text-[#60A5FA]" />
             <span className="text-[10px] sm:text-xs font-bold text-[#2563EB] dark:text-[#60A5FA] whitespace-nowrap">
-              {stats.watched} earned today
+              {t('earnedTodayCount', { n: stats.watched })}
             </span>
           </div>
           <div className="flex items-center gap-1 bg-[#F5F3FF] dark:bg-[#8B5CF6]/20 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full flex-shrink-0">
             <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#8B5CF6] dark:text-[#A78BFA]" />
             <span className="text-[10px] sm:text-xs font-bold text-[#8B5CF6] dark:text-[#A78BFA] whitespace-nowrap">
-              {stats.available} left today
+              {t('leftToday', { n: stats.available })}
             </span>
           </div>
         </div>
@@ -898,7 +904,7 @@ export default function VideosPage() {
           <input
             type="search"
             inputMode="search"
-            placeholder="Search videos..."
+            placeholder={t('searchVideos')}
             className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all text-xs sm:text-sm bg-white dark:bg-[#1E293B] text-[#0F172A] dark:text-white placeholder:text-[#94A3B8] dark:placeholder:text-[#64748B] touch-min-target"
             value={searchQuery}
             onChange={handleSearch}
@@ -906,7 +912,7 @@ export default function VideosPage() {
         </div>
         <button className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-[#F1F5F9] dark:border-[#334155] hover:border-[#2563EB] hover:bg-[#EFF6FF] dark:hover:bg-[#2563EB]/10 transition-colors text-[10px] sm:text-xs md:text-sm font-medium text-[#64748B] dark:text-[#94A3B8] flex items-center gap-1.5 sm:gap-2 flex-shrink-0 touch-min-target">
           <Filter className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          <span className="hidden xs:inline">Filter</span>
+          <span className="hidden xs:inline">{t('filter')}</span>
         </button>
       </div>
 
@@ -924,7 +930,7 @@ export default function VideosPage() {
             onClick={() => handleCategoryChange(cat.value)}
           >
             <span className="hidden xs:inline">{cat.icon}</span>
-            {cat.label}
+            {t(cat.label)}
           </button>
         ))}
       </div>
@@ -937,10 +943,10 @@ export default function VideosPage() {
               <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
             </div>
             <h2 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-white">
-              Recommended for You
+              {t('recommendedForYou')}
             </h2>
             <span className="text-[10px] sm:text-[10px] text-[#94A3B8] dark:text-[#64748B] hidden sm:inline">
-              • Based on your activity
+              {t('basedOnActivity')}
             </span>
           </div>
 
@@ -967,7 +973,7 @@ export default function VideosPage() {
                   {video.isSponsored && (
                     <div className="absolute top-1 left-1 bg-gradient-to-r from-[#F59E0B] to-[#FBBF24] text-[#0F172A] text-[10px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow-lg">
                       <Star className="w-[7px] h-[7px] sm:w-2 sm:h-2 fill-current" />
-                      Sponsored
+                      {t('sponsored')}
                     </div>
                   )}
                   <div className="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] sm:text-[9px] font-medium px-1 py-0.5 rounded">
@@ -999,12 +1005,14 @@ export default function VideosPage() {
       <div className="space-y-2 sm:space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-white">
-            {selectedCategory === 'all'
-              ? 'All Videos'
-              : categories.find((c) => c.value === selectedCategory)?.label}
+            {t(
+              selectedCategory === 'all'
+                ? 'allVideos'
+                : (categories.find((c) => c.value === selectedCategory)?.label ?? 'allVideos'),
+            )}
           </h2>
           <span className="text-[10px] sm:text-[10px] text-[#94A3B8] dark:text-[#64748B]">
-            {total} videos
+            {t('nVideos', { n: total })}
           </span>
         </div>
 
@@ -1013,23 +1021,23 @@ export default function VideosPage() {
         ) : listError && allVideos.length === 0 ? (
           <div className="text-center py-8 sm:py-12 bg-white dark:bg-[#1E293B] rounded-xl border border-[#F1F5F9] dark:border-[#334155]">
             <p className="text-sm text-[#64748B] dark:text-[#94A3B8]">
-              Couldn&apos;t load videos. Check your connection.
+              {t('cantLoadVideos')}
             </p>
             <button
               onClick={() => refetch()}
               className="mt-3 text-sm font-semibold text-[#2563EB]"
             >
-              Try again
+              {tc('retry')}
             </button>
           </div>
         ) : allVideos.length === 0 ? (
           <div className="text-center py-8 sm:py-12 bg-white dark:bg-[#1E293B] rounded-xl border border-[#F1F5F9] dark:border-[#334155]">
             <Clapperboard className="mx-auto w-10 h-10 sm:w-12 sm:h-12 mb-2 sm:mb-3 text-[#94A3B8] dark:text-[#64748B]" />
             <p className="text-sm sm:text-base text-[#64748B] dark:text-[#94A3B8] font-medium">
-              No videos found
+              {t('noVideos')}
             </p>
             <p className="text-[10px] sm:text-xs text-[#94A3B8] dark:text-[#64748B] mt-0.5 sm:mt-1">
-              Try adjusting your search or filters
+              {t('adjustSearch')}
             </p>
           </div>
         ) : (
@@ -1059,7 +1067,7 @@ export default function VideosPage() {
                   {isRecommended && (
                     <div className="absolute -top-1 -right-1 bg-gradient-to-r from-[#F59E0B] to-[#FBBF24] text-[#0F172A] text-[10px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-0.5 shadow-lg z-10">
                       <Sparkles className="w-[7px] h-[7px] sm:w-2 sm:h-2" />
-                      Recommended
+                      {t('recommended')}
                     </div>
                   )}
 
@@ -1073,7 +1081,7 @@ export default function VideosPage() {
                     {isSponsored && (
                       <div className="absolute top-0.5 left-0.5 bg-gradient-to-r from-[#F59E0B] to-[#FBBF24] text-[#0F172A] text-[6px] sm:text-[10px] md:text-[10px] font-bold px-1 sm:px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow-lg">
                         <Star className="w-[6px] h-[6px] sm:w-2 sm:h-2 fill-current" />
-                        Sponsored
+                        {t('sponsored')}
                       </div>
                     )}
 
@@ -1086,7 +1094,7 @@ export default function VideosPage() {
                     {isCompleted && (
                       <div className="absolute top-0.5 right-0.5 bg-[#22C55E] text-white text-[6px] sm:text-[10px] md:text-[10px] font-bold px-1 sm:px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                         <CheckCircle2 className="w-2 h-2 sm:w-2.5 sm:h-2.5" />
-                        Done
+                        {t('done')}
                       </div>
                     )}
 
@@ -1103,7 +1111,7 @@ export default function VideosPage() {
                       {isSponsored && (
                         <span className="flex-shrink-0 text-[10px] sm:text-[10px] md:text-[9px] font-bold text-[#F59E0B] bg-[#FFFBEB] dark:bg-[#F59E0B]/20 px-1 sm:px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                           <Sparkles className="w-2 h-2 sm:w-2.5 sm:h-2.5" />
-                          Sponsored
+                          {t('sponsored')}
                         </span>
                       )}
                     </div>
@@ -1148,12 +1156,12 @@ export default function VideosPage() {
                             ? (
                                 <span className="inline-flex items-center gap-1">
                                   <CircleCheck className="w-3 h-3 text-[#22C55E] dark:text-[#4ADE80]" />
-                                  Earned today
+                                  {t('earnedToday')}
                                 </span>
                               )
                             : isCompleted
-                              ? 'Watched before · earn again today'
-                              : `${Math.round(progress)}% watched`}
+                              ? t('watchedBefore')
+                              : t('pctWatched', { pct: Math.round(progress) })}
                         </p>
                       </div>
                     )}
@@ -1186,14 +1194,14 @@ export default function VideosPage() {
             {isLoadingMore ? (
               <div className="flex items-center gap-2 text-[#64748B] dark:text-[#94A3B8]">
                 <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-                <span className="text-[10px] sm:text-sm">Loading more...</span>
+                <span className="text-[10px] sm:text-sm">{t('loadingMore')}</span>
               </div>
             ) : (
               <button
                 onClick={handleLoadMore}
                 className="w-full py-2 sm:py-2.5 md:py-3 rounded-xl border border-[#F1F5F9] dark:border-[#334155] hover:border-[#2563EB] hover:bg-[#EFF6FF] dark:hover:bg-[#2563EB]/10 transition-colors text-[10px] sm:text-xs md:text-sm font-medium text-[#64748B] dark:text-[#94A3B8] touch-min-target"
               >
-                Load More Videos
+                {t('loadMoreVideos')}
               </button>
             )}
           </div>
@@ -1202,7 +1210,7 @@ export default function VideosPage() {
         {!hasMore && allVideos.length > 0 && (
           <div className="text-center py-3 sm:py-4">
             <p className="text-[10px] sm:text-xs text-[#94A3B8] dark:text-[#64748B]">
-              You&apos;ve reached the end of the list!
+              {t('endOfList')}
             </p>
           </div>
         )}
@@ -1225,6 +1233,7 @@ export default function VideosPage() {
               <button
                 onClick={handleClosePlayer}
                 className="text-white/70 hover:text-white transition-colors touch-min-target"
+                aria-label={t('closePlayer')}
               >
                 <X className="w-5 h-5 sm:w-[22px] sm:h-[22px] md:w-6 md:h-6" />
               </button>
@@ -1235,7 +1244,7 @@ export default function VideosPage() {
                 {selectedVideo.isSponsored && (
                   <span className="bg-gradient-to-r from-[#F59E0B] to-[#FBBF24] text-[#0F172A] text-[10px] sm:text-[10px] md:text-[9px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-0.5">
                     <Star className="w-2 h-2 sm:w-2.5 sm:h-2.5 fill-current" />
-                    Sponsored
+                    {t('sponsored')}
                   </span>
                 )}
                 <span className="text-[#22C55E] text-[10px] sm:text-[10px] md:text-xs font-bold bg-emerald-500/20 px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 rounded-full">
@@ -1254,9 +1263,9 @@ export default function VideosPage() {
                   <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/85 p-6 text-center">
                     <div>
                       <TriangleAlert className="mx-auto mb-3 h-10 w-10 text-[#FBBF24]" />
-                      <p className="text-sm font-semibold text-white">This video isn&apos;t available right now</p>
+                      <p className="text-sm font-semibold text-white">{t('videoUnavailable')}</p>
                       <p className="mt-1 text-xs text-white/60">
-                        No reward was used. Please try another video.
+                        {t('noRewardUsed')}
                       </p>
                     </div>
                   </div>
@@ -1295,7 +1304,7 @@ export default function VideosPage() {
                       type="video/mp4"
                       onError={() => setVideoFailed(true)}
                     />
-                    Your browser does not support the video tag.
+                    {t('noVideoSupport')}
                   </video>
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -1312,6 +1321,7 @@ export default function VideosPage() {
                   <button
                     className="absolute inset-0 z-[2] flex items-center justify-center touch-min-target"
                     onClick={togglePlay}
+                    aria-label={t('play')}
                   >
                     <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center hover:scale-110 transition-transform">
                       <PlayCircle className="w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white" />
@@ -1329,7 +1339,7 @@ export default function VideosPage() {
                       className="absolute top-2 left-1/2 -translate-x-1/2 z-[3] bg-black/80 text-white text-[10px] sm:text-xs font-medium px-3 py-1.5 rounded-full flex items-center gap-1.5"
                     >
                       <ShieldAlert className="w-3.5 h-3.5 text-[#FBBF24]" />
-                      Skipping isn&apos;t allowed — watch to earn the reward
+                      {t('skipBlocked')}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1339,6 +1349,7 @@ export default function VideosPage() {
                     <button
                       onClick={togglePlay}
                       className="text-white/80 hover:text-white transition-colors touch-min-target"
+                      aria-label={isPlaying ? t('pause') : t('play')}
                     >
                       {isPlaying ? (
                         <PauseCircle className="w-5 h-5 sm:w-[22px] sm:h-[22px] md:w-7 md:h-7" />
@@ -1366,6 +1377,7 @@ export default function VideosPage() {
                     <button
                       onClick={toggleMute}
                       className="text-white/80 hover:text-white transition-colors touch-min-target hidden xs:flex"
+                      aria-label={isMuted ? t('unmute') : t('mute')}
                     >
                       {isMuted ? (
                         <VolumeX className="w-4 h-4 sm:w-[18px] sm:h-[18px] md:w-5 md:h-5" />
@@ -1377,6 +1389,7 @@ export default function VideosPage() {
                     <button
                       onClick={toggleFullscreen}
                       className="text-white/80 hover:text-white transition-colors touch-min-target hidden sm:flex"
+                      aria-label={t('fullScreen')}
                     >
                       <Maximize2 className="w-4 h-4 sm:w-[18px] sm:h-[18px] md:w-5 md:h-5" />
                     </button>
@@ -1386,11 +1399,10 @@ export default function VideosPage() {
                     <div className="flex-1">
                       <div className="flex items-center justify-between text-[10px] sm:text-[9px] md:text-xs text-white/60 mb-0.5">
                         <span className="hidden xs:inline">
-                          Watch to earn{' '}
-                          {formatAmount(selectedVideo.rewardAmount)}
+                          {t('watchToEarn', { amount: formatAmount(selectedVideo.rewardAmount) })}
                         </span>
                         <span className="xs:hidden">
-                          Earn {formatAmount(selectedVideo.rewardAmount)}
+                          {t('earnAmount', { amount: formatAmount(selectedVideo.rewardAmount) })}
                         </span>
                         <span>{Math.round(progress)}%</span>
                       </div>
@@ -1409,7 +1421,7 @@ export default function VideosPage() {
                     {progress >= 80 && (
                       <span className="text-[#22C55E] text-[10px] sm:text-[9px] md:text-xs font-bold flex items-center gap-0.5 flex-shrink-0">
                         <CheckCircle2 className="w-3 h-3 sm:w-[13px] sm:h-[13px] md:w-[14px] md:h-[14px]" />
-                        <span className="hidden xs:inline">Earned!</span>
+                        <span className="hidden xs:inline">{t('earned')}</span>
                       </span>
                     )}
                   </div>
@@ -1418,7 +1430,7 @@ export default function VideosPage() {
                 {selectedVideo.isSponsored && (
                   <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-[2] bg-black/60 backdrop-blur-sm text-white text-[10px] sm:text-[10px] md:text-[9px] font-medium px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full flex items-center gap-0.5 sm:gap-1">
                     <Star className="w-2 h-2 sm:w-2.5 sm:h-2.5 fill-[#FBBF24] text-[#FBBF24]" />
-                    Sponsored
+                    {t('sponsored')}
                   </div>
                 )}
               </div>
@@ -1448,9 +1460,8 @@ export default function VideosPage() {
                   />
                   <p className="text-[11px] sm:text-xs md:text-sm text-white font-medium">
                     {rewardToast.amount > 0
-                      ? `Nice! You earned ${formatAmount(rewardToast.amount)}, added to your wallet.`
-                      : rewardToast.message ||
-                        "You've already earned this reward — come back tomorrow!"}
+                      ? t('youEarned', { amount: formatAmount(rewardToast.amount) })
+                      : rewardToast.message || t('alreadyEarnedReward')}
                   </p>
                 </motion.div>
               )}
@@ -1469,21 +1480,21 @@ export default function VideosPage() {
                   <span className="text-white/20">•</span>
                   <span className="text-[10px] sm:text-[10px] md:text-xs text-white/60 flex items-center gap-0.5">
                     <Eye className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                    {selectedVideo.views || 0} views
+                    {t('nViews', { n: fmt(selectedVideo.views || 0) })}
                   </span>
                   {selectedVideo.isSponsored && (
                     <>
                       <span className="text-white/20">•</span>
                       <span className="text-[10px] sm:text-[9px] md:text-[10px] text-[#FBBF24] flex items-center gap-0.5">
                         <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                        Sponsored
+                        {t('sponsored')}
                       </span>
                     </>
                   )}
                   <span className="text-white/20">•</span>
                   <span className="text-[10px] sm:text-[10px] md:text-xs text-[#22C55E] flex items-center gap-0.5">
                     <Award className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                    {formatAmount(selectedVideo.rewardAmount)} reward
+                    {t('amountReward', { amount: formatAmount(selectedVideo.rewardAmount) })}
                   </span>
                 </div>
               </div>

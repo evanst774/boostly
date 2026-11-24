@@ -38,6 +38,11 @@ import {
 } from '@/hooks/useSurveys';
 import { useSystemCurrency } from '@/hooks/useSystemCurrency';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { earn } from '@/lib/i18n/messages/earn';
+
+type EarnKey = keyof typeof earn.en;
 import { motion, AnimatePresence } from 'framer-motion';
 
 
@@ -54,55 +59,55 @@ type UICategory =
 
 const categories: {
   value: UICategory;
-  label: string;
+  label: `scat_${UICategory}`;
   icon: React.ReactNode;
   color: string;
 }[] = [
   {
     value: 'all',
-    label: 'All Surveys',
+    label: 'scat_all',
     icon: <BarChart3 size={14} />,
     color: 'from-blue-500 to-purple-500',
   },
   {
     value: 'technology',
-    label: 'Technology',
+    label: 'scat_technology',
     icon: <Zap size={14} />,
     color: 'from-cyan-500 to-blue-500',
   },
   {
     value: 'shopping',
-    label: 'Shopping',
+    label: 'scat_shopping',
     icon: <Star size={14} />,
     color: 'from-amber-500 to-yellow-500',
   },
   {
     value: 'finance',
-    label: 'Finance',
+    label: 'scat_finance',
     icon: <TrendingUp size={14} />,
     color: 'from-emerald-500 to-teal-500',
   },
   {
     value: 'healthcare',
-    label: 'Healthcare',
+    label: 'scat_healthcare',
     icon: <Shield size={14} />,
     color: 'from-red-400 to-pink-500',
   },
   {
     value: 'education',
-    label: 'Education',
+    label: 'scat_education',
     icon: <User size={14} />,
     color: 'from-indigo-500 to-purple-500',
   },
   {
     value: 'entertainment',
-    label: 'Entertainment',
+    label: 'scat_entertainment',
     icon: <Sparkles size={14} />,
     color: 'from-pink-500 to-rose-500',
   },
   {
     value: 'lifestyle',
-    label: 'Lifestyle',
+    label: 'scat_lifestyle',
     icon: <Calendar size={14} />,
     color: 'from-violet-500 to-purple-500',
   },
@@ -135,12 +140,13 @@ function SurveyProgress({
   current: number;
   total: number;
 }) {
+  const t = useT(earn);
   const progress = total > 0 ? ((current + 1) / total) * 100 : 0;
 
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs text-[#64748B] dark:text-[#94A3B8]">
-        <span>Progress</span>
+        <span>{t('progress')}</span>
         <span>{Math.round(progress)}%</span>
       </div>
       <div className="h-1.5 bg-[#F1F5F9] dark:bg-[#334155] rounded-full overflow-hidden">
@@ -185,6 +191,8 @@ function SurveyQuestion({
   isLast: boolean;
   isSubmitting: boolean;
 }) {
+  const t = useT(earn);
+  const tc = useT(common);
   // Determine question type based on options or default
   const type = question.type || QuestionTypes.SINGLE_CHOICE;
   const options = question.options || [];
@@ -212,16 +220,17 @@ function SurveyQuestion({
         );
 
       case QuestionTypes.LIKERT:
-        const likertOptions = [
-          'Strongly Disagree',
-          'Disagree',
-          'Neutral',
-          'Agree',
-          'Strongly Agree',
+        // The stored answer stays in English; only the label is translated.
+        const likertOptions: { value: string; label: EarnKey }[] = [
+          { value: 'Strongly Disagree', label: 'likert_strongly_disagree' },
+          { value: 'Disagree', label: 'likert_disagree' },
+          { value: 'Neutral', label: 'likert_neutral' },
+          { value: 'Agree', label: 'likert_agree' },
+          { value: 'Strongly Agree', label: 'likert_strongly_agree' },
         ];
         return (
           <div className="space-y-2">
-            {likertOptions.map((option) => (
+            {likertOptions.map(({ value: option, label }) => (
               <button
                 key={option}
                 onClick={() => onSelect(option)}
@@ -244,7 +253,7 @@ function SurveyQuestion({
                     <Check size={12} className="text-white" />
                   )}
                 </div>
-                <span className="text-sm font-medium">{option}</span>
+                <span className="text-sm font-medium">{t(label)}</span>
               </button>
             ))}
           </div>
@@ -295,9 +304,13 @@ function SurveyQuestion({
       {/* Question Header */}
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-xs text-[#64748B] dark:text-[#94A3B8]">
-          <span className="font-semibold">Question {index + 1}</span>
+          <span className="font-semibold">{t('questionN', { n: index + 1 })}</span>
           <span>•</span>
-          <span>{type.replace('_', ' ').toUpperCase()}</span>
+          <span>
+            {`qtype_${type}` in earn.en
+              ? t(`qtype_${type}` as EarnKey)
+              : type.replace('_', ' ').toUpperCase()}
+          </span>
         </div>
         <h3 className="text-lg sm:text-xl font-bold text-[#0F172A] dark:text-white">
           {question.question}
@@ -325,7 +338,7 @@ function SurveyQuestion({
           )}
         >
           <ChevronLeft size={16} />
-          Back
+          {tc('back')}
         </button>
         <button
           onClick={onNext}
@@ -340,13 +353,13 @@ function SurveyQuestion({
           {isSubmitting ? (
             <>
               <Loader2 size={16} className="animate-spin" />
-              Submitting...
+              {t('submitting')}
             </>
           ) : isLast ? (
-            'Complete Survey'
+            t('completeSurvey')
           ) : (
             <>
-              Next
+              {t('next')}
               <ChevronRight size={16} />
             </>
           )}
@@ -365,6 +378,7 @@ function SurveyComplete({
   onClose: () => void;
 }) {
   const { formatAmount } = useSystemCurrency();
+  const t = useT(earn);
 
   return (
     <motion.div
@@ -377,25 +391,25 @@ function SurveyComplete({
       </div>
       <div className="space-y-2">
         <h2 className="text-2xl font-bold text-[#0F172A] dark:text-white">
-          Survey Complete!
+          {t('surveyComplete')}
         </h2>
         <p className="text-[#64748B] dark:text-[#94A3B8]">
-          Thank you for sharing your valuable opinion.
+          {t('thanksOpinion')}
         </p>
       </div>
       <div className="bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7] dark:from-[#22C55E]/20 dark:to-[#16A34A]/10 rounded-2xl px-8 py-4 border border-[#BBF7D0] dark:border-[#22C55E]/30">
         <p className="text-sm text-[#64748B] dark:text-[#94A3B8]">
-          {reward > 0 ? 'Added to your balance' : 'Response recorded'}
+          {reward > 0 ? t('addedToBalance') : t('responseRecorded')}
         </p>
         <p className="text-3xl font-extrabold text-[#22C55E]">
-          {reward > 0 ? `+${formatAmount(reward)}` : 'Thank you!'}
+          {reward > 0 ? `+${formatAmount(reward)}` : t('thankYou')}
         </p>
       </div>
       <button
         onClick={onClose}
         className="px-8 py-3 bg-[#2563EB] text-white font-bold rounded-xl hover:bg-[#1D4ED8] transition-colors"
       >
-        Done
+        {t('done')}
       </button>
     </motion.div>
   );
@@ -403,6 +417,8 @@ function SurveyComplete({
 
 export default function SurveysPage() {
   const { formatAmount } = useSystemCurrency();
+  const t = useT(earn);
+  const tc = useT(common);
   const [selectedCategory, setSelectedCategory] = useState<UICategory>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSurvey, setSelectedSurvey] = useState<SurveySummary | null>(
@@ -480,11 +496,11 @@ export default function SurveysPage() {
         cache: 'no-store',
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || 'Could not open this survey.');
+      if (!res.ok) throw new Error(json.error || t('cantOpenSurvey'));
       setQuestions(json.questions || []);
       setStartToken(json.startToken || null);
     } catch (e) {
-      setSurveyError(e instanceof Error ? e.message : 'Could not open this survey.');
+      setSurveyError(e instanceof Error ? e.message : t('cantOpenSurvey'));
     } finally {
       setIsLoadingQuestions(false);
     }
@@ -553,7 +569,7 @@ export default function SurveysPage() {
       if (!response.ok) {
         // Keep the user on the last question so they can retry (e.g. TOO_FAST).
         setSelectedOption(finalAnswers[currentQuestion] ?? null);
-        throw new Error(result.error || 'Failed to submit survey. Please try again.');
+        throw new Error(result.error || t('submitSurveyFailed'));
       }
 
       setRewardEarned(result.rewardEarned || 0);
@@ -561,7 +577,7 @@ export default function SurveysPage() {
       refetch();
     } catch (error) {
       setSurveyError(
-        error instanceof Error ? error.message : 'Failed to submit survey. Please try again.',
+        error instanceof Error ? error.message : t('submitSurveyFailed'),
       );
     } finally {
       setIsSubmitting(false);
@@ -621,7 +637,7 @@ export default function SurveysPage() {
           <div className="flex items-center gap-1.5 bg-[#FFFBEB] dark:bg-[#F59E0B]/20 px-3 py-1.5 rounded-full flex-shrink-0">
             <Award size={14} className="text-[#F59E0B] dark:text-[#FBBF24]" />
             <span className="text-xs font-bold text-[#F59E0B] dark:text-[#FBBF24] whitespace-nowrap">
-              {data ? `${stats.remainingToday}/${stats.dailyLimit} left today` : '…'}
+              {data ? t('surveysLeft', { left: stats.remainingToday, limit: stats.dailyLimit }) : '…'}
             </span>
           </div>
           <div className="flex items-center gap-1.5 bg-[#F0FDF4] dark:bg-[#22C55E]/20 px-3 py-1.5 rounded-full flex-shrink-0">
@@ -630,7 +646,7 @@ export default function SurveysPage() {
               className="text-[#22C55E] dark:text-[#4ADE80]"
             />
             <span className="text-xs font-bold text-[#22C55E] dark:text-[#4ADE80] whitespace-nowrap">
-              {stats.completed} completed
+              {t('nCompleted', { n: stats.completed })}
             </span>
           </div>
         </div>
@@ -643,17 +659,16 @@ export default function SurveysPage() {
         </div>
         <div className="relative z-10">
           <h2 className="text-base sm:text-lg font-bold text-[#0F172A] dark:text-white">
-            Your Opinion Pays!{' '}
+            {t('opinionPays')}{' '}
             <Coins className="inline w-5 h-5 -mt-1 text-[#F59E0B] dark:text-[#FBBF24]" />
           </h2>
           <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] mt-1">
-            Answer short surveys from brands. Each survey pays once and the reward
-            goes straight to your balance.
+            {t('opinionPaysBody')}
           </p>
           <div className="flex gap-6 mt-3">
             <div>
               <p className="text-[10px] sm:text-xs text-[#64748B] dark:text-[#94A3B8]">
-                Earned from surveys
+                {t('earnedFromSurveys')}
               </p>
               <p className="text-lg sm:text-xl font-extrabold text-[#F59E0B]">
                 {formatAmount(stats.totalEarned)}
@@ -661,7 +676,7 @@ export default function SurveysPage() {
             </div>
             <div className="border-l border-[#FDE68A] dark:border-[#F59E0B]/30 pl-6">
               <p className="text-[10px] sm:text-xs text-[#64748B] dark:text-[#94A3B8]">
-                Available
+                {t('available')}
               </p>
               <p className="text-lg sm:text-xl font-extrabold text-[#F59E0B]">
                 {stats.available}
@@ -680,7 +695,7 @@ export default function SurveysPage() {
           />
           <input
             type="text"
-            placeholder="Search surveys..."
+            placeholder={t('searchSurveys')}
             className="w-full pl-10 pr-4 py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all text-sm bg-white dark:bg-[#1E293B] text-[#0F172A] dark:text-white placeholder:text-[#94A3B8] dark:placeholder:text-[#64748B]"
             value={searchQuery}
             onChange={handleSearch}
@@ -702,16 +717,17 @@ export default function SurveysPage() {
             onClick={() => handleCategoryChange(cat.value)}
           >
             {cat.icon}
-            {cat.label}
+            {t(cat.label)}
           </button>
         ))}
       </div>
 
       {limitReached && (
         <div className="rounded-xl border border-[#FDE68A] bg-[#FFFBEB] dark:bg-[#F59E0B]/10 dark:border-[#F59E0B]/30 p-3 text-sm text-[#92400E] dark:text-[#FBBF24]">
-          You&apos;ve used today&apos;s {stats.dailyLimit} survey
-          {stats.dailyLimit === 1 ? '' : 's'}. Come back tomorrow, or{' '}
-          <a href="/plans" className="font-bold underline">upgrade</a> for more.
+          {stats.dailyLimit === 1
+            ? t('surveysUsedUpOne')
+            : t('surveysUsedUpMany', { limit: stats.dailyLimit })}{' '}
+          <a href="/plans" className="font-bold underline">{t('upgradeLink')}</a> {t('forMore')}
         </div>
       )}
 
@@ -726,17 +742,17 @@ export default function SurveysPage() {
         <div className="text-center py-10 bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155]">
           <p className="text-sm text-[#64748B] dark:text-[#94A3B8]">{listError.message}</p>
           <button onClick={refetch} className="mt-3 text-sm font-semibold text-[#2563EB]">
-            Try again
+            {tc('retry')}
           </button>
         </div>
       ) : allSurveys.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155]">
           <ClipboardList size={56} className="mx-auto mb-4 text-[#94A3B8] dark:text-[#64748B]" />
           <p className="text-[#64748B] dark:text-[#94A3B8] font-medium">
-            No surveys available
+            {t('noSurveys')}
           </p>
           <p className="text-xs text-[#94A3B8] dark:text-[#64748B] mt-1">
-            Check back later for new surveys
+            {t('checkBackSurveys')}
           </p>
         </div>
       ) : (
@@ -775,7 +791,7 @@ export default function SurveysPage() {
                         {survey.title}
                       </h3>
                       <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-                        Sponsored by {survey.brand}
+                        {t('sponsoredBy', { brand: survey.brand })}
                       </p>
                     </div>
                     <span className="text-[10px] sm:text-xs font-bold text-[#22C55E] bg-[#F0FDF4] dark:bg-[#22C55E]/20 px-2 py-0.5 rounded-full flex items-center gap-0.5 flex-shrink-0">
@@ -785,22 +801,22 @@ export default function SurveysPage() {
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-2">
                     <span className="text-[10px] sm:text-xs text-[#64748B] dark:text-[#94A3B8] flex items-center gap-0.5">
                       <Clock size={12} />
-                      {survey.estimatedTime} min
+                      {t('nMin', { n: survey.estimatedTime })}
                     </span>
                     <span className="text-[10px] sm:text-xs text-[#64748B] dark:text-[#94A3B8] bg-[#F8FAFC] dark:bg-[#334155] px-2 py-0.5 rounded-full">
-                      {survey.questionsCount} questions
+                      {t('nQuestions', { n: survey.questionsCount })}
                     </span>
                     {survey.currentParticipants > 0 && (
                       <span className="text-[10px] sm:text-xs text-[#64748B] dark:text-[#94A3B8] flex items-center gap-0.5">
                         <Users size={12} />
-                        {survey.currentParticipants} responses
+                        {t('nResponses', { n: survey.currentParticipants })}
                       </span>
                     )}
                   </div>
                 </div>
                 {survey.completed ? (
                   <span className="px-3 py-2 text-xs font-bold rounded-xl flex-shrink-0 flex items-center gap-1 text-[#15803D] bg-[#F0FDF4] dark:bg-[#22C55E]/15 dark:text-[#4ADE80]">
-                    <CheckCircle2 size={14} /> Done
+                    <CheckCircle2 size={14} /> {t('done')}
                   </span>
                 ) : (
                   <button
@@ -811,7 +827,7 @@ export default function SurveysPage() {
                       handleStartSurvey(survey);
                     }}
                   >
-                    {limitReached ? 'Limit reached' : 'Start'}
+                    {limitReached ? t('limitReached') : t('start')}
                   </button>
                 )}
               </div>
@@ -826,14 +842,14 @@ export default function SurveysPage() {
           {isLoadingMore ? (
             <div className="flex items-center gap-2 text-[#64748B] dark:text-[#94A3B8]">
               <Loader2 size={20} className="animate-spin" />
-              <span className="text-sm">Loading more...</span>
+              <span className="text-sm">{t('loadingMore')}</span>
             </div>
           ) : (
             <button
               onClick={handleLoadMore}
               className="w-full py-2.5 sm:py-3 rounded-xl border border-[#F1F5F9] dark:border-[#334155] hover:border-[#2563EB] hover:bg-[#EFF6FF] dark:hover:bg-[#2563EB]/10 transition-colors text-xs sm:text-sm font-medium text-[#64748B] dark:text-[#94A3B8]"
             >
-              Load More Surveys
+              {t('loadMoreSurveys')}
             </button>
           )}
         </div>
@@ -860,6 +876,7 @@ export default function SurveysPage() {
                   <button
                     onClick={handleCloseSurvey}
                     className="w-8 h-8 rounded-lg hover:bg-[#F8FAFC] dark:hover:bg-[#334155] flex items-center justify-center transition-colors flex-shrink-0"
+                    aria-label={t('closeSurvey')}
                   >
                     <X size={18} />
                   </button>
@@ -868,7 +885,7 @@ export default function SurveysPage() {
                       {selectedSurvey.title}
                     </p>
                     <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-                      {selectedSurvey.brand} • {questions.length} questions
+                      {t('brandQuestions', { brand: selectedSurvey.brand, n: questions.length })}
                     </p>
                   </div>
                 </div>
@@ -904,7 +921,7 @@ export default function SurveysPage() {
                       onClick={handleCloseSurvey}
                       className="px-5 py-2.5 rounded-xl bg-[#2563EB] text-white text-sm font-bold"
                     >
-                      Close
+                      {tc('close')}
                     </button>
                   </div>
                 ) : isCompleted ? (

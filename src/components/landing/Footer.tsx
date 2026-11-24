@@ -5,6 +5,9 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, Variants } from 'framer-motion';
+import { PAYOUT_TIME_LABEL } from '@/lib/constants/payouts';
+import { useT } from '@/lib/i18n';
+import { landing } from '@/lib/i18n/messages/landing';
 
 // Social Icons
 function FacebookIcon({ className }: { className?: string }) {
@@ -94,6 +97,7 @@ const linkVariants: Variants = {
 
 export function Footer() {
   const year = new Date().getFullYear();
+  const t = useT(landing);
 
   return (
     <motion.footer
@@ -133,9 +137,7 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-white/40 text-sm leading-relaxed max-w-sm">
-              Boostly pays you in RWF for watching sponsored videos, playing
-              games and answering surveys. Withdrawals go to MTN MoMo and Airtel
-              Money every day at 3:00 PM.
+              {t('footerAbout', { time: t('payoutClock', { time: PAYOUT_TIME_LABEL }) })}
             </p>
             <div className="flex items-center gap-3 mt-4">
               {SOCIAL_LINKS.map(({ icon: Icon, href, label }) => (
@@ -165,13 +167,13 @@ export function Footer() {
             viewport={{ once: true }}
           >
             <p className="text-white text-xs font-bold uppercase tracking-wide mb-3">
-              Platform
+              {t('colPlatform')}
             </p>
             <ul className="space-y-2.5">
               {[
-                { name: 'Ways to Earn', href: '/#ways-to-earn' },
-                { name: 'How It Works', href: '/#how-it-works' },
-                { name: 'FAQ', href: '/resources/faq' },
+                { name: t('navWays'), href: '/#ways-to-earn' },
+                { name: t('navHow'), href: '/#how-it-works' },
+                { name: t('navFaq'), href: '/resources/faq' },
               ].map((link) => (
                 <motion.li
                   key={link.name}
@@ -198,12 +200,12 @@ export function Footer() {
             viewport={{ once: true }}
           >
             <p className="text-white text-xs font-bold uppercase tracking-wide mb-3">
-              Resources
+              {t('colResources')}
             </p>
             <ul className="space-y-2.5">
               {[
-                { name: 'About Us', href: '/about' },
-                { name: 'Support', href: '/support' },
+                { name: t('aboutUs'), href: '/about' },
+                { name: t('support'), href: '/support' },
               ].map((link) => (
                 <motion.li
                   key={link.name}
@@ -230,13 +232,13 @@ export function Footer() {
             viewport={{ once: true }}
           >
             <p className="text-white text-xs font-bold uppercase tracking-wide mb-3">
-              Legal
+              {t('colLegal')}
             </p>
             <ul className="space-y-2.5">
               {[
-                { name: 'Terms of Service', href: '/terms' },
-                { name: 'Privacy Policy', href: '/privacy' },
-                { name: 'Cookie Policy', href: '/cookies' },
+                { name: t('termsOfService'), href: '/terms' },
+                { name: t('privacyPolicy'), href: '/privacy' },
+                { name: t('cookiePolicy'), href: '/cookies' },
               ].map((link) => (
                 <motion.li
                   key={link.name}
@@ -263,12 +265,12 @@ export function Footer() {
             viewport={{ once: true }}
           >
             <p className="text-white text-xs font-bold uppercase tracking-wide mb-3">
-              Get Started
+              {t('colGetStarted')}
             </p>
             <ul className="space-y-2.5">
               {[
-                { name: 'Sign Up', href: '/register' },
-                { name: 'Log In', href: '/login' },
+                { name: t('signUp'), href: '/register' },
+                { name: t('logIn'), href: '/login' },
               ].map((link) => (
                 <motion.li
                   key={link.name}
@@ -296,18 +298,17 @@ export function Footer() {
           className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-white/10"
         >
           <p className="text-white/30 text-xs">
-            © {year} <span className="text-white/60">Boostly</span>. All rights
-            reserved.
+            © {year} <span className="text-white/60">Boostly</span>. {t('allRights')}
           </p>
           <div className="flex items-center gap-6 text-white/30 text-xs">
             <Link href="/privacy" className="hover:text-white/60 transition">
-              Privacy
+              {t('privacy')}
             </Link>
             <Link href="/terms" className="hover:text-white/60 transition">
-              Terms
+              {t('terms')}
             </Link>
             <Link href="/cookies" className="hover:text-white/60 transition">
-              Cookies
+              {t('cookies')}
             </Link>
           </div>
         </motion.div>

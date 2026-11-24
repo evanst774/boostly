@@ -26,9 +26,10 @@ import { LedgerRow } from '@/components/earn/LedgerRow';
 import { DailyBonusCard } from '@/components/earn/DailyBonusCard';
 import { ProductTour } from '@/components/app/ProductTour';
 import { cn } from '@/lib/utils';
-
-const rwf = (n: number) =>
-  `${Math.round(n).toLocaleString('en-US')} RWF`;
+import { useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { dashboard } from '@/lib/i18n/messages/dashboard';
+import { usePayoutText, useRwf, useWithdrawReason } from '@/lib/i18n/messages/wallet';
 
 const TASK_STYLE: Record<
   TaskProgress['key'],
@@ -71,6 +72,7 @@ function Skeleton() {
 function TaskRow({ task }: { task: TaskProgress }) {
   const style = TASK_STYLE[task.key];
   const Icon = style.icon;
+  const t = useT(dashboard);
   const finished = task.remaining === 0;
   const pct = task.limit > 0 ? Math.min(100, (task.done / task.limit) * 100) : 0;
 
@@ -90,7 +92,7 @@ function TaskRow({ task }: { task: TaskProgress }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-semibold text-[#0F172A] dark:text-white truncate">
-            {task.label}
+            {t(`task_${task.key}`)}
           </p>
           <span className="text-xs font-semibold tabular-nums text-[#64748B] dark:text-[#94A3B8] shrink-0">
             {task.done}/{task.limit}
@@ -104,7 +106,7 @@ function TaskRow({ task }: { task: TaskProgress }) {
         <CheckCircle2 size={20} className="text-[#22C55E] shrink-0" />
       ) : (
         <span className="text-xs font-bold text-[#2563EB] dark:text-[#60A5FA] shrink-0 flex items-center">
-          Start <ChevronRight size={14} />
+          {t('start')} <ChevronRight size={14} />
         </span>
       )}
     </Link>
@@ -116,27 +118,31 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { data, isLoading, error, refetch } = useEarnToday();
   const [hidden, setHidden] = useState(false);
-
+  const t = useT(dashboard);
+  const tc = useT(common);
+  const rwf = useRwf();
+  const { frequency } = usePayoutText();
+  const withdrawReason = useWithdrawReason();
 
   if (isLoading) return <Skeleton />;
 
   if (error || !data) {
     return (
       <div className={cn(card, 'p-8 text-center font-outfit')}>
-        <p className="text-sm text-[#64748B] mb-3">{error || 'Something went wrong.'}</p>
+        <p className="text-sm text-[#64748B] mb-3">{error || t('somethingWrong')}</p>
         <button
           type="button"
           onClick={refetch}
           className="inline-flex items-center gap-2 text-sm font-semibold text-[#2563EB]"
         >
-          <RefreshCw size={14} /> Try again
+          <RefreshCw size={14} /> {tc('retry')}
         </button>
       </div>
     );
   }
 
   const { plan, tasks, totals, wallet, earnings, withdrawal, streak } = data;
-  const firstName = (user?.name || '').split(' ')[0] || 'there';
+  const firstName = (user?.name || '').split(' ')[0];
   const allDone = totals.limit > 0 && totals.done >= totals.limit;
   const totalPct = totals.limit > 0 ? Math.round((totals.done / totals.limit) * 100) : 0;
   const dailyMax = plan.dailyEarningsMax ?? 0;
@@ -149,11 +155,11 @@ export default function DashboardPage() {
       <header className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-[#0F172A] dark:text-white truncate">
-            Hi, {firstName}{' '}
+            {firstName ? t('hi', { name: firstName }) : t('hiThere')}{' '}
             <Hand className="inline w-5 h-5 -mt-1 text-[#F59E0B]" />
           </h1>
           <p className="text-sm text-[#64748B] dark:text-[#94A3B8]">
-            {allDone ? 'All tasks done for today. Great work!' : 'Complete your tasks to grow your balance.'}
+            {allDone ? t('allDone') : t('completeTasks')}
           </p>
         </div>
         <Link
@@ -166,7 +172,7 @@ export default function DashboardPage() {
           )}
         >
           <Crown size={13} />
-          {plan.isFree ? 'Free · Upgrade' : plan.name.replace(/ Plan$/, '')}
+          {plan.isFree ? t('freeUpgrade') : plan.name.replace(/ Plan$/, '')}
         </Link>
       </header>
 
@@ -180,23 +186,23 @@ export default function DashboardPage() {
               onClick={() => setHidden((v) => !v)}
               className="flex items-center gap-1.5 text-sm text-white/75 hover:text-white"
             >
-              Available balance {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+              {t('availableBalance')} {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
             </button>
             <p className="text-3xl sm:text-4xl font-extrabold tracking-tight tabular-nums mt-1">
               {hidden ? '••••••' : rwf(wallet.balance)}
             </p>
             <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px] font-semibold">
               <span className="inline-flex items-center gap-1 bg-emerald-400/20 text-emerald-200 px-2 py-0.5 rounded-full">
-                +{rwf(earnings.today)} today
+                {t('todayGain', { amount: rwf(earnings.today) })}
               </span>
               {streak.current > 0 && (
                 <span className="inline-flex items-center gap-1 bg-amber-400/20 text-amber-200 px-2 py-0.5 rounded-full">
-                  <Flame size={12} /> {streak.current}-day streak
+                  <Flame size={12} /> {t('streakDays', { n: streak.current })}
                 </span>
               )}
               {wallet.pendingWithdrawal > 0 && (
                 <span className="inline-flex items-center gap-1 bg-white/10 text-white/85 px-2 py-0.5 rounded-full">
-                  {rwf(wallet.pendingWithdrawal)} on the way
+                  {t('onTheWay', { amount: rwf(wallet.pendingWithdrawal) })}
                 </span>
               )}
             </div>
@@ -207,14 +213,14 @@ export default function DashboardPage() {
               href="/wallet/withdraw"
               className="inline-flex items-center justify-center gap-2 bg-white text-[#1E3A8A] text-sm font-bold px-5 py-3 rounded-xl hover:bg-white/90 transition-colors"
             >
-              <Smartphone size={16} /> Withdraw to mobile money
+              <Smartphone size={16} /> {t('withdrawMomo')}
             </Link>
             <PayoutCountdown tone="dark" />
           </div>
         </div>
         {!withdrawal.canWithdraw && withdrawal.reason && (
           <p className="relative mt-4 text-xs text-white/75 border-t border-white/10 pt-3">
-            {withdrawal.reason}
+            {withdrawReason(withdrawal)}
           </p>
         )}
       </section>
@@ -228,9 +234,9 @@ export default function DashboardPage() {
       <section data-tour="tasks" className={cn(card, 'p-4 sm:p-5')}>
         <div className="flex items-end justify-between gap-3 mb-2">
           <div>
-            <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">Today&apos;s tasks</h2>
+            <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">{t('todaysTasks')}</h2>
             <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-              {totals.done} of {totals.limit} done · new tasks every day
+              {t('doneOf', { done: totals.done, limit: totals.limit })}
             </p>
           </div>
           <span className="text-lg font-extrabold text-[#2563EB] dark:text-[#60A5FA] tabular-nums">
@@ -251,10 +257,10 @@ export default function DashboardPage() {
         {dailyMax > 0 && (
           <div className="mt-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0F172A]/60 border border-[#E2E8F0] dark:border-[#334155] p-3">
             <div className="flex items-baseline justify-between gap-2">
-              <p className="text-xs font-semibold text-[#0F172A] dark:text-white">Earned from tasks today</p>
+              <p className="text-xs font-semibold text-[#0F172A] dark:text-white">{t('earnedFromTasks')}</p>
               <p className="text-xs tabular-nums text-[#64748B] dark:text-[#94A3B8]">
                 <span className="font-bold text-[#16A34A] dark:text-[#4ADE80]">{rwf(earnedToday)}</span>
-                {' '}of up to {rwf(dailyMax)}
+                {' '}{t('ofUpTo', { amount: rwf(dailyMax) })}
               </p>
             </div>
             <div className="mt-2 h-1.5 rounded-full bg-[#E2E8F0] dark:bg-[#334155] overflow-hidden">
@@ -262,8 +268,8 @@ export default function DashboardPage() {
             </div>
             <p className="mt-1.5 text-[11px] text-[#64748B] dark:text-[#94A3B8]">
               {earnedToday >= dailyMax
-                ? `You've reached your ${plan.name.replace(/ Plan$/, '')} plan's maximum for today. It resets at midnight.`
-                : 'Your plan\'s daily maximum. Rewards are paid from sponsor budgets while they last.'}
+                ? t('maxReached', { plan: plan.name.replace(/ Plan$/, '') })
+                : t('dailyMaxHint')}
             </p>
           </div>
         )}
@@ -280,10 +286,13 @@ export default function DashboardPage() {
           </span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-[#0F172A] dark:text-white">
-              Earn more each day
+              {t('earnMore')}
             </p>
             <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-              {plan.name.replace(/ Plan$/, '')} plan: withdraw {withdrawal.frequencyLabel.toLowerCase()}. Upgrade for a higher daily maximum and more frequent withdrawals.
+              {t('upgradeNudge', {
+                plan: plan.name.replace(/ Plan$/, ''),
+                frequency: frequency(withdrawal.intervalDays).toLowerCase(),
+              })}
             </p>
           </div>
           <ChevronRight size={18} className="text-[#B45309] shrink-0" />
@@ -293,13 +302,13 @@ export default function DashboardPage() {
       {/* Summary + activity */}
       <div className="grid gap-4 sm:gap-5 lg:grid-cols-5">
         <section className={cn(card, 'p-4 sm:p-5 lg:col-span-2')}>
-          <h2 className="text-sm font-bold text-[#0F172A] dark:text-white mb-3">Your earnings</h2>
+          <h2 className="text-sm font-bold text-[#0F172A] dark:text-white mb-3">{t('yourEarnings')}</h2>
           <dl className="grid grid-cols-2 gap-3">
             {[
-              { label: 'Today', value: earnings.today },
-              { label: 'Last 7 days', value: earnings.week },
-              { label: 'Last 30 days', value: earnings.month },
-              { label: 'Withdrawn', value: wallet.totalWithdrawn },
+              { label: t('statToday'), value: earnings.today },
+              { label: t('last7'), value: earnings.week },
+              { label: t('last30'), value: earnings.month },
+              { label: t('withdrawn'), value: wallet.totalWithdrawn },
             ].map((s) => (
               <div key={s.label} className="rounded-xl bg-[#F8FAFC] dark:bg-[#0F172A]/40 p-3">
                 <dt className="text-[11px] text-[#64748B] dark:text-[#94A3B8]">{s.label}</dt>
@@ -313,20 +322,20 @@ export default function DashboardPage() {
             href="/wallet"
             className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#2563EB] dark:text-[#60A5FA]"
           >
-            <Wallet size={14} /> Open wallet
+            <Wallet size={14} /> {t('openWallet')}
           </Link>
         </section>
 
         <section className={cn(card, 'p-4 sm:p-5 lg:col-span-3')}>
           <div className="flex items-center justify-between mb-1">
-            <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">Recent activity</h2>
+            <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">{t('recentActivity')}</h2>
             <Link href="/wallet/history" className="text-xs font-semibold text-[#2563EB] dark:text-[#60A5FA]">
-              View all
+              {t('viewAll')}
             </Link>
           </div>
           {data.recentTransactions.length === 0 ? (
             <p className="text-sm text-[#64748B] dark:text-[#94A3B8] py-6 text-center">
-              No activity yet. Start with a task above.
+              {t('noActivity')}
             </p>
           ) : (
             <ul className="divide-y divide-[#F1F5F9] dark:divide-[#334155]/60">

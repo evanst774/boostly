@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { CheckCheck, BellOff, ChevronRight } from 'lucide-react';
 import { NotificationItem } from './NotificationItem';
 import type { Notification } from '@/lib/notifications/types';
+import { useT } from '@/lib/i18n';
+import { notifications as notificationsMsg } from '@/lib/i18n/messages/notifications';
 
 interface NotificationDropdownProps {
   notifications: Notification[];
@@ -23,6 +25,7 @@ export function NotificationDropdown({
   onClose,
 }: NotificationDropdownProps) {
   const router = useRouter();
+  const t = useT(notificationsMsg);
 
   const handleViewAll = () => {
     onClose();
@@ -45,7 +48,7 @@ export function NotificationDropdown({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#F3F4F6] flex-shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-bold">Notifications</span>
+          <span className="text-sm font-bold">{t('title')}</span>
           {unreadCount > 0 && (
             <span className="text-[10px] font-bold text-white bg-[#EF4444] px-2 py-0.5 rounded-full">
               {unreadCount}
@@ -59,7 +62,7 @@ export function NotificationDropdown({
               className="text-xs font-medium text-[#2563EB] hover:text-[#1D4ED8] transition-colors flex items-center gap-1"
             >
               <CheckCheck size={14} />
-              Mark all read
+              {t('markAllRead')}
             </button>
           )}
         </div>
@@ -72,8 +75,8 @@ export function NotificationDropdown({
             <div className="w-12 h-12 rounded-full bg-[#F8FAFC] flex items-center justify-center mb-3">
               <BellOff size={20} className="text-[#9CA3AF]" />
             </div>
-            <p className="text-sm font-medium text-[#6B7280]">All caught up!</p>
-            <p className="text-xs text-[#9CA3AF] mt-1">No new notifications</p>
+            <p className="text-sm font-medium text-[#6B7280]">{t('caughtUp')}</p>
+            <p className="text-xs text-[#9CA3AF] mt-1">{t('noNew')}</p>
           </div>
         ) : (
           <div>
@@ -95,7 +98,7 @@ export function NotificationDropdown({
             onClick={handleViewAll}
             className="w-full py-3 text-sm font-medium text-[#2563EB] hover:bg-[#F8FAFC] transition-colors flex items-center justify-center gap-1"
           >
-            View all notifications
+            {t('viewAll')}
             <ChevronRight size={16} />
           </button>
         </div>

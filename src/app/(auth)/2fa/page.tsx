@@ -10,6 +10,8 @@ import Link from 'next/link';
 import { ArrowLeft, KeyRound, Loader2, Mail, Smartphone } from 'lucide-react';
 import AuthShell from '@/components/auth/AuthShell';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n';
+import { auth } from '@/lib/i18n/messages/auth';
 
 type Method = 'EMAIL' | 'TOTP';
 
@@ -50,6 +52,7 @@ export default function TwoFactorPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [resendIn, setResendIn] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const t = useT(auth);
 
   useEffect(() => {
     const p = readParams();
@@ -91,14 +94,14 @@ export default function TwoFactorPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(json.message || json.error || 'Invalid verification code.');
+        setError(json.message || json.error || t('invalidCode'));
         setCode('');
         return;
       }
       // Full navigation so the new session cookie is picked up everywhere.
       window.location.href = json.redirectTo || '/dashboard';
     } catch {
-      setError('Connection problem. Please try again.');
+      setError(t('connectionProblem'));
     } finally {
       setSubmitting(false);
     }
@@ -116,13 +119,13 @@ export default function TwoFactorPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(json.message || json.error || 'Could not resend the code.');
+        setError(json.message || json.error || t('couldNotResend'));
         return;
       }
-      setNotice(`A new code was sent to ${params.email}.`);
+      setNotice(t('newCodeSentTo', { email: params.email }));
       setResendIn(60);
     } catch {
-      setError('Connection problem. Please try again.');
+      setError(t('connectionProblem'));
     }
   };
 
@@ -130,13 +133,13 @@ export default function TwoFactorPage() {
 
   if (!params) {
     return (
-      <AuthShell bottomPrompt="Need help?" bottomLinkText="Contact support" bottomLinkHref="/support">
-        <h2 className="text-2xl font-bold text-white mb-2">Session expired</h2>
+      <AuthShell bottomPrompt={t('needHelp')} bottomLinkText={t('contactSupport')} bottomLinkHref="/support">
+        <h2 className="text-2xl font-bold text-white mb-2">{t('sessionExpired')}</h2>
         <p className="text-sm text-white/50 mb-6">
-          Please sign in again to get a new verification code.
+          {t('sessionExpiredBody')}
         </p>
         <Link href="/login" className="inline-flex px-5 py-3 rounded-xl bg-[#2563EB] text-white font-bold text-sm">
-          Back to sign in
+          {t('backToSignIn')}
         </Link>
       </AuthShell>
     );
@@ -145,13 +148,13 @@ export default function TwoFactorPage() {
   const isEmail = method === 'EMAIL' && !useBackup;
 
   return (
-    <AuthShell bottomPrompt="Need help?" bottomLinkText="Contact support" bottomLinkHref="/support">
+    <AuthShell bottomPrompt={t('needHelp')} bottomLinkText={t('contactSupport')} bottomLinkHref="/support">
       <Link
         href="/login"
         className="flex items-center gap-1.5 text-white/40 hover:text-white/70 text-sm transition-colors mb-6 group"
       >
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-        Back to sign in
+        {t('backToSignIn')}
       </Link>
 
       <div className="mb-6">
@@ -165,14 +168,14 @@ export default function TwoFactorPage() {
           )}
         </div>
         <h2 className="text-2xl sm:text-[26px] font-bold text-white mb-1.5">
-          {useBackup ? 'Use a backup code' : 'Two-step verification'}
+          {useBackup ? t('useBackup') : t('twoStep')}
         </h2>
         <p className="text-[13.5px] text-white/45">
           {useBackup
-            ? 'Enter one of the backup codes you saved when you set up 2FA.'
+            ? t('backupBody')
             : isEmail
-              ? <>Enter the 6-digit code we sent to <span className="text-white/70 font-medium">{params.email}</span></>
-              : 'Enter the 6-digit code from your authenticator app.'}
+              ? <>{t('emailCodeBody')} <span className="text-white/70 font-medium">{params.email}</span></>
+              : t('appBody')}
         </p>
       </div>
 
@@ -194,7 +197,7 @@ export default function TwoFactorPage() {
                   : 'border-white/10 text-white/60 hover:border-white/30',
               )}
             >
-              {m === 'EMAIL' ? 'Email code' : 'Authenticator app'}
+              {m === 'EMAIL' ? t('emailCode') : t('authApp')}
             </button>
           ))}
         </div>
@@ -210,7 +213,7 @@ export default function TwoFactorPage() {
           inputMode={useBackup ? 'text' : 'numeric'}
           autoComplete="one-time-code"
           placeholder={useBackup ? 'XXXX-XXXX' : '000000'}
-          aria-label="Verification code"
+          aria-label={t('verificationCode')}
           className="w-full px-4 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white text-center text-2xl tracking-[0.4em] font-bold outline-none focus:border-[#2563EB] placeholder:text-white/20"
         />
 
@@ -223,7 +226,7 @@ export default function TwoFactorPage() {
           className="w-full py-3.5 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold disabled:opacity-50 inline-flex items-center justify-center gap-2"
         >
           {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-          Verify and sign in
+          {t('verifySignIn')}
         </button>
       </form>
 
@@ -235,7 +238,7 @@ export default function TwoFactorPage() {
             disabled={resendIn > 0}
             className="text-[#93C5FD] hover:text-white disabled:text-white/30"
           >
-            {resendIn > 0 ? `Resend code in ${resendIn}s` : 'Resend code'}
+            {resendIn > 0 ? t('resendCodeIn', { s: resendIn }) : t('resendCode')}
           </button>
         ) : (
           <span />
@@ -249,7 +252,7 @@ export default function TwoFactorPage() {
           }}
           className="text-white/50 hover:text-white"
         >
-          {useBackup ? 'Use a verification code instead' : 'Use a backup code'}
+          {useBackup ? t('useCodeInstead') : t('useBackup')}
         </button>
       </div>
     </AuthShell>

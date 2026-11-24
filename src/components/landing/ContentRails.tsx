@@ -17,8 +17,16 @@ import type {
   ShowcaseVideo,
 } from '@/lib/landing/data';
 import { cn } from '@/lib/utils';
+import { useFormatNumber, useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { landing } from '@/lib/i18n/messages/landing';
 
-const rwf = (n: number) => `${Math.round(n).toLocaleString('en-US')} RWF`;
+/** "1,000 RWF" in the current language. */
+function useRwf() {
+  const tc = useT(common);
+  const fmt = useFormatNumber();
+  return (n: number) => tc('rwf', { amount: fmt(Math.round(n)) });
+}
 
 // Deterministic poster colours per category, used when there is no image.
 const TONES = [
@@ -96,6 +104,7 @@ function Rail({
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const t = useT(landing);
   const scroll = (dir: 1 | -1) =>
     ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.85, behavior: 'smooth' });
 
@@ -108,11 +117,11 @@ function Rail({
         </div>
         <div className="flex items-center gap-2">
           <Link href={href} className="hidden sm:inline text-sm font-semibold text-white/70 hover:text-white mr-2">
-            Start earning →
+            {t('railStart')}
           </Link>
           <button
             type="button"
-            aria-label={`Scroll ${title} left`}
+            aria-label={t('scrollLeft', { title })}
             onClick={() => scroll(-1)}
             className="hidden md:flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/80 hover:bg-white/10"
           >
@@ -120,7 +129,7 @@ function Rail({
           </button>
           <button
             type="button"
-            aria-label={`Scroll ${title} right`}
+            aria-label={t('scrollRight', { title })}
             onClick={() => scroll(1)}
             className="hidden md:flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/80 hover:bg-white/10"
           >
@@ -143,12 +152,14 @@ function Rail({
 }
 
 function VideoCard({ v }: { v: ShowcaseVideo }) {
+  const t = useT(landing);
+  const rwf = useRwf();
   const d = formatDuration(v.duration);
   return (
     <Link
       href="/register"
       className="group snap-start shrink-0 w-[68vw] xs:w-[240px] sm:w-[280px]"
-      aria-label={`${v.title}, earn ${rwf(v.reward)}`}
+      aria-label={t('videoAria', { title: v.title, amount: rwf(v.reward) })}
     >
       <div className="relative aspect-video overflow-hidden rounded-xl bg-white/5 ring-1 ring-white/10">
         <Poster
@@ -171,19 +182,21 @@ function VideoCard({ v }: { v: ShowcaseVideo }) {
         {v.title}
       </p>
       <p className="text-xs text-white/45">
-        {v.sponsor ? `Sponsored by ${v.sponsor}` : pretty(v.category)}
+        {v.sponsor ? t('sponsoredBy', { sponsor: v.sponsor }) : pretty(v.category)}
       </p>
     </Link>
   );
 }
 
 function GameCard({ g }: { g: ShowcaseGame }) {
+  const t = useT(landing);
+  const rwf = useRwf();
   const emoji = g.icon && !g.icon.startsWith('http') ? g.icon : null;
   return (
     <Link
       href="/register"
       className="group snap-start shrink-0 w-[42vw] xs:w-[170px] sm:w-[190px]"
-      aria-label={`${g.name}, earn from ${rwf(g.reward)}`}
+      aria-label={t('gameAria', { name: g.name, amount: rwf(g.reward) })}
     >
       <div className="relative aspect-[4/5] overflow-hidden rounded-xl bg-white/5 ring-1 ring-white/10">
         <Poster
@@ -212,6 +225,8 @@ function GameCard({ g }: { g: ShowcaseGame }) {
 }
 
 function SurveyCard({ s }: { s: ShowcaseSurvey }) {
+  const t = useT(landing);
+  const rwf = useRwf();
   return (
     <Link
       href="/register"
@@ -226,12 +241,12 @@ function SurveyCard({ s }: { s: ShowcaseSurvey }) {
         </span>
       </div>
       <p className="mt-3 line-clamp-2 text-sm font-semibold text-white">{s.title}</p>
-      <p className="mt-1 text-xs text-white/45">By {s.brand}</p>
+      <p className="mt-1 text-xs text-white/45">{t('byBrand', { brand: s.brand })}</p>
       <p className="mt-3 flex items-center gap-3 text-xs text-white/55">
         <span className="flex items-center gap-1">
-          <Clock className="h-3.5 w-3.5" /> {s.minutes} min
+          <Clock className="h-3.5 w-3.5" /> {t('minutes', { n: s.minutes })}
         </span>
-        <span>{s.questions} questions</span>
+        <span>{t('questions', { n: s.questions })}</span>
       </p>
     </Link>
   );
@@ -246,30 +261,32 @@ export function ContentRails({
   games: ShowcaseGame[];
   surveys: ShowcaseSurvey[];
 }) {
+  const t = useT(landing);
+  const tc = useT(common);
   const empty = videos.length + games.length + surveys.length === 0;
 
   return (
     <section id="earn" className="bg-[#070B14] pb-20 pt-6 scroll-mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-8">
-        <p className="text-sm font-semibold text-gold">Ways to earn</p>
+        <p className="text-sm font-semibold text-gold">{t('navWays')}</p>
         <h2 className="mt-1 font-rebond-bold text-3xl sm:text-4xl text-white tracking-tight">
-          Real tasks. Real rewards.
+          {t('railsTitle')}
         </h2>
         <p className="mt-2 max-w-xl text-white/55">
-          This is what&apos;s live on Boostly right now. Every card shows what it pays.
+          {t('railsBody')}
         </p>
       </div>
 
       {empty ? (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 grid sm:grid-cols-3 gap-4">
           {[
-            { icon: Play, t: 'Sponsored videos', d: 'Watch short videos from brands.' },
-            { icon: Gamepad2, t: 'Games', d: 'Play quick games and finish a session.' },
-            { icon: ClipboardCheck, t: 'Surveys', d: 'Share your opinion in a few minutes.' },
-          ].map(({ icon: Icon, t, d }) => (
-            <div key={t} className="rounded-xl border border-white/10 bg-white/[0.04] p-5">
+            { icon: Play, id: 'videos', title: t('sponsoredVideos'), d: t('emptyVideosDesc') },
+            { icon: Gamepad2, id: 'games', title: tc('games'), d: t('emptyGamesDesc') },
+            { icon: ClipboardCheck, id: 'surveys', title: tc('surveys'), d: t('emptySurveysDesc') },
+          ].map(({ icon: Icon, id, title, d }) => (
+            <div key={id} className="rounded-xl border border-white/10 bg-white/[0.04] p-5">
               <Icon className="h-6 w-6 text-gold" />
-              <p className="mt-3 font-semibold text-white">{t}</p>
+              <p className="mt-3 font-semibold text-white">{title}</p>
               <p className="text-sm text-white/55">{d}</p>
             </div>
           ))}
@@ -277,21 +294,21 @@ export function ContentRails({
       ) : (
         <div className="space-y-12">
           {videos.length > 0 && (
-            <Rail title="Sponsored videos" subtitle="Watch to the end, get paid." href="/register">
+            <Rail title={t('sponsoredVideos')} subtitle={t('railVideosSub')} href="/register">
               {videos.map((v) => (
                 <VideoCard key={v.id} v={v} />
               ))}
             </Rail>
           )}
           {games.length > 0 && (
-            <Rail title="Play & earn" subtitle="Short sessions, real rewards." href="/register">
+            <Rail title={t('railGamesTitle')} subtitle={t('railGamesSub')} href="/register">
               {games.map((g) => (
                 <GameCard key={g.id} g={g} />
               ))}
             </Rail>
           )}
           {surveys.length > 0 && (
-            <Rail title="Surveys" subtitle="A few minutes of your opinion." href="/register">
+            <Rail title={tc('surveys')} subtitle={t('railSurveysSub')} href="/register">
               {surveys.map((s) => (
                 <SurveyCard key={s.id} s={s} />
               ))}

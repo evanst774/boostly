@@ -5,6 +5,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { Shield, X, ChevronDown } from 'lucide-react';
+import { useT } from '@/lib/i18n';
+import { common } from '@/lib/i18n/messages/common';
+import { shell } from '@/lib/i18n/messages/shell';
 
 interface CookieConsentProps {
   onAccept?: () => void;
@@ -17,6 +20,8 @@ export default function CookieConsent({
   onDecline,
   onCustomize,
 }: CookieConsentProps) {
+  const t = useT(shell);
+  const tc = useT(common);
   const [isVisible, setIsVisible] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [preferences, setPreferences] = useState({
@@ -124,10 +129,10 @@ export default function CookieConsent({
                     </div>
                     <div>
                       <h3 className="text-base font-bold text-white">
-                        Cookie Preferences
+                        {t('cookieTitle')}
                       </h3>
                       <p className="hidden sm:block text-xs text-white/40">
-                        We value your privacy
+                        {t('cookieSubtitle')}
                       </p>
                     </div>
                   </div>
@@ -135,6 +140,7 @@ export default function CookieConsent({
                     whileHover={{ scale: 1.1, rotate: 90 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={handleDecline}
+                    aria-label={tc('close')}
                     className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors text-white/40 hover:text-white/60 hover:bg-white/5"
                   >
                     <X className="w-4 h-4" />
@@ -144,22 +150,19 @@ export default function CookieConsent({
                 {/* Main content */}
                 <div className="mb-3 sm:mb-5">
                   <p className="text-xs leading-relaxed mb-3 text-white/60">
-                    We use cookies to enhance your experience, analyze site
-                    traffic, and serve personalized content. By clicking
-                    &quot;Accept All&quot;, you consent to our use of cookies.
-                    Read our{' '}
+                    {t('cookieBody')}{' '}
                     <Link
                       href="/privacy"
                       className="font-semibold text-gold hover:text-gold-hover transition-colors"
                     >
-                      Privacy Policy
+                      {t('cookiePrivacy')}
                     </Link>{' '}
-                    and{' '}
+                    {t('cookieAnd')}{' '}
                     <Link
                       href="/terms"
                       className="font-semibold text-gold hover:text-gold-hover transition-colors"
                     >
-                      Terms of Service
+                      {t('cookieTerms')}
                     </Link>
                     .
                   </p>
@@ -176,14 +179,14 @@ export default function CookieConsent({
                         <div className="flex-1 pr-3">
                           <div className="flex items-center gap-1.5 mb-0.5">
                             <span className="text-xs font-bold text-white">
-                              Necessary
+                              {t('cookieNecessary')}
                             </span>
                             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary-light">
-                              Always Active
+                              {t('cookieAlwaysActive')}
                             </span>
                           </div>
                           <p className="text-[10px] text-white/40">
-                            Essential for website function. Cannot be disabled.
+                            {t('cookieNecessaryDesc')}
                           </p>
                         </div>
                         <div className="w-10 h-5 rounded-full relative opacity-50 cursor-not-allowed bg-primary">
@@ -193,8 +196,8 @@ export default function CookieConsent({
 
                       {/* Cookie toggles */}
                       <CookieToggle
-                        label="Functional"
-                        description="Enables enhanced features and personalization"
+                        label={t('cookieFunctional')}
+                        description={t('cookieFunctionalDesc')}
                         checked={preferences.functional}
                         onChange={(checked) =>
                           setPreferences((prev) => ({
@@ -205,8 +208,8 @@ export default function CookieConsent({
                       />
 
                       <CookieToggle
-                        label="Analytics"
-                        description="Anonymous usage data to improve our site"
+                        label={t('cookieAnalytics')}
+                        description={t('cookieAnalyticsDesc')}
                         checked={preferences.analytics}
                         onChange={(checked) =>
                           setPreferences((prev) => ({
@@ -217,8 +220,8 @@ export default function CookieConsent({
                       />
 
                       <CookieToggle
-                        label="Marketing"
-                        description="Personalized content and campaign tracking"
+                        label={t('cookieMarketing')}
+                        description={t('cookieMarketingDesc')}
                         checked={preferences.marketing}
                         onChange={(checked) =>
                           setPreferences((prev) => ({
@@ -238,7 +241,7 @@ export default function CookieConsent({
                     className="hidden sm:flex items-center gap-1 mt-3 text-xs font-semibold text-gold hover:text-gold-hover transition-colors"
                   >
                     <span>
-                      {showDetails ? 'Hide details' : 'Customize settings'}
+                      {showDetails ? t('cookieHideDetails') : t('cookieCustomizeSettings')}
                     </span>
                     <motion.div
                       animate={{ rotate: showDetails ? 180 : 0 }}
@@ -257,7 +260,7 @@ export default function CookieConsent({
                     onClick={handleAcceptAll}
                     className="flex-1 px-5 py-2.5 rounded-lg text-navy text-xs font-bold transition-all relative overflow-hidden group bg-gold hover:bg-gold-hover shadow-gold"
                   >
-                    <span className="relative z-10">Accept All</span>
+                    <span className="relative z-10">{t('cookieAcceptAll')}</span>
                   </motion.button>
 
                   {showDetails ? (
@@ -267,7 +270,7 @@ export default function CookieConsent({
                       onClick={handleAcceptSelected}
                       className="flex-1 px-5 py-2.5 rounded-lg text-xs font-bold border border-white/20 text-white hover:bg-white/5 transition-all"
                     >
-                      Accept Selected
+                      {t('cookieAcceptSelected')}
                     </motion.button>
                   ) : (
                     <motion.button
@@ -276,7 +279,7 @@ export default function CookieConsent({
                       onClick={handleDecline}
                       className="flex-1 px-5 py-2.5 rounded-lg text-xs font-bold border border-white/20 text-white hover:bg-white/5 transition-all"
                     >
-                      Essential Only
+                      {t('cookieEssentialOnly')}
                     </motion.button>
                   )}
 
@@ -287,15 +290,14 @@ export default function CookieConsent({
                       onClick={handleCustomize}
                       className="col-span-2 py-1.5 text-xs font-semibold text-gold sm:col-auto sm:px-5 sm:py-2.5 sm:rounded-lg sm:font-bold sm:border sm:border-white/20 sm:text-white sm:hover:bg-white/5 transition-all"
                     >
-                      Customize
+                      {t('cookieCustomize')}
                     </motion.button>
                   )}
                 </div>
 
                 {/* Footer note */}
                 <p className="hidden sm:block mt-4 text-[10px] text-center text-white/20">
-                  You can change your preferences anytime through your browser
-                  settings.
+                  {t('cookieFooter')}
                 </p>
               </div>
             </motion.div>
