@@ -3,25 +3,21 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import Image from 'next/image';
-import {
-  ArrowLeft,
-  Save,
-  Loader2,
-  CheckCircle,
-  AlertCircle,
-  Video,
-  Image as ImageIcon,
-  Tag,
-  DollarSign,
-  Star,
-  Clock,
-  Plus,
-  X,
-  Trash2,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ArrowLeft, Loader2, Trash2, AlertCircle } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import {
+  VideoForm,
+  EMPTY_VIDEO_FORM,
+  type VideoFormValues,
+} from '@/components/admin/content/VideoForm';
+
+const STATUS_OPTIONS = [
+  { value: 'DRAFT', label: 'DRAFT' },
+  { value: 'PENDING_REVIEW', label: 'PENDING_REVIEW' },
+  { value: 'ACTIVE', label: 'ACTIVE' },
+  { value: 'INACTIVE', label: 'INACTIVE' },
+  { value: 'REJECTED', label: 'REJECTED' },
+];
 
 export default function EditVideoPage() {
   const router = useRouter();
@@ -29,29 +25,9 @@ export default function EditVideoPage() {
   const videoId = params.id as string;
 
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    category: 'EDUCATION',
-    difficulty: 'BEGINNER',
-    duration: 0,
-    videoUrl: '',
-    thumbnailUrl: '',
-    rewardAmount: 40,
-    rewardBudget: null as number | null,
-    isSponsored: false,
-    sponsorName: '',
-    sponsorLogo: '',
-    sponsorWebsite: '',
-    tags: [] as string[],
-    status: 'DRAFT',
-  });
-  const [tagInput, setTagInput] = useState('');
-  const [message, setMessage] = useState<{
-    type: 'success' | 'error';
-    text: string;
-  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [initialValues, setInitialValues] = useState<VideoFormValues | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Fetch video function - wrapped in useCallback with videoId dependency
@@ -61,7 +37,8 @@ export default function EditVideoPage() {
       const response = await fetch(`/api/content/videos/${videoId}`);
       const data = await response.json();
       const video = data.video;
-      setFormData({
+      setInitialValues({
+        ...EMPTY_VIDEO_FORM,
         title: video.title || '',
         description: video.description || '',
         category: video.category || 'EDUCATION',
@@ -80,7 +57,7 @@ export default function EditVideoPage() {
       });
     } catch (error) {
       console.error('Failed to fetch video:', error);
-      setMessage({ type: 'error', text: 'Failed to load video data' });
+      setLoadError('Failed to load video data');
     } finally {
       setIsLoading(false);
     }
@@ -91,82 +68,34 @@ export default function EditVideoPage() {
     fetchVideo();
   }, [fetchVideo]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setMessage(null);
+  const handleSubmit = async (formData: VideoFormValues) => {
+    const response = await fetch(`/api/content/videos/${videoId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    });
 
-    try {
-      const response = await fetch(`/api/content/videos/${videoId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+    const data = await response.json().catch(() => ({}));
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update video');
-      }
-
-      setMessage({ type: 'success', text: 'Video updated successfully!' });
-      setTimeout(() => router.push(`/admin/content/videos/${videoId}`), 1500);
-    } catch (error) {
-      setMessage({
-        type: 'error',
-        text: error instanceof Error ? error.message : 'Failed to update video',
-      });
-    } finally {
-      setIsSubmitting(false);
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to update video');
     }
+
+    setTimeout(() => router.push(`/admin/content/videos/${videoId}`), 1500);
   };
 
   const handleDelete = async () => {
-    setIsSubmitting(true);
+    setIsDeleting(true);
     try {
       await fetch(`/api/content/videos/${videoId}`, { method: 'DELETE' });
       router.push('/admin/content/videos');
     } catch (error) {
       console.error('Failed to delete video:', error);
     } finally {
-      setIsSubmitting(false);
+      setIsDeleting(false);
       setDeleteDialogOpen(false);
     }
   };
-
-  const addTag = () => {
-    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
-      setFormData({ ...formData, tags: [...formData.tags, tagInput.trim()] });
-      setTagInput('');
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setFormData({ ...formData, tags: formData.tags.filter((t) => t !== tag) });
-  };
-
-  const categories = [
-    'BUSINESS',
-    'FINANCE',
-    'TECH',
-    'EDUCATION',
-    'ENTERTAINMENT',
-    'LIFESTYLE',
-    'GAMING',
-    'SPORTS',
-    'MUSIC',
-    'NEWS',
-    'TUTORIAL',
-  ];
-
-  const difficulties = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'];
-  const statuses = [
-    'DRAFT',
-    'PENDING_REVIEW',
-    'ACTIVE',
-    'INACTIVE',
-    'REJECTED',
-  ];
 
   if (isLoading) {
     return (
@@ -188,12 +117,10 @@ export default function EditVideoPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.push(`/admin/content/videos/${videoId}`)}
+            aria-label="Back to video"
             className="p-2 rounded-lg hover:bg-[#F8FAFC] dark:hover:bg-[#334155] transition-colors touch-min-target"
           >
-            <ArrowLeft
-              size={20}
-              className="text-[#64748B] dark:text-[#94A3B8]"
-            />
+            <ArrowLeft size={20} className="text-[#64748B] dark:text-[#94A3B8]" />
           </button>
           <div>
             <h1 className="text-2xl font-bold text-[#0F172A] dark:text-white">
@@ -213,420 +140,22 @@ export default function EditVideoPage() {
         </button>
       </div>
 
-      {/* Form */}
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white dark:bg-[#1E293B] rounded-2xl border border-[#F1F5F9] dark:border-[#334155] shadow-sm p-6"
-      >
-        <div className="space-y-6">
-          {/* Basic Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-[#0F172A] dark:text-white mb-1.5">
-                Title *
-              </label>
-              <div className="relative">
-                <Video
-                  size={18}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8]"
-                />
-                <input
-                  type="text"
-                  required
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                  className="w-full pl-11 pr-4 py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white"
-                  placeholder="Enter video title"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#0F172A] dark:text-white mb-1.5">
-                Category *
-              </label>
-              <select
-                required
-                value={formData.category}
-                onChange={(e) =>
-                  setFormData({ ...formData, category: e.target.value })
-                }
-                className="w-full px-4 py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white"
-              >
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-[#0F172A] dark:text-white mb-1.5">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              className="w-full px-4 py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white resize-none h-24"
-              placeholder="Enter video description"
-            />
-          </div>
-
-          {/* URLs */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-[#0F172A] dark:text-white mb-1.5">
-                Video URL *
-              </label>
-              <input
-                type="url"
-                required
-                value={formData.videoUrl}
-                onChange={(e) =>
-                  setFormData({ ...formData, videoUrl: e.target.value })
-                }
-                className="w-full px-4 py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white"
-                placeholder="https://example.com/video.mp4"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#0F172A] dark:text-white mb-1.5">
-                Thumbnail URL
-              </label>
-              <div className="relative">
-                <ImageIcon
-                  size={18}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8]"
-                />
-                <input
-                  type="url"
-                  value={formData.thumbnailUrl}
-                  onChange={(e) =>
-                    setFormData({ ...formData, thumbnailUrl: e.target.value })
-                  }
-                  className="w-full pl-11 pr-4 py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white"
-                  placeholder="https://example.com/thumbnail.jpg"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Duration & Reward */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-[#0F172A] dark:text-white mb-1.5">
-                Duration (seconds)
-              </label>
-              <div className="relative">
-                <Clock
-                  size={18}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8]"
-                />
-                <input
-                  type="number"
-                  value={formData.duration}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      duration: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full pl-11 pr-4 py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white"
-                  placeholder="120"
-                  min="0"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#0F172A] dark:text-white mb-1.5">
-                Reward Amount *
-              </label>
-              <div className="relative">
-                <DollarSign
-                  size={18}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8]"
-                />
-                <input
-                  type="number"
-                  required
-                  value={formData.rewardAmount}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      rewardAmount: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full pl-11 pr-4 py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white"
-                  placeholder="40"
-                  min="0"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#0F172A] dark:text-white mb-1.5">
-                Sponsor reward budget (RWF)
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={formData.rewardBudget ?? ''}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    rewardBudget: e.target.value ? Number(e.target.value) : null,
-                  })
-                }
-                className="w-full px-4 py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white"
-                placeholder="No campaign budget"
-              />
-              <p className="mt-1 text-xs text-[#94A3B8]">
-                What the sponsor paid for rewards. Rewards stop when it&apos;s used up.
-              </p>
-            </div>
-          </div>
-
-          {/* Difficulty & Status */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-[#0F172A] dark:text-white mb-1.5">
-                Difficulty
-              </label>
-              <select
-                value={formData.difficulty}
-                onChange={(e) =>
-                  setFormData({ ...formData, difficulty: e.target.value })
-                }
-                className="w-full px-4 py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white"
-              >
-                {difficulties.map((diff) => (
-                  <option key={diff} value={diff}>
-                    {diff}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#0F172A] dark:text-white mb-1.5">
-                Status
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData({ ...formData, status: e.target.value })
-                }
-                className="w-full px-4 py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white"
-              >
-                {statuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Sponsored */}
-          <div className="flex items-center gap-3 py-4 border-t border-b border-[#F1F5F9] dark:border-[#334155]">
-            <button
-              type="button"
-              onClick={() =>
-                setFormData({ ...formData, isSponsored: !formData.isSponsored })
-              }
-              className={cn(
-                'w-12 h-7 rounded-full transition-colors relative',
-                formData.isSponsored ? 'bg-[#F59E0B]' : 'bg-[#D1D5DB]',
-              )}
-            >
-              <div
-                className={cn(
-                  'absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-sm transition-transform',
-                  formData.isSponsored ? 'right-0.5' : 'left-0.5',
-                )}
-              />
-            </button>
-            <div>
-              <p className="text-sm font-medium text-[#0F172A] dark:text-white flex items-center gap-2">
-                <Star size={16} className="text-[#F59E0B]" />
-                Sponsored Content
-              </p>
-              <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-                Mark this video as sponsored content
-              </p>
-            </div>
-          </div>
-
-          {/* Sponsor Info */}
-          {formData.isSponsored && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-[#FFFBEB] dark:bg-[#F59E0B]/5 rounded-xl border border-[#FDE68A] dark:border-[#F59E0B]/20">
-              <div>
-                <label className="block text-sm font-medium text-[#0F172A] dark:text-white mb-1.5">
-                  Sponsor Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.sponsorName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, sponsorName: e.target.value })
-                  }
-                  className="w-full px-4 py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white"
-                  placeholder="Sponsor name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#0F172A] dark:text-white mb-1.5">
-                  Sponsor Logo URL
-                </label>
-                <input
-                  type="url"
-                  value={formData.sponsorLogo}
-                  onChange={(e) =>
-                    setFormData({ ...formData, sponsorLogo: e.target.value })
-                  }
-                  className="w-full px-4 py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white"
-                  placeholder="https://example.com/logo.png"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-[#0F172A] dark:text-white mb-1.5">
-                  Sponsor Website
-                </label>
-                <input
-                  type="url"
-                  value={formData.sponsorWebsite}
-                  onChange={(e) =>
-                    setFormData({ ...formData, sponsorWebsite: e.target.value })
-                  }
-                  className="w-full px-4 py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white"
-                  placeholder="https://sponsor.com"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Tags */}
-          <div>
-            <label className="block text-sm font-medium text-[#0F172A] dark:text-white mb-1.5">
-              Tags
-            </label>
-            <div className="flex gap-2">
-              <div className="flex-1 relative">
-                <Tag
-                  size={18}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8]"
-                />
-                <input
-                  type="text"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) =>
-                    e.key === 'Enter' && (e.preventDefault(), addTag())
-                  }
-                  className="w-full pl-11 pr-4 py-2.5 border border-[#F1F5F9] dark:border-[#334155] rounded-xl focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white"
-                  placeholder="Enter tag and press Enter"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={addTag}
-                className="px-4 py-2.5 rounded-xl bg-[#2563EB] text-white hover:bg-[#1D4ED8] transition-colors"
-              >
-                <Plus size={18} />
-              </button>
-            </div>
-            {formData.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                {formData.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="flex items-center gap-1 px-3 py-1 rounded-full bg-[#F8FAFC] dark:bg-[#334155] text-sm text-[#0F172A] dark:text-white border border-[#F1F5F9] dark:border-[#334155]"
-                  >
-                    #{tag}
-                    <button
-                      type="button"
-                      onClick={() => removeTag(tag)}
-                      className="hover:text-[#EF4444] transition-colors"
-                    >
-                      <X size={14} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Thumbnail Preview */}
-          {formData.thumbnailUrl && (
-            <div className="mt-4 p-4 bg-[#F8FAFC] dark:bg-[#0F172A] rounded-xl border border-[#F1F5F9] dark:border-[#334155]">
-              <p className="text-sm font-medium text-[#0F172A] dark:text-white mb-2">
-                Thumbnail Preview
-              </p>
-              <div className="relative aspect-video w-full max-w-xs rounded-lg overflow-hidden bg-[#F1F5F9] dark:bg-[#334155]">
-                <Image
-                  src={formData.thumbnailUrl}
-                  alt="Video thumbnail preview"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 320px) 100vw, 320px"
-                  unoptimized={formData.thumbnailUrl.startsWith('data:')}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Message */}
-          {message && (
-            <div
-              className={cn(
-                'p-3 rounded-xl flex items-center gap-2 text-sm',
-                message.type === 'success'
-                  ? 'bg-[#F0FDF4] dark:bg-[#22C55E]/20 text-[#22C55E] dark:text-[#4ADE80]'
-                  : 'bg-[#FEF2F2] dark:bg-[#EF4444]/20 text-[#EF4444] dark:text-[#F87171]',
-              )}
-            >
-              {message.type === 'success' ? (
-                <CheckCircle size={16} />
-              ) : (
-                <AlertCircle size={16} />
-              )}
-              {message.text}
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex items-center gap-3 pt-4 border-t border-[#F1F5F9] dark:border-[#334155]">
-            <button
-              type="button"
-              onClick={() => router.push(`/admin/content/videos/${videoId}`)}
-              className="px-6 py-2.5 rounded-xl border border-[#F1F5F9] dark:border-[#334155] text-sm font-medium text-[#64748B] dark:text-[#94A3B8] hover:bg-[#F8FAFC] dark:hover:bg-[#334155] transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 px-6 py-2.5 rounded-xl bg-[#2563EB] text-white text-sm font-bold hover:bg-[#1D4ED8] transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save size={18} />
-                  Save Changes
-                </>
-              )}
-            </button>
-          </div>
+      {loadError || !initialValues ? (
+        <div className="p-3 rounded-xl flex items-center gap-2 text-sm bg-[#FEF2F2] dark:bg-[#EF4444]/20 text-[#EF4444] dark:text-[#F87171]">
+          <AlertCircle size={16} />
+          {loadError ?? 'Failed to load video data'}
         </div>
-      </form>
+      ) : (
+        <VideoForm
+          initialValues={initialValues}
+          statusOptions={STATUS_OPTIONS}
+          submitLabel="Save Changes"
+          submittingLabel="Saving..."
+          successMessage="Video updated successfully!"
+          onSubmit={handleSubmit}
+          onCancel={() => router.push(`/admin/content/videos/${videoId}`)}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
@@ -648,7 +177,7 @@ export default function EditVideoPage() {
         cancelText="Cancel"
         onConfirm={handleDelete}
         variant="delete"
-        isLoading={isSubmitting}
+        isLoading={isDeleting}
       />
     </div>
   );
