@@ -264,6 +264,9 @@ function normLicense(s) {
   return null; // anything else (GFDL-only, NC, ND, unknown) is rejected
 }
 
+// Exclusion entries match a slug exactly or as a prefix (so long slugs can be listed truncated).
+const isExcluded = (slug, list) => list.some((e) => slug === e || slug.startsWith(e));
+
 // ---------------------------------------------------------------- discovery
 async function discoverNasa(seen) {
   const out = [];
@@ -501,19 +504,28 @@ async function discover() {
 
 // ---------------------------------------------------------------- analysis
 async function analyse(file, dur) {
+  // Cheap pass first: decode keyframes only. Fall back to a 4 fps full decode when the
+  // source has too few keyframes for a useful picture (or the decoder ignores skip_frame).
+  const fast = await analysePass(file, dur, true);
+  if (fast.frames.length >= Math.max(8, dur / 4)) return fast;
+  return analysePass(file, dur, false);
+}
+
+async function analysePass(file, dur, keyOnly) {
   // One pass at low res / 4 fps: per-frame brightness, contrast, saturation and
   // scene-change score, plus blackdetect + freezedetect intervals.
   const statsFile = path.join(TMP, `${sha(file).slice(0, 10)}.stats.txt`);
   const vf = [
-    'fps=4',
+    ...(keyOnly ? [] : ['fps=4']),
     'scale=320:-2',
-    'blackdetect=d=0.5:pic_th=0.92:pix_th=0.10',
-    'freezedetect=n=-55dB:d=1.5',
+    `blackdetect=d=${keyOnly ? 0 : 0.5}:pic_th=0.92:pix_th=0.10`,
+    // freezedetect is meaningless on sparse keyframes (each frame spans a whole GOP).
+    ...(keyOnly ? [] : ['freezedetect=n=-55dB:d=1.5']),
     'signalstats',
     "select='gte(scene\\,0)'",
     `metadata=mode=print:file=${statsFile.replace(/([\\:'])/g, '\\$1')}`,
   ].join(',');
-  const r = await run('ffmpeg', ['-hide_banner', '-nostats', '-threads', '2', '-i', file, '-map', '0:v:0', '-vf', vf, '-an', '-f', 'null', '-']);
+  const r = await run('ffmpeg', ['-hide_banner', '-nostats', '-threads', '2', ...(keyOnly ? ['-skip_frame', 'nokey'] : []), '-i', file, '-fps_mode', 'passthrough', '-map', '0:v:0', '-vf', vf, '-an', '-f', 'null', '-']);
   const txt = fs.existsSync(statsFile) ? fs.readFileSync(statsFile, 'utf8') : '';
   fs.rmSync(statsFile, { force: true });
   const frames = [];
@@ -539,6 +551,19 @@ async function analyse(file, dur) {
   const black = [];
   for (const m of r.err.matchAll(/black_start:([\d.]+) black_end:([\d.]+)/g)) black.push([+m[1], +m[2]]);
   const freeze = intervals({ start: /freeze_start: ([\d.]+)/, end: /freeze_end: ([\d.]+)/ });
+  if (keyOnly) {
+    // Static run: >= 3 consecutive keyframes that are practically identical.
+    let runStart = null;
+    for (let k = 1; k < frames.length; k++) {
+      const same = (frames[k].scene ?? 1) < 0.0015;
+      if (same && runStart === null) runStart = k - 1;
+      if ((!same || k === frames.length - 1) && runStart !== null) {
+        const endK = same ? k : k - 1;
+        if (endK - runStart >= 2) freeze.push([frames[runStart].t, frames[endK].t]);
+        runStart = null;
+      }
+    }
+  }
   for (const f of frames) {
     const yavg = f.YAVG ?? 0;
     const contrast = (f.YHIGH ?? 0) - (f.YLOW ?? 0);
@@ -560,6 +585,11 @@ function chooseWindow(frames, black, freeze, dur) {
   const closing = [...black, ...freeze].sort((a, b) => b[1] - a[1]);
   for (const [a, b] of closing) if (b >= e0 - 0.6 && a < e0) e0 = a;
   if (e0 < dur) e0 -= 0.2;
+  // Also skip leading/trailing frames judged bad (near-black, flat, frozen) by the per-frame stats.
+  const firstGood = frames.find((f) => !f.bad && f.t >= s0);
+  if (firstGood && firstGood.t - s0 <= 20) s0 = Math.max(s0, firstGood.t);
+  const lastGood = [...frames].reverse().find((f) => !f.bad && f.t <= e0);
+  if (lastGood && e0 - lastGood.t <= 20 && lastGood.t > s0) e0 = Math.min(e0, lastGood.t + 0.5);
   if (e0 - s0 < MIN_CLIP) { s0 = 0; e0 = dur; } // nothing sensible left: use everything, analysis below rejects junk
   const len = Math.min(MAX_CLIP, e0 - s0);
   let best = { start: s0, score: -Infinity };
@@ -600,6 +630,27 @@ async function audioInfo(file, start, len) {
 }
 
 // ---------------------------------------------------------------- processing
+// upload.wikimedia.org: one download at a time, a pause between files, and a long
+// back-off when it answers 429.
+let commonsChain = Promise.resolve();
+let commonsLast = 0;
+function commonsDownload(url, dest) {
+  const job = commonsChain.then(async () => {
+    const gap = commonsLast + 3000 - Date.now();
+    if (gap > 0) await sleep(gap);
+    const r = await run('curl', ['-sS', '-L', '-m', '900', '--speed-time', '60', '--speed-limit', '20000',
+      '-A', UA, '-o', dest, '-w', '%{http_code}', url], { timeoutMs: 16 * 60_000 });
+    commonsLast = Date.now();
+    const code = Number(r.out.trim().slice(-3));
+    if (r.code === 0 && code >= 200 && code < 300) return { ok: true };
+    fs.rmSync(dest, { force: true });
+    if (code === 429) { log('  Commons answered 429 — backing off 90 s'); await sleep(90_000); }
+    return { ok: false, why: `curl exit ${r.code}, HTTP ${code} ${r.err.trim().slice(0, 120)}` };
+  });
+  commonsChain = job.catch(() => {});
+  return job;
+}
+
 async function processOne(c) {
   const mp4 = path.join(OUT, `${c.slug}.mp4`);
   const jpg = path.join(OUT, `${c.slug}.jpg`);
@@ -614,9 +665,8 @@ async function processOne(c) {
       let input = c.mediaUrl;
       if (c.source === 'Wikimedia Commons') {
         // upload.wikimedia.org rate-limits ffmpeg's HTTP client (429); a plain curl download is fine.
-        await sleep(1500);
-        const dl = await run('curl', ['-sS', '-f', '-L', '--retry', '3', '--retry-delay', '5', '-m', '900', '-A', UA, '-o', rawFile, c.mediaUrl], { timeoutMs: 16 * 60_000 });
-        if (dl.code !== 0) { log(`  ${c.slug}: curl attempt ${attempt} failed: ${dl.err.trim().slice(0, 200)}`); await sleep(5000 * attempt); continue; }
+        const dl = await commonsDownload(c.mediaUrl, rawFile);
+        if (!dl.ok) { log(`  ${c.slug}: download attempt ${attempt} failed: ${dl.why}`); continue; }
         input = rawFile;
       }
       const r = await run('ffmpeg', [
@@ -632,20 +682,6 @@ async function processOne(c) {
     log(`  ${c.slug}: downloaded`);
     // Normalise once to a light intermediate (<=1280x720 or 720x1280, square pixels, <=30 fps,
     // rotation applied) so analysis, encode and thumbnail don't each decode a 4K source.
-    {
-      const midFile = path.join(TMP, `${c.slug}.mid.mkv`);
-      const fit = "scale=w='if(gt(iw*sar,ih),min(1280,iw*sar),min(720,iw*sar))':h='if(gt(iw*sar,ih),min(720,ih),min(1280,ih))':force_original_aspect_ratio=decrease:force_divisible_by=2,setsar=1,fps='min(source_fps,30)'";
-      const m = await run('ffmpeg', ['-hide_banner', '-nostats', '-y', '-threads', '0', '-i', srcFile, '-map', '0:v:0', '-map', '0:a:0?',
-        '-vf', fit, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '12', '-pix_fmt', 'yuv420p', '-c:a', 'copy', '-f', 'matroska', midFile]);
-      if (m.code !== 0) {
-        // fps expression unsupported on some builds -> retry without it
-        const m2 = await run('ffmpeg', ['-hide_banner', '-nostats', '-y', '-i', srcFile, '-map', '0:v:0', '-map', '0:a:0?',
-          '-vf', fit.replace(/,fps=.*$/, ''), '-r', '30', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '12', '-pix_fmt', 'yuv420p', '-c:a', 'copy', '-f', 'matroska', midFile]);
-        if (m2.code !== 0) throw new Error(`normalise failed: ${m2.err.split('\n').filter(Boolean).slice(-1)[0]}`);
-      }
-      fs.renameSync(midFile, srcFile);
-    }
-    log(`  ${c.slug}: normalised`);
     const probe = await ffprobe(srcFile);
     const vs = probe?.streams?.find((s) => s.codec_type === 'video');
     const as = probe?.streams?.find((s) => s.codec_type === 'audio');
@@ -660,7 +696,7 @@ async function processOne(c) {
 
     // 2. Analyse & pick the window.
     const { frames, black, freeze } = await analyse(srcFile, dur);
-    if (frames.length < 8) throw new Error('analysis produced no frames');
+    if (frames.length < 5) throw new Error('analysis produced no frames');
     const win = chooseWindow(frames, black, freeze, dur);
     if (win.len < MIN_CLIP) throw new Error(`too short after trimming (${win.len}s)`);
     if (win.badShare > 0.35) throw new Error(`mostly black/static (${Math.round(win.badShare * 100)}% bad frames)`);
@@ -691,10 +727,10 @@ async function processOne(c) {
     ].join(',');
     const encode = async (crf, maxrate) => {
       const a = [
-        '-hide_banner', '-nostats', '-y', '-ss', String(win.start), '-t', String(win.len), '-i', srcFile,
+        '-hide_banner', '-nostats', '-y', '-threads', '0', '-ss', String(win.start), '-t', String(win.len), '-i', srcFile,
         '-map', '0:v:0', ...(keepAudio ? ['-map', '0:a:0'] : []),
         '-vf', vfilters,
-        '-c:v', 'libx264', '-preset', 'medium', '-crf', String(crf), '-maxrate', `${maxrate}k`, '-bufsize', `${maxrate * 2}k`,
+        '-c:v', 'libx264', '-preset', 'faster', '-crf', String(crf), '-maxrate', `${maxrate}k`, '-bufsize', `${maxrate * 2}k`,
         '-profile:v', 'high', '-level:v', '4.0', '-pix_fmt', 'yuv420p', '-g', '60',
         ...(keepAudio
           ? ['-af', `loudnorm=I=-16:TP=-1.5:LRA=11,afade=t=in:st=0:d=${fade},afade=t=out:st=${(win.len - fade).toFixed(2)}:d=${fade}`, '-c:a', 'aac', '-b:a', '96k', '-ac', '2', '-ar', '48000']
@@ -806,8 +842,8 @@ async function processAll(cands) {
     list.sort((a, b) => b.score - a.score);
     queues.push(list);
   }
-  const excluded = new Set(readJson(path.join(__dirname, 'overrides.json'), {}).exclude || []);
-  for (const q of queues) q.splice(0, q.length, ...q.filter((c) => !excluded.has(c.slug)));
+  const excl = readJson(path.join(__dirname, 'overrides.json'), {}).exclude || [];
+  for (const q of queues) q.splice(0, q.length, ...q.filter((c) => !isExcluded(c.slug, excl)));
   for (let k = queues.length - 1; k >= 0; k--) if (!queues[k].length) queues.splice(k, 1);
   const done = (c) => fs.existsSync(path.join(META_DIR, `${c.slug}.json`)) && fs.existsSync(path.join(OUT, `${c.slug}.mp4`)) && fs.existsSync(path.join(OUT, `${c.slug}.jpg`));
 
@@ -844,6 +880,12 @@ async function processAll(cands) {
       }
     });
   }
+  // Interleave sources (commons, nasa, svs, commons, …) so downloads overlap with encodes.
+  const bySrc = {};
+  work.forEach((w, k) => { const src = w.list[0].query.split(':')[0]; (bySrc[src] ||= []).push(tasks[k]); });
+  tasks.length = 0;
+  const srcLists = Object.values(bySrc);
+  while (srcLists.some((l) => l.length)) for (const l of srcLists) if (l.length) tasks.push(l.shift());
   // Simple worker pool over query-tasks.
   let i = 0;
   await Promise.all(Array.from({ length: JOBS }, async () => {
@@ -860,9 +902,9 @@ async function buildManifest() {
     .filter((m) => m && fs.existsSync(path.join(OUT, `${m.slug}.mp4`)) && fs.existsSync(path.join(OUT, `${m.slug}.jpg`)))
     .sort((a, b) => (order.get(a.slug) ?? 1e9) - (order.get(b.slug) ?? 1e9));
   const overrides = readJson(path.join(__dirname, 'overrides.json'), {});
-  const exclude = new Set(overrides.exclude || []);
+  const exclude = overrides.exclude || [];
   const manifest = metas
-    .filter((m) => !exclude.has(m.slug))
+    .filter((m) => !isExcluded(m.slug, exclude))
     .map((m) => {
       const o = overrides.items?.[m.slug] || {};
       return {
@@ -902,7 +944,7 @@ async function buildManifest() {
   const lines = [
     `Boostly video staging report — ${new Date().toISOString()}`,
     `Output: ${OUT}`,
-    `Clips in manifest: ${manifest.length} (excluded by overrides: ${exclude.size})`,
+    `Clips in manifest: ${manifest.length} (excluded by overrides: ${metas.length - manifest.length})`,
     `Total size: ${(total / 1e6).toFixed(1)} MB video + ${(thumbs / 1e6).toFixed(1)} MB thumbnails; largest mp4 ${(Math.max(...manifest.map((m) => m.sizeBytes)) / 1e6).toFixed(1)} MB`,
     `Durations: min ${Math.min(...manifest.map((m) => m.durationSeconds))}s, max ${Math.max(...manifest.map((m) => m.durationSeconds))}s, total ${(manifest.reduce((a, m) => a + m.durationSeconds, 0) / 60).toFixed(1)} min`,
     `Orientation: ${JSON.stringify(count('orientation'))}`,
