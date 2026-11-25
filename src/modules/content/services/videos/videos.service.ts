@@ -9,8 +9,7 @@ import {
   createVideoSchema,
   updateVideoSchema,
   type CreateVideoInput,
-  type UpdateVideoInput,
-} from '../../validation';
+  type UpdateVideoInput, onlyProvided } from '../../validation';
 import { createAuditLog } from '@/lib/audit';
 import { getCurrentUser } from '@/lib/auth/session.server';
 import { requirePermission } from '@/lib/auth/permissions';
@@ -24,7 +23,8 @@ import type {
 } from '@/lib/db/schema/videos';
 import { rewardsService } from '@/modules/rewards/service';
 import { RewardTypeEnum } from '@/lib/db/schema/rewards';
-import { getUserDailyLimits } from '@/modules/rewards/plan-limits';
+import { getUserDailyLimits, getUserPlan } from '@/modules/rewards/plan-limits';
+import { canUsePlan, PLAN_LOCKED_MESSAGE } from '@/modules/content/plan-access';
 import { kigaliDateKey } from '@/lib/constants/payouts';
 import { issueTaskToken, elapsedSinceTaskStart } from '@/lib/task-token';
 
@@ -129,6 +129,7 @@ export class VideosService {
 
     const page = Math.max(1, filters.page ?? 1);
     const limit = Math.min(Math.max(1, filters.limit ?? 20), 50);
+    const plan = await getUserPlan(user.id);
 
     const [result, watches, limits, doneToday, paidToday, earnings] =
       await Promise.all([
@@ -136,6 +137,7 @@ export class VideosService {
           category: filters.category,
           search: filters.search,
           status: VideoStatusEnum.ACTIVE,
+          planTier: plan.tier,
           page,
           limit,
         }),
@@ -192,7 +194,8 @@ export class VideosService {
     const existing = await videosRepository.getById(id);
     if (!existing) throw new Error('Video not found');
 
-    const validated = updateVideoSchema.parse(input);
+    // Only the fields that were sent (no defaults sneaking in on edits).
+    const validated = onlyProvided(updateVideoSchema.parse(input), input);
     const updated = await videosRepository.update(id, {
       ...validated,
       updatedBy: user.id,
@@ -347,6 +350,9 @@ export class VideosService {
     if (!video || video.status !== VideoStatusEnum.ACTIVE) {
       throw new VideoTaskError(404, 'NOT_AVAILABLE', 'This video is no longer available.');
     }
+    if (!canUsePlan(video.allowedPlanTiers, (await getUserPlan(user.id)).tier)) {
+      throw new VideoTaskError(403, 'PLAN_LOCKED', PLAN_LOCKED_MESSAGE);
+    }
 
     const [watch, limits, doneToday, earnedToday] = await Promise.all([
       videoWatchesRepository.getByUserAndVideo(user.id, videoId),
@@ -414,6 +420,9 @@ export class VideosService {
     const video = await videosRepository.getById(videoId);
     if (!video || video.status !== VideoStatusEnum.ACTIVE) {
       throw new VideoTaskError(404, 'NOT_AVAILABLE', 'This video is no longer available.');
+    }
+    if (!canUsePlan(video.allowedPlanTiers, (await getUserPlan(user.id)).tier)) {
+      throw new VideoTaskError(403, 'PLAN_LOCKED', PLAN_LOCKED_MESSAGE);
     }
 
     const elapsed = elapsedSinceTaskStart(startToken, user.id, 'video', videoId);

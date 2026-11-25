@@ -1,4 +1,5 @@
 // src/modules/content/repositories/videos/videos.repository.ts
+import { planAllowsSql } from '@/modules/content/plan-access';
 import { PUBLIC_USER_COLUMNS } from '@/lib/db/schema/users';
 import { db } from '@/lib/db';
 import {
@@ -94,10 +95,13 @@ export class VideosRepository {
     search?: string;
     isSponsored?: boolean;
     tag?: string;
+    /** Only items this plan may use (member listings). */
+    planTier?: string;
     page?: number;
     limit?: number;
   }): Promise<{ videos: Video[]; total: number }> {
     const conditions = [];
+    if (filters.planTier) conditions.push(planAllowsSql(videos.allowedPlanTiers, filters.planTier));
     if (filters.category)
       conditions.push(eq(videos.category, filters.category));
     if (filters.status) conditions.push(eq(videos.status, filters.status));

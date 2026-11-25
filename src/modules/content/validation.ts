@@ -26,6 +26,17 @@ const optionalUrl = (message: string) => z.preprocess(cleanUrl, z.url(message).o
 /** Required link (trimmed, https:// added when missing). */
 const requiredUrl = (message: string) => z.preprocess(cleanUrl, z.url(message));
 
+/**
+ * For partial updates: keep only the fields the caller actually sent. Zod
+ * fills `.default()` values in even on `.partial()` schemas, which silently
+ * reset things like a video's status to DRAFT on unrelated edits.
+ */
+export function onlyProvided<T extends Record<string, unknown>>(validated: T, input: unknown): Partial<T> {
+  if (!input || typeof input !== 'object') return {};
+  const sent = new Set(Object.keys(input as Record<string, unknown>));
+  return Object.fromEntries(Object.entries(validated).filter(([k]) => sent.has(k))) as Partial<T>;
+}
+
 /** First validation problem as a sentence an admin can act on. */
 export function firstIssueMessage(error: z.ZodError): string {
   const issue = error.issues[0];
@@ -92,6 +103,8 @@ const videoBaseSchema = z.object({
   rewardAmount: z.number().positive().default(40),
   // Sponsor-funded reward budget in RWF; null = no campaign budget.
   rewardBudget: z.number().positive().nullable().optional(),
+  /** Plan keys allowed to use this item; empty/null = every plan. */
+  allowedPlanTiers: z.array(z.string().trim().toUpperCase().regex(/^[A-Z][A-Z0-9_]{1,31}$/)).max(30).nullable().optional(),
   bonusReward: z.number().positive().optional(),
   isSponsored: z.boolean().default(false),
   sponsorName: z.string().optional(),
@@ -129,6 +142,8 @@ const gameBaseSchema = z.object({
   baseReward: z.number().positive().default(50),
   // Sponsor-funded reward budget in RWF; null = no campaign budget.
   rewardBudget: z.number().positive().nullable().optional(),
+  /** Plan keys allowed to use this item; empty/null = every plan. */
+  allowedPlanTiers: z.array(z.string().trim().toUpperCase().regex(/^[A-Z][A-Z0-9_]{1,31}$/)).max(30).nullable().optional(),
   maxReward: z.number().positive().default(150),
   maxPlaysPerDay: z.number().int().positive().max(100).default(10),
   minPlayDuration: z.number().int().positive().max(3600).default(30),
@@ -248,6 +263,8 @@ const surveyBaseSchema = z.object({
   rewardAmount: z.number().positive().default(200),
   // Sponsor-funded reward budget in RWF; null = no campaign budget.
   rewardBudget: z.number().positive().nullable().optional(),
+  /** Plan keys allowed to use this item; empty/null = every plan. */
+  allowedPlanTiers: z.array(z.string().trim().toUpperCase().regex(/^[A-Z][A-Z0-9_]{1,31}$/)).max(30).nullable().optional(),
   maxParticipants: z.number().int().positive().optional(),
   isSponsored: z.boolean().default(false),
   sponsorName: z.string().optional(),

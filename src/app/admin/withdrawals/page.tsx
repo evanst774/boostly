@@ -12,6 +12,8 @@ import {
   XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { Trash2 } from 'lucide-react';
 import { PayoutCountdown } from '@/components/earn/PayoutCountdown';
 import {
   MOBILE_MONEY_PROVIDERS,
@@ -59,6 +61,13 @@ export default function AdminWithdrawalsPage() {
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Super admin: remove withdrawal records (test data).
+  const { user } = useAuth();
+  const isSuperAdmin = (user?.roles ?? []).includes('SUPER_ADMIN');
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [cleanup, setCleanup] = useState<{ confirm: string; refundCompleted: boolean; reason: string } | null>(null);
+  const [cleaning, setCleaning] = useState(false);
+  const [cleanupDone, setCleanupDone] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -78,7 +87,41 @@ export default function AdminWithdrawalsPage() {
 
   useEffect(() => {
     load();
+    setPicked(new Set());
   }, [load]);
+
+  const togglePick = (id: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const runCleanup = async () => {
+    if (!cleanup || picked.size === 0) return;
+    setCleaning(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/withdrawals/cleanup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [...picked], ...cleanup }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Could not remove the records');
+      setCleanupDone(
+        `Removed ${json.removed} record${json.removed === 1 ? '' : 's'}${json.refunded ? `, returned ${rwf(json.refunded)} to members' balances` : ''}.`,
+      );
+      setCleanup(null);
+      setPicked(new Set());
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not remove the records');
+    } finally {
+      setCleaning(false);
+    }
+  };
 
   const approve = async (id: string) => {
     const res = await fetch(`/api/admin/withdrawals/${id}/approve`, { method: 'POST' });
@@ -268,6 +311,88 @@ export default function AdminWithdrawalsPage() {
         />
       </div>
 
+      {cleanupDone && (
+        <p role="status" className="rounded-xl bg-[#F0FDF4] p-3 text-sm text-[#166534] dark:bg-[#22C55E]/10 dark:text-[#86EFAC]">
+          {cleanupDone}
+        </p>
+      )}
+
+      {isSuperAdmin && picked.size > 0 && (
+        <div className={cn(card, 'p-4 border-[#FECACA] dark:border-[#7F1D1D]')}>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="flex-1 text-sm font-semibold text-[#0F172A] dark:text-white">
+              {picked.size} selected for permanent removal
+            </p>
+            <button type="button" onClick={() => setPicked(new Set())} className="text-sm font-semibold text-[#64748B]">
+              Clear
+            </button>
+            {!cleanup && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCleanupDone(null);
+                  setCleanup({ confirm: '', refundCompleted: false, reason: '' });
+                }}
+                className="px-3.5 py-2 rounded-xl bg-[#DC2626] text-white text-sm font-bold flex items-center gap-1.5"
+              >
+                <Trash2 size={14} /> Remove selected
+              </button>
+            )}
+          </div>
+          {cleanup && (
+            <div className="mt-3 space-y-3 border-t border-[#FECACA] pt-3 dark:border-[#7F1D1D]">
+              <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
+                Use this for test or wrong records only. Each removal is permanent and audit-logged, and
+                its wallet effect is reversed: pending requests are refunded to the member, paid ones are
+                taken out of &ldquo;total withdrawn&rdquo;. Public payout lists update right away.
+              </p>
+              {tab === 'COMPLETED' && (
+                <label className="flex items-start gap-2 text-sm text-[#0F172A] dark:text-white">
+                  <input
+                    type="checkbox"
+                    checked={cleanup.refundCompleted}
+                    onChange={(e) => setCleanup({ ...cleanup, refundCompleted: e.target.checked })}
+                    className="mt-0.5 h-4 w-4 accent-[#EF4444]"
+                  />
+                  <span>
+                    Also return the amount to the member&apos;s balance
+                    <span className="block text-xs text-[#64748B] dark:text-[#94A3B8]">
+                      Only if the money never actually reached them (e.g. a test payout).
+                    </span>
+                  </span>
+                </label>
+              )}
+              <input
+                placeholder="Reason (kept in the audit log)"
+                value={cleanup.reason}
+                onChange={(e) => setCleanup({ ...cleanup, reason: e.target.value })}
+                className="w-full px-3 py-2 border border-[#E2E8F0] dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#0F172A] outline-none"
+              />
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  placeholder="Type DELETE to confirm"
+                  value={cleanup.confirm}
+                  onChange={(e) => setCleanup({ ...cleanup, confirm: e.target.value })}
+                  className="flex-1 px-3 py-2 border border-[#FECACA] rounded-xl text-sm bg-white dark:bg-[#0F172A] outline-none focus:border-[#DC2626]"
+                />
+                <button
+                  type="button"
+                  disabled={cleaning || cleanup.confirm.trim().toUpperCase() !== 'DELETE'}
+                  onClick={runCleanup}
+                  className="px-4 py-2 rounded-xl bg-[#DC2626] text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {cleaning ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  Remove permanently
+                </button>
+                <button type="button" onClick={() => setCleanup(null)} className="px-3 py-2 text-sm font-semibold text-[#64748B]">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex justify-center py-16">
           <Loader2 size={28} className="animate-spin text-[#2563EB]" />
@@ -282,8 +407,17 @@ export default function AdminWithdrawalsPage() {
       ) : (
         <ul className="space-y-2">
           {visible.map((w) => (
-            <li key={w.id} className={cn(card, 'p-4')}>
+            <li key={w.id} className={cn(card, 'p-4', picked.has(w.id) && 'ring-2 ring-[#EF4444]/50')}>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                {isSuperAdmin && (
+                  <input
+                    type="checkbox"
+                    aria-label="Select for removal"
+                    checked={picked.has(w.id)}
+                    onChange={() => togglePick(w.id)}
+                    className="h-4 w-4 accent-[#EF4444]"
+                  />
+                )}
                 <div className="flex-1 min-w-[200px]">
                   <p className="text-base font-bold text-[#0F172A] dark:text-white tabular-nums">
                     {formatRwandaPhone(w.phoneNumber) || '—'}

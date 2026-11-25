@@ -1,6 +1,7 @@
 // src/components/admin/content/GameForm.tsx
 'use client';
 
+import { PlanAccessField } from '@/components/admin/content/PlanAccessField';
 import { useState } from 'react';
 import { Save, Loader2, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -31,6 +32,7 @@ export interface GameFormValues {
   orientation: string;
   baseReward: number;
   rewardBudget: number | null;
+  allowedPlanTiers: string[] | null;
   maxReward: number;
   maxPlaysPerDay: number;
   minPlayDuration: number;
@@ -53,6 +55,7 @@ export const EMPTY_GAME_FORM: GameFormValues = {
   orientation: 'BOTH',
   baseReward: 50,
   rewardBudget: null,
+  allowedPlanTiers: null,
   maxReward: 150,
   maxPlaysPerDay: 10,
   minPlayDuration: 30,
@@ -105,6 +108,7 @@ const LABELS: Record<string, string> = {
   orientation: 'Orientation',
   baseReward: 'Base reward',
   rewardBudget: 'Reward budget',
+  allowedPlanTiers: 'Available to',
   maxReward: 'Max reward',
   maxPlaysPerDay: 'Plays per day',
   minPlayDuration: 'Minimum play time',
@@ -236,7 +240,8 @@ function fieldForServerMessage(message: string): string | undefined {
 function withoutNulls(values: GameFormValues): GameFormValues {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(values)) {
-    if (v === null && k !== 'rewardBudget') continue;
+    // null means "no limit" / "every plan" for these, so keep it.
+    if (v === null && k !== 'rewardBudget' && k !== 'allowedPlanTiers') continue;
     out[k] = v;
   }
   return out as unknown as GameFormValues;
@@ -579,6 +584,10 @@ export function GameForm({
             platform budget still applies).
           </FieldHint>
         </div>
+        <PlanAccessField
+          value={form.allowedPlanTiers}
+          onChange={(v) => set('allowedPlanTiers', v)}
+        />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
         <div>

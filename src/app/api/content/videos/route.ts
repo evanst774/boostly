@@ -57,14 +57,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // If active only, no permission check needed (public)
+    // Active only: what this member's plan can see.
     if (activeOnly) {
-      const videos = await videosService.getActiveVideos();
+      const { videos } = await videosService.listForUser({ category, search, page, limit });
       return NextResponse.json({ videos });
     }
 
-    // For full list, require read permission
-    await requirePermission(ContentPermissions.VIDEOS_READ);
+    // Full list (drafts, every plan) is for content admins only. Members hold
+    // videos.read too, so check the admin-only update permission.
+    await requirePermission(ContentPermissions.VIDEOS_UPDATE);
 
     const result = await videosService.getVideos({
       category,
@@ -89,7 +90,10 @@ export async function GET(request: NextRequest) {
     }
     const message =
       error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: message.startsWith('Forbidden') ? 403 : 500 },
+    );
   }
 }
 
@@ -116,6 +120,9 @@ export async function POST(request: NextRequest) {
     }
     const message =
       error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: message.startsWith('Forbidden') ? 403 : 500 },
+    );
   }
 }

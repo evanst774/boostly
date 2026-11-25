@@ -47,9 +47,11 @@ export async function PUT(
     await requirePermission(ContentPermissions.GAMES_UPDATE);
 
     const body = await request.json();
-    const validated = updateGameSchema.parse(body);
+    // The service validates and keeps only the fields that were sent; parsing
+    // here first would add schema defaults (e.g. status) and overwrite them.
+    updateGameSchema.parse(body);
 
-    const game = await gamesService.updateGame(params.id, validated);
+    const game = await gamesService.updateGame(params.id, body);
     return NextResponse.json({ game });
   } catch (error) {
     console.error('Game PUT error:', error);

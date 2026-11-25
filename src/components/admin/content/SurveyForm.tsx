@@ -1,6 +1,7 @@
 // src/components/admin/content/SurveyForm.tsx
 'use client';
 
+import { PlanAccessField } from '@/components/admin/content/PlanAccessField';
 import { useState } from 'react';
 import { Save, Loader2, Plus, Trash2, GripVertical, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -43,6 +44,7 @@ export interface SurveyFormValues {
   estimatedTime: number;
   rewardAmount: number;
   rewardBudget: number | null;
+  allowedPlanTiers: string[] | null;
   maxParticipants: number | '';
   isSponsored: boolean;
   sponsorName: string;
@@ -72,6 +74,7 @@ export const EMPTY_SURVEY_FORM: SurveyFormValues = {
   estimatedTime: 5,
   rewardAmount: 200,
   rewardBudget: null,
+  allowedPlanTiers: null,
   maxParticipants: '',
   isSponsored: false,
   sponsorName: '',
@@ -144,6 +147,7 @@ const LABELS: Record<string, string> = {
   estimatedTime: 'Estimated time',
   rewardAmount: 'Reward',
   rewardBudget: 'Reward budget',
+  allowedPlanTiers: 'Available to',
   maxParticipants: 'Max participants',
   questionsCount: 'Questions',
   questions: 'Questions',
@@ -268,7 +272,7 @@ const DATE_KEYS = new Set(['startsAt', 'endsAt', 'sponsoredUntil']);
 function withoutNulls(values: SurveyFormValues): SurveyFormValues {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(values)) {
-    if ((v === null || v === '') && k !== 'rewardBudget' && (v === null || DATE_KEYS.has(k))) continue;
+    if ((v === null || v === '') && k !== 'rewardBudget' && k !== 'allowedPlanTiers' && (v === null || DATE_KEYS.has(k))) continue;
     if (DATE_KEYS.has(k) && typeof v === 'string') {
       const d = new Date(v);
       out[k] = Number.isNaN(d.getTime()) ? v : d.toISOString();
@@ -569,6 +573,10 @@ export function SurveyForm({
               platform budget still applies).
             </FieldHint>
           </div>
+          <PlanAccessField
+            value={form.allowedPlanTiers}
+            onChange={(v) => set('allowedPlanTiers', v)}
+          />
           <div>
             <FieldLabel
               htmlFor="field-estimatedTime"

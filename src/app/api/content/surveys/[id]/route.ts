@@ -47,9 +47,11 @@ export async function PUT(
     await requirePermission(ContentPermissions.SURVEYS_UPDATE);
 
     const body = await request.json();
-    const validated = updateSurveySchema.parse(body);
+    // The service validates and keeps only the fields that were sent; parsing
+    // here first would add schema defaults (e.g. status) and overwrite them.
+    updateSurveySchema.parse(body);
 
-    const survey = await surveysService.updateSurvey(params.id, validated);
+    const survey = await surveysService.updateSurvey(params.id, body);
     return NextResponse.json({ survey });
   } catch (error) {
     console.error('Survey PUT error:', error);

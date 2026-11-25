@@ -10,8 +10,7 @@ import {
   submitSurveySchema,
   type CreateSurveyInput,
   type UpdateSurveyInput,
-  type SubmitSurveyInput,
-} from '../../validation';
+  type SubmitSurveyInput, onlyProvided } from '../../validation';
 import { createAuditLog } from '@/lib/audit';
 import { getCurrentUser } from '@/lib/auth/session.server';
 import { requirePermission } from '@/lib/auth/permissions';
@@ -24,7 +23,8 @@ import {
 } from '@/lib/db/schema';
 import { rewardsService } from '@/modules/rewards/service';
 import { RewardTypeEnum } from '@/lib/db/schema/rewards';
-import { getUserDailyLimits } from '@/modules/rewards/plan-limits';
+import { getUserDailyLimits, getUserPlan } from '@/modules/rewards/plan-limits';
+import { canUsePlan, PLAN_LOCKED_MESSAGE } from '@/modules/content/plan-access';
 import { issueTaskToken, elapsedSinceTaskStart } from '@/lib/task-token';
 
 
@@ -131,7 +131,8 @@ export class SurveysService {
     const existing = await surveysRepository.getById(id);
     if (!existing) throw new Error('Survey not found');
 
-    const validated = updateSurveySchema.parse(input);
+    // Only the fields that were sent (no defaults sneaking in on edits).
+    const validated = onlyProvided(updateSurveySchema.parse(input), input);
     const updated = await surveysRepository.update(id, validated);
 
     await createAuditLog({
@@ -249,8 +250,9 @@ export class SurveysService {
     const user = await getCurrentUser();
     if (!user) throw new Error('Unauthorized');
 
+    const plan = await getUserPlan(user.id);
     const [active, responses, limits, doneToday, earnings] = await Promise.all([
-      surveysRepository.getActiveSurveys(),
+      surveysRepository.getActiveSurveys(plan.tier),
       surveyResponsesRepository.getUserResponses(user.id),
       getUserDailyLimits(user.id),
       rewardsService.getTodayRewardCount(user.id, RewardTypeEnum.SURVEY),
@@ -303,6 +305,9 @@ export class SurveysService {
     if (survey.endsAt && survey.endsAt <= new Date().toISOString()) {
       throw new SurveyTaskError(404, 'NOT_AVAILABLE', 'This survey has ended.');
     }
+    if (!canUsePlan(survey.allowedPlanTiers, (await getUserPlan(user.id)).tier)) {
+      throw new SurveyTaskError(403, 'PLAN_LOCKED', PLAN_LOCKED_MESSAGE);
+    }
     if (await surveyResponsesRepository.getByUserAndSurvey(user.id, surveyId)) {
       throw new SurveyTaskError(409, 'ALREADY_COMPLETED', 'You have already completed this survey.');
     }
@@ -336,6 +341,9 @@ export class SurveysService {
     const survey = await surveysRepository.getById(validated.surveyId);
     if (!survey || survey.status !== SurveyStatusEnum.ACTIVE) {
       throw new SurveyTaskError(404, 'NOT_AVAILABLE', 'This survey is no longer available.');
+    }
+    if (!canUsePlan(survey.allowedPlanTiers, (await getUserPlan(user.id)).tier)) {
+      throw new SurveyTaskError(403, 'PLAN_LOCKED', PLAN_LOCKED_MESSAGE);
     }
 
     // Surveys pay once per user (unique index on userId + surveyId).

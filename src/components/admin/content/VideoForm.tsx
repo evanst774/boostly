@@ -5,6 +5,7 @@
 // checks that mirror the server rules, and inline errors.
 'use client';
 
+import { PlanAccessField } from '@/components/admin/content/PlanAccessField';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import {
@@ -57,6 +58,7 @@ export interface VideoFormValues {
   thumbnailUrl: string;
   rewardAmount: number;
   rewardBudget: number | null;
+  allowedPlanTiers: string[] | null;
   isSponsored: boolean;
   sponsorName: string;
   sponsorLogo: string;
@@ -75,6 +77,7 @@ export const EMPTY_VIDEO_FORM: VideoFormValues = {
   thumbnailUrl: '',
   rewardAmount: 40,
   rewardBudget: null,
+  allowedPlanTiers: null,
   isSponsored: false,
   sponsorName: '',
   sponsorLogo: '',
@@ -120,6 +123,7 @@ const LABELS: Record<string, string> = {
   thumbnailUrl: 'Thumbnail',
   rewardAmount: 'Reward per completed view',
   rewardBudget: 'Reward budget',
+  allowedPlanTiers: 'Available to',
   isSponsored: 'Sponsored',
   sponsorName: 'Sponsor name',
   sponsorLogo: 'Sponsor logo',
@@ -899,6 +903,10 @@ export function VideoForm({
               platform budget still applies).
             </FieldHint>
           </div>
+          <PlanAccessField
+            value={formData.allowedPlanTiers}
+            onChange={(v) => update('allowedPlanTiers', v)}
+          />
         </div>
 
         {/* Difficulty & Status */}

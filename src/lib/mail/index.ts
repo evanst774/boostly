@@ -17,7 +17,6 @@ import { waitUntil } from '@vercel/functions';
 const LOGO_URL = 'https://cdn.boostly.buzz/assets/logo.png';
 const COMPANY_NAME = 'Boostly';
 const COMPANY_TAGLINE = 'Earn Rewards. Get Paid. Every Day.';
-const COMPANY_ADDRESS = 'KG 120 St, Kigali, Rwanda';
 const COMPANY_WEBSITE = 'https://boostly.buzz';
 const SUPPORT_EMAIL = 'support@boostly.buzz';
 const PRIVACY_URL = 'https://boostly.buzz/privacy';
@@ -485,7 +484,6 @@ export function createBoostlyEmail(
         <span class="footer-brand-name">${COMPANY_NAME}</span>
       </a>
       <p class="footer-tagline">${COMPANY_TAGLINE}</p>
-      <p class="footer-address">${COMPANY_ADDRESS}</p>
       ${recipientEmail ? `<p style="font-size:12px;color:#9CA3AF;margin-bottom:12px;">This email was sent to ${recipientEmail}</p>` : ''}
       <div class="footer-links">
         <a href="${COMPANY_WEBSITE}">Website</a>

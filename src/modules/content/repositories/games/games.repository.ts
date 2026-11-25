@@ -1,4 +1,5 @@
 // src/modules/content/repositories/games/games.repository.ts
+import { planAllowsSql } from '@/modules/content/plan-access';
 import { db } from '@/lib/db';
 import {
   games,
@@ -38,10 +39,13 @@ export class GamesRepository {
   async getGames(filters: {
     category?: GameCategory;
     status?: GameStatus;
+    /** Only items this plan may use (member listings). */
+    planTier?: string;
     page?: number;
     limit?: number;
   }): Promise<{ games: Game[]; total: number }> {
     const conditions = [];
+    if (filters.planTier) conditions.push(planAllowsSql(games.allowedPlanTiers, filters.planTier));
     if (filters.category) conditions.push(eq(games.category, filters.category));
     if (filters.status) conditions.push(eq(games.status, filters.status));
 

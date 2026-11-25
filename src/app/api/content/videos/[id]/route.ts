@@ -47,9 +47,11 @@ export async function PUT(
     await requirePermission(ContentPermissions.VIDEOS_UPDATE);
 
     const body = await request.json();
-    const validated = updateVideoSchema.parse(body);
+    // The service validates and keeps only the fields that were sent; parsing
+    // here first would add schema defaults (e.g. status) and overwrite them.
+    updateVideoSchema.parse(body);
 
-    const video = await videosService.updateVideo(params.id, validated);
+    const video = await videosService.updateVideo(params.id, body);
     return NextResponse.json({ video });
   } catch (error) {
     console.error('Video PUT error:', error);

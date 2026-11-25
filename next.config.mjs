@@ -83,9 +83,10 @@ const pwaConfig = withPWA({
         expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 1 },
       },
     },
-    // API routes - network first with fallback
+    // Public API only (payout feeds, landing data). Signed-in API responses
+    // (wallet, account, tasks) are never stored on the device.
     {
-      urlPattern: /\/api\//,
+      urlPattern: /\/api\/public\//,
       handler: 'NetworkFirst',
       options: {
         cacheName: 'api-cache',

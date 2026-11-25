@@ -70,6 +70,8 @@ export const surveys = sqliteTable(
     // rewardSpent reaches it. NULL = no campaign budget: paid only within the
     // platform's daily reward budget.
     rewardBudget: real('rewardBudget'),
+    // Plans that may use this item (plan keys). NULL/[] = every plan.
+    allowedPlanTiers: text('allowedPlanTiers', { mode: 'json' }).$type<string[]>(),
     // Nullable on purpose: drizzle-kit push emits `DELETE FROM <table>` before
     // adding a NOT NULL column, which would wipe live content. Treat NULL as 0.
     rewardSpent: real('rewardSpent').default(0),

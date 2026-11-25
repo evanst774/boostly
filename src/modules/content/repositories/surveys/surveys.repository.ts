@@ -1,4 +1,5 @@
 // src/modules/content/repositories/surveys/surveys.repository.ts
+import { planAllowsSql } from '@/modules/content/plan-access';
 import { db } from '@/lib/db';
 import {
   surveys,
@@ -28,12 +29,14 @@ export class SurveysRepository {
     });
   }
 
-  async getActiveSurveys(): Promise<Survey[]> {
+  /** Open surveys; with planTier, only those that plan may take. */
+  async getActiveSurveys(planTier?: string): Promise<Survey[]> {
     const now = new Date().toISOString();
     return await db.query.surveys.findMany({
       where: and(
         eq(surveys.status, SurveyStatusEnum.ACTIVE),
         sql`(${surveys.endsAt} IS NULL OR ${surveys.endsAt} > ${now})`,
+        ...(planTier ? [planAllowsSql(surveys.allowedPlanTiers, planTier)] : []),
       ),
       orderBy: [desc(surveys.createdAt)],
     });

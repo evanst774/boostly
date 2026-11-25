@@ -115,6 +115,7 @@ export const auditActions = [
   'WITHDRAWAL_PROCESSED',
   'WITHDRAWAL_COMPLETED',
   'WITHDRAWAL_FAILED',
+  'WITHDRAWAL_DELETED',
 
   // ========== CRYPTO ==========
   'CRYPTO_CURRENCY_CREATED',

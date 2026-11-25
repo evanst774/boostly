@@ -77,7 +77,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    await requirePermission(ContentPermissions.SURVEYS_READ);
+    // Full list (drafts, every plan) is for content admins only. Members hold
+    // surveys.read too, so check the admin-only update permission.
+    await requirePermission(ContentPermissions.SURVEYS_UPDATE);
 
     const result = await surveysService.getSurveys({
       brand,
@@ -102,7 +104,10 @@ export async function GET(request: NextRequest) {
     }
     const message =
       error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: message.startsWith('Forbidden') ? 403 : 500 },
+    );
   }
 }
 
@@ -129,6 +134,9 @@ export async function POST(request: NextRequest) {
     }
     const message =
       error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: message.startsWith('Forbidden') ? 403 : 500 },
+    );
   }
 }

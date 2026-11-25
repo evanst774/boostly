@@ -7,6 +7,8 @@ import { getCurrentUser } from '@/lib/auth/session.server';
 import { GameCategoryEnum, GameStatusEnum } from '@/lib/db/schema';
 import { createGameSchema } from '@/modules/content/validation';
 import { gamesService } from '@/modules/content';
+import { requirePermission } from '@/lib/auth/permissions';
+import { ContentPermissions } from '@/modules/content/permissions';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,10 +71,15 @@ export async function GET(request: NextRequest) {
 
     const { scope, active, category, status, search, page, limit } = parsed.data;
 
+    // Active only: what this member's plan can see.
     if (active) {
-      const games = await gamesService.getActiveGames();
+      const { games } = await gamesService.getPublicGames({ category, search, page, limit });
       return NextResponse.json({ games });
     }
+
+    // Full list (drafts, every plan) is for content admins only. Members hold
+    // games.read too, so check the admin-only update permission.
+    if (scope === 'admin') await requirePermission(ContentPermissions.GAMES_UPDATE);
 
     // Admin listing enforces GAMES_READ inside getGames, and `status` is only
     // honoured there. Public callers can never surface DRAFT rows — previously

@@ -4,8 +4,7 @@ import {
   createGameSchema,
   updateGameSchema,
   type CreateGameInput,
-  type UpdateGameInput,
-} from '../../validation';
+  type UpdateGameInput, onlyProvided } from '../../validation';
 import { createAuditLog } from '@/lib/audit';
 import { getCurrentUser } from '@/lib/auth/session.server';
 import { requirePermission } from '@/lib/auth/permissions';
@@ -21,7 +20,8 @@ import {
 } from '@/lib/db/schema';
 import { rewardsService } from '@/modules/rewards/service';
 import { RewardTypeEnum } from '@/lib/db/schema/rewards';
-import { getUserDailyLimits } from '@/modules/rewards/plan-limits';
+import { getUserDailyLimits, getUserPlan } from '@/modules/rewards/plan-limits';
+import { canUsePlan, PLAN_LOCKED_MESSAGE } from '@/modules/content/plan-access';
 import { appOriginsFromEnv, gameUrlProblem } from '@/lib/games/embed-policy';
 
 // ============================================
@@ -166,7 +166,8 @@ export class GamesService {
     const existing = await gamesRepository.getById(id);
     if (!existing) throw new Error('Game not found');
 
-    const validated = updateGameSchema.parse(input);
+    // Only the fields that were sent (no defaults sneaking in on edits).
+    const validated = onlyProvided(updateGameSchema.parse(input), input);
     if (validated.gameUrl !== undefined) assertEmbeddableGameUrl(validated.gameUrl);
     const updated = await gamesRepository.update(id, {
       ...validated,
@@ -247,15 +248,19 @@ export class GamesService {
    * Public catalogue. No permission check, and ACTIVE is forced rather than
    * accepted from the caller — otherwise the earn page happily lists DRAFT rows.
    */
+  /** Member listing: active games, limited to the member's plan when signed in. */
   async getPublicGames(filters: {
     category?: GameCategory;
     search?: string;
     page?: number;
     limit?: number;
   }): Promise<{ games: Game[]; total: number }> {
+    const user = await getCurrentUser();
+    const planTier = user ? (await getUserPlan(user.id)).tier : undefined;
     return await gamesRepository.getGames({
       ...filters,
       status: GameStatusEnum.ACTIVE,
+      planTier,
     });
   }
 
@@ -325,6 +330,9 @@ export class GamesService {
     if (!game) throw new Error('Game not found');
     if (game.status !== GameStatusEnum.ACTIVE) {
       throw new Error('Game not available');
+    }
+    if (!canUsePlan(game.allowedPlanTiers, (await getUserPlan(user.id)).tier)) {
+      throw new GameTaskError(403, 'PLAN_LOCKED', PLAN_LOCKED_MESSAGE);
     }
 
     const embedOrigin = getGameEmbedOrigin(game.gameUrl);
